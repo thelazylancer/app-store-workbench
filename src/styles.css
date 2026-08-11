@@ -1185,8 +1185,33 @@ body.is-lightbox-open {
 
 .candidate-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: minmax(0, 1.15fr) minmax(260px, 0.85fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.alternate-list {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.alternate-list-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
   gap: 12px;
+  padding: 0 2px 2px;
+}
+
+.alternate-list-header strong {
+  color: #0f172a;
+  font-size: 0.82rem;
+}
+
+.alternate-list-header span {
+  color: #94a3b8;
+  font-size: 0.74rem;
 }
 
 .candidate-card {
@@ -1201,6 +1226,12 @@ body.is-lightbox-open {
 .candidate-card.is-current {
   border-color: #bfdbfe;
   background: #f8fbff;
+}
+
+.alternate-list .candidate-card {
+  gap: 9px;
+  padding: 11px;
+  border-radius: 10px;
 }
 
 .candidate-card-tag {
@@ -1221,6 +1252,21 @@ body.is-lightbox-open {
   grid-template-columns: 44px minmax(0, 1fr);
   gap: 12px;
   align-items: start;
+}
+
+.candidate-card-screenshots {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.candidate-card-screenshot {
+  width: 100%;
+  aspect-ratio: 9 / 16;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f1f5f9;
+  object-fit: contain;
 }
 
 .candidate-card-icon {
@@ -1343,6 +1389,10 @@ body.is-lightbox-open {
 
   .empty-state h3 {
     max-width: none;
+  }
+
+  .candidate-grid {
+    grid-template-columns: 1fr;
   }
 }
 

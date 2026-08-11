@@ -9,6 +9,7 @@ function toMatchedApp(candidate: LookupCandidate): MatchedApp {
   return {
     name: candidate.name,
     developer: candidate.developer,
+    ...(candidate.appleId === undefined ? {} : { appleId: candidate.appleId }),
     appStoreUrl: candidate.appStoreUrl,
     iconUrl: candidate.iconUrl,
     description: candidate.description,
@@ -23,6 +24,7 @@ function toAlternateApp(candidate: LookupCandidate): AlternateApp {
   return {
     name: candidate.name,
     developer: candidate.developer,
+    ...(candidate.appleId === undefined ? {} : { appleId: candidate.appleId }),
     appStoreUrl: candidate.appStoreUrl,
     iconUrl: candidate.iconUrl,
     category: candidate.category ?? null,

@@ -2,6 +2,7 @@ import type { LookupCandidate } from "../../shared/types";
 
 type AppleLookupResponse = {
   results?: Array<{
+    trackId?: unknown;
     trackName?: string;
     sellerName?: string;
     trackViewUrl?: string;
@@ -16,7 +17,17 @@ type AppleLookupResponse = {
   }>;
 };
 
-function buildVersionHistoryEntry(result: AppleLookupResponse["results"] extends Array<infer Item> ? Item : never) {
+type AppleLookupResult = NonNullable<AppleLookupResponse["results"]>[number];
+
+function normalizeAppleId(value: unknown) {
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value <= 0) {
+    return undefined;
+  }
+
+  return value;
+}
+
+function buildVersionHistoryEntry(result: AppleLookupResult) {
   if (!result.version) {
     return [];
   }
@@ -49,7 +60,7 @@ export async function lookupAppStore(
   const body = (await response.json()) as AppleLookupResponse;
 
   return (body.results ?? [])
-    .map((result) => {
+    .map((result): LookupCandidate | null => {
       const name = result.trackName;
       const developer = result.sellerName;
       const appStoreUrl = result.trackViewUrl;
@@ -58,16 +69,19 @@ export async function lookupAppStore(
         return null;
       }
 
+      const appleId = normalizeAppleId(result.trackId);
+
       return {
         name,
         developer,
+        ...(appleId === undefined ? {} : { appleId }),
         appStoreUrl,
         iconUrl: result.artworkUrl512 ?? result.artworkUrl100 ?? "",
         description: result.description ?? "",
         screenshotUrls: result.screenshotUrls ?? [],
         category: result.primaryGenreName ?? null,
         versionHistory: buildVersionHistoryEntry(result),
-      } satisfies LookupCandidate;
+      };
     })
     .filter((result): result is LookupCandidate => result !== null);
 }

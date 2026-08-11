@@ -5,6 +5,7 @@ const candidates = [
   {
     name: "Funce AI",
     developer: "A Dev",
+    appleId: 6755396080,
     appStoreUrl: "https://a",
     iconUrl: "https://img/a.png",
     description: "desc a",
@@ -13,6 +14,7 @@ const candidates = [
   {
     name: "Funce Daily",
     developer: "B Dev",
+    appleId: 6755396081,
     appStoreUrl: "https://b",
     iconUrl: "https://img/b.png",
     description: "desc b",
@@ -21,6 +23,23 @@ const candidates = [
 ];
 
 describe("classifyCandidates", () => {
+  it("preserves the Apple ID on the matched app", () => {
+    const result = classifyCandidates("Funce", [
+      {
+        name: "Funce",
+        developer: "A Dev",
+        appStoreUrl: "https://a",
+        iconUrl: "https://img/a.png",
+        description: "desc a",
+        screenshotUrls: [],
+        appleId: 6755396077,
+      },
+    ]);
+
+    expect(result.status).toBe("matched");
+    expect(result.app?.appleId).toBe(6755396077);
+  });
+
   it("returns matched for a clearly dominant prefix match with no close competitor", () => {
     const result = classifyCandidates("Funce", [
       {
@@ -51,6 +70,16 @@ describe("classifyCandidates", () => {
     expect(result.status).toBe("uncertain_match");
     expect(result.app?.name).toBe("Funce AI");
     expect(result.alternates).toHaveLength(1);
+  });
+
+  it("preserves the Apple ID on alternate candidates", () => {
+    const result = classifyCandidates("Funce", candidates);
+
+    expect(result.status).toBe("uncertain_match");
+    expect(result.alternates[0]).toMatchObject({
+      name: "Funce Daily",
+      appleId: 6755396081,
+    });
   });
 
   it("returns matched for a dominant substring match when the query is specific enough", () => {

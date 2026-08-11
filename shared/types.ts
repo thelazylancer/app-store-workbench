@@ -5,6 +5,7 @@ export type SearchAppsRequest = {
 export type LookupCandidate = {
   name: string;
   developer: string;
+  appleId?: number;
   appStoreUrl: string;
   iconUrl: string;
   description: string;
@@ -32,7 +33,13 @@ export type MatchedApp = LookupCandidate & {
 
 export type AlternateApp = Pick<
   LookupCandidate,
-  "name" | "developer" | "appStoreUrl" | "iconUrl" | "category" | "screenshotUrls"
+  | "name"
+  | "developer"
+  | "appleId"
+  | "appStoreUrl"
+  | "iconUrl"
+  | "category"
+  | "screenshotUrls"
 >;
 
 export type IapHintState = "found" | "not_found" | "unavailable";

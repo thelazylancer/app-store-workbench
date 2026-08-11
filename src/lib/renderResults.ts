@@ -5,6 +5,8 @@ import type {
   SearchResult,
 } from "../../shared/types";
 
+const MAX_VISIBLE_VERSION_HISTORY = 5;
+
 function translateMessage(message: string | null | undefined) {
   if (!message) {
     return null;
@@ -312,18 +314,22 @@ function createInfoRow(label: string, value: string) {
 }
 
 function createVersionHistory(items: AppVersionHistoryItem[]) {
+  const visibleItems = items.slice(0, MAX_VISIBLE_VERSION_HISTORY);
   const details = document.createElement("details");
   details.className = "version-history";
   details.open = true;
 
   const summary = document.createElement("summary");
-  summary.textContent = `版本历史 · ${items.length} 个版本`;
+  summary.textContent =
+    items.length > visibleItems.length
+      ? `版本历史 · 最近 ${visibleItems.length} 个（共 ${items.length} 个）`
+      : `版本历史 · ${items.length} 个版本`;
   details.append(summary);
 
   const list = document.createElement("div");
   list.className = "version-history-list";
 
-  for (const item of items) {
+  for (const item of visibleItems) {
     const entry = document.createElement("article");
     entry.className = "version-history-item";
 
@@ -391,12 +397,37 @@ function createCandidateCard(app: AlternateApp, label: string, current = false) 
   developer.textContent = app.developer;
   copy.append(developer);
 
+  const appleId = document.createElement("span");
+  appleId.className = "candidate-card-apple-id";
+  appleId.textContent = `Apple ID：${
+    typeof app.appleId === "number" ? String(app.appleId) : "未提供"
+  }`;
+  copy.append(appleId);
+
   const meta = document.createElement("span");
   meta.textContent = `${app.category ?? "类目未知"} · ${app.screenshotUrls.length} 张搜索图`;
   copy.append(meta);
 
   body.append(copy);
   card.append(body);
+
+  const screenshotUrls = app.screenshotUrls.slice(0, 3);
+  if (screenshotUrls.length > 0) {
+    const screenshots = document.createElement("div");
+    screenshots.className = "candidate-card-screenshots";
+
+    for (const [index, screenshotUrl] of screenshotUrls.entries()) {
+      const image = document.createElement("img");
+      image.src = screenshotUrl;
+      image.alt = `${app.name} 商店截图 ${index + 1}`;
+      image.className = "candidate-card-screenshot";
+      image.loading = "lazy";
+      image.decoding = "async";
+      screenshots.append(image);
+    }
+
+    card.append(screenshots);
+  }
 
   const action = document.createElement("a");
   action.href = app.appStoreUrl;
@@ -498,6 +529,12 @@ function createInspector(result: SearchResult) {
 
   const infoList = document.createElement("div");
   infoList.className = "info-list";
+  infoList.append(
+    createInfoRow(
+      "Apple ID",
+      typeof result.app.appleId === "number" ? String(result.app.appleId) : "未提供",
+    ),
+  );
   infoList.append(createInfoRow("类目", result.app.category ?? "未标注"));
 
   const latestVersion = result.app.versionHistory?.[0];
@@ -552,6 +589,7 @@ function createInspector(result: SearchResult) {
         {
           name: result.app.name,
           developer: result.app.developer,
+          appleId: result.app.appleId,
           appStoreUrl: result.app.appStoreUrl,
           iconUrl: result.app.iconUrl,
           category: result.app.category,
@@ -562,10 +600,26 @@ function createInspector(result: SearchResult) {
       ),
     );
 
+    const alternateList = document.createElement("div");
+    alternateList.className = "alternate-list";
+
+    const alternateListHeader = document.createElement("div");
+    alternateListHeader.className = "alternate-list-header";
+
+    const alternateListTitle = document.createElement("strong");
+    alternateListTitle.textContent = `${result.alternates.length} 个备选`;
+    alternateListHeader.append(alternateListTitle);
+
+    const alternateListHint = document.createElement("span");
+    alternateListHint.textContent = "用于确认匹配";
+    alternateListHeader.append(alternateListHint);
+    alternateList.append(alternateListHeader);
+
     for (const alternate of result.alternates) {
-      candidateGrid.append(createCandidateCard(alternate, "备选项"));
+      alternateList.append(createCandidateCard(alternate, "备选项"));
     }
 
+    candidateGrid.append(alternateList);
     alternates.append(candidateGrid);
 
     overviewSection.append(alternates);

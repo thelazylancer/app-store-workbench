@@ -5,11 +5,15 @@ import { parseQueries } from "./lib/parseQueries";
 import { renderResults } from "./lib/renderResults";
 import type { SearchResult } from "../shared/types";
 
-const app = document.querySelector<HTMLDivElement>("#app");
+function requireElement<T extends Element>(element: T | null, label: string): T {
+  if (!element) {
+    throw new Error(`Missing ${label}`);
+  }
 
-if (!app) {
-  throw new Error("Missing #app root");
+  return element;
 }
+
+const app = requireElement(document.querySelector<HTMLDivElement>("#app"), "#app root");
 
 app.innerHTML = `
   <main class="app-shell app-shell-root">
@@ -84,16 +88,24 @@ app.innerHTML = `
   </main>
 `;
 
-const textarea = app.querySelector("textarea");
-const button = app.querySelector<HTMLButtonElement>('[data-role="search"]');
-const clearButton = app.querySelector<HTMLButtonElement>('[data-role="clear"]');
-const results = app.querySelector<HTMLElement>(".results");
-const summary = app.querySelector<HTMLElement>('[data-role="summary"]');
+const textarea = requireElement(
+  app.querySelector<HTMLTextAreaElement>("textarea"),
+  "search textarea",
+);
+const button = requireElement(
+  app.querySelector<HTMLButtonElement>('[data-role="search"]'),
+  "search button",
+);
+const clearButton = requireElement(
+  app.querySelector<HTMLButtonElement>('[data-role="clear"]'),
+  "clear button",
+);
+const results = requireElement(app.querySelector<HTMLElement>(".results"), "results container");
+const summary = requireElement(
+  app.querySelector<HTMLElement>('[data-role="summary"]'),
+  "results summary",
+);
 let hasSearched = false;
-
-if (!textarea || !button || !clearButton || !results || !summary) {
-  throw new Error("Missing search UI");
-}
 
 function updateSummary(items: SearchResult[], searched: boolean) {
   if (!searched) {

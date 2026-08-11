@@ -20,6 +20,7 @@ describe("renderResults", () => {
         app: {
           name: "Funce",
           developer: "A Dev",
+          appleId: 6755396077,
           appStoreUrl: "https://apps.apple.com/us/app/funce",
           iconUrl: "https://example.com/icon.png",
           description: "A short description",
@@ -58,6 +59,8 @@ describe("renderResults", () => {
     expect(host.querySelector('.result-row[aria-pressed="true"]')?.textContent).toContain("2 个内购");
     expect(host.querySelector('.result-row[aria-pressed="true"]')?.textContent).not.toContain("4.99");
     expect(host.querySelector(".inspector")?.textContent).toContain("A Dev");
+    expect(host.querySelector(".inspector")?.textContent).toContain("Apple ID");
+    expect(host.querySelector(".inspector")?.textContent).toContain("6755396077");
     expect(host.querySelector(".inspector")?.textContent).toContain("版本 1.1.0");
     expect(host.querySelector(".inspector")?.textContent).toContain("Travel");
     expect(host.querySelectorAll(".screenshots img")).toHaveLength(2);
@@ -65,7 +68,35 @@ describe("renderResults", () => {
     expect(host.querySelector(".primary-link")?.getAttribute("href")).toContain("apps.apple.com");
   });
 
-  it("renders every available version in the version history disclosure", () => {
+  it("renders a fallback when the Apple ID is unavailable", () => {
+    const host = document.createElement("div");
+
+    renderResults(host, [
+      {
+        query: "Missing ID",
+        status: "matched",
+        app: {
+          name: "Missing ID",
+          developer: "A Dev",
+          appStoreUrl: "https://apps.apple.com/us/app/missing-id",
+          iconUrl: "https://example.com/icon.png",
+          description: "A description",
+          category: "Utilities",
+          versionHistory: [],
+          screenshotUrls: [],
+          iapItems: [],
+        },
+        alternates: [],
+        iapHints: null,
+        message: null,
+      },
+    ]);
+
+    expect(host.querySelector(".inspector")?.textContent).toContain("Apple ID");
+    expect(host.querySelector(".inspector")?.textContent).toContain("未提供");
+  });
+
+  it("limits visible version history to the five most recent entries", () => {
     const host = document.createElement("div");
 
     renderResults(host, [
@@ -86,8 +117,28 @@ describe("renderResults", () => {
               notes: "Improved outfit logging",
             },
             {
-              version: "1.0",
+              version: "1.15.0",
+              releasedAt: "2026-05-01T01:43:36Z",
+              notes: "Release 2",
+            },
+            {
+              version: "1.14.0",
               releasedAt: "2026-04-24T01:43:36Z",
+              notes: "Release 3",
+            },
+            {
+              version: "1.13.0",
+              releasedAt: "2026-04-18T01:43:36Z",
+              notes: "Release 4",
+            },
+            {
+              version: "1.12.0",
+              releasedAt: "2026-04-12T01:43:36Z",
+              notes: "Release 5",
+            },
+            {
+              version: "1.0",
+              releasedAt: "2026-04-01T01:43:36Z",
               notes: "Initial release",
             },
           ],
@@ -100,9 +151,12 @@ describe("renderResults", () => {
       },
     ]);
 
-    expect(host.querySelectorAll(".version-history-item")).toHaveLength(2);
+    expect(host.querySelectorAll(".version-history-item")).toHaveLength(5);
     expect(host.querySelector(".version-history")?.textContent).toContain("1.16.24");
-    expect(host.querySelector(".version-history")?.textContent).toContain("Initial release");
+    expect(host.querySelector(".version-history")?.textContent).toContain("最近 5 个");
+    expect(host.querySelector(".version-history")?.textContent).not.toContain(
+      "Initial release",
+    );
   });
 
   it("shows loading states and closes from empty lightbox space", () => {
@@ -262,10 +316,25 @@ describe("renderResults", () => {
           {
             name: "Funce Daily",
             developer: "B Dev",
+            appleId: 6755396088,
             appStoreUrl: "https://apps.apple.com/us/app/funce-daily",
             iconUrl: "https://example.com/icon-2.png",
             category: "Travel",
-            screenshotUrls: ["https://example.com/a.png"],
+            screenshotUrls: [
+              "https://example.com/a.png",
+              "https://example.com/b.png",
+              "https://example.com/c.png",
+              "https://example.com/d.png",
+            ],
+          },
+          {
+            name: "Funce Planner",
+            developer: "C Dev",
+            appleId: 6755396089,
+            appStoreUrl: "https://apps.apple.com/us/app/funce-planner",
+            iconUrl: "https://example.com/icon-3.png",
+            category: "Productivity",
+            screenshotUrls: ["https://example.com/e.png"],
           },
         ],
         iapHints: {
@@ -281,7 +350,19 @@ describe("renderResults", () => {
       "可能匹配，请检查备选结果",
     );
     expect(host.querySelector(".inspector")?.textContent).toContain("候选对比");
-    expect(host.querySelector(".candidate-card")?.textContent).toContain("当前命中");
+    expect(host.querySelector(".candidate-grid > .candidate-card.is-current")?.textContent).toContain(
+      "当前命中",
+    );
+    expect(host.querySelector(".alternate-list-header")?.textContent).toContain("2 个备选");
+    expect(host.querySelectorAll(".alternate-list .candidate-card")).toHaveLength(2);
+    expect(host.querySelector(".alternate-list .candidate-card")?.textContent).toContain(
+      "Apple ID：6755396088",
+    );
+    const alternateScreenshots = host.querySelector(
+      ".alternate-list .candidate-card",
+    )?.querySelectorAll<HTMLImageElement>(".candidate-card-screenshot");
+    expect(alternateScreenshots).toHaveLength(3);
+    expect(alternateScreenshots?.[0]?.src).toBe("https://example.com/a.png");
   });
 
   it("prefers a matched result over an uncertain one for the default selection", () => {
