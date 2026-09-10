@@ -66,6 +66,10 @@ describe("renderResults", () => {
     expect(host.querySelectorAll(".screenshots img")).toHaveLength(2);
     expect(host.querySelectorAll(".iap-row")).toHaveLength(2);
     expect(host.querySelector(".primary-link")?.getAttribute("href")).toContain("apps.apple.com");
+    expect(host.querySelector(".qimai-link")?.textContent).toBe("打开 Qimai");
+    expect(host.querySelector(".qimai-link")?.getAttribute("href")).toBe(
+      "https://www.qimai.cn/app/baseinfo/appid/6755396077/country/us",
+    );
   });
 
   it("renders a fallback when the Apple ID is unavailable", () => {
@@ -94,6 +98,7 @@ describe("renderResults", () => {
 
     expect(host.querySelector(".inspector")?.textContent).toContain("Apple ID");
     expect(host.querySelector(".inspector")?.textContent).toContain("未提供");
+    expect(host.querySelector(".qimai-link")).toBeNull();
   });
 
   it("limits visible version history to the five most recent entries", () => {

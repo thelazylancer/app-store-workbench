@@ -563,6 +563,17 @@ function createInspector(result: SearchResult) {
   storeLink.textContent = "打开商店页";
   links.append(storeLink);
 
+  const appleId = result.app.appleId;
+  if (typeof appleId === "number" && Number.isSafeInteger(appleId) && appleId > 0) {
+    const qimaiLink = document.createElement("a");
+    qimaiLink.href = `https://www.qimai.cn/app/baseinfo/appid/${appleId}/country/us`;
+    qimaiLink.target = "_blank";
+    qimaiLink.rel = "noreferrer";
+    qimaiLink.className = "secondary-link qimai-link";
+    qimaiLink.textContent = "打开 Qimai";
+    links.append(qimaiLink);
+  }
+
   const rawLink = document.createElement("a");
   rawLink.href = result.app.appStoreUrl;
   rawLink.target = "_blank";
