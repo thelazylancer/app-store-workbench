@@ -1,8 +1,83 @@
 import request from "supertest";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../../server/app";
+import { lookupAppStore } from "../../server/lib/appleLookup";
+import { buildIapHints } from "../../server/lib/iapHints";
 
 describe("POST /api/search-apps", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("retains primary and alternate comparison facts when product-page enrichment fails", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({
+        results: [
+          {
+            trackName: "Funce AI",
+            sellerName: "A Dev",
+            trackViewUrl: "https://apps.apple.com/us/app/funce-ai",
+            bundleId: " com.example.FunceAI ",
+            averageUserRating: 0,
+            userRatingCount: 0,
+            price: 0,
+            formattedPrice: "Free",
+            currency: "USD",
+            fileSizeBytes: "0",
+            minimumOsVersion: "16.0",
+          },
+          {
+            trackName: "Funce Daily",
+            sellerName: "B Dev",
+            trackViewUrl: "https://apps.apple.com/us/app/funce-daily",
+            bundleId: "com.example.FunceDaily",
+            averageUserRating: 4.75,
+            userRatingCount: 1234,
+            price: 2.99,
+            formattedPrice: "$2.99",
+            currency: "USD",
+            fileSizeBytes: "1250000",
+            minimumOsVersion: "17.0",
+          },
+        ],
+      })),
+    );
+    const app = createApp({
+      lookupAppStore,
+      fetchProductPageDetails: async () => {
+        throw new Error("Product page unavailable");
+      },
+      buildIapHints,
+    });
+
+    const response = await request(app).post("/api/search-apps").send({ names: ["Funce"] });
+
+    expect(response.status).toBe(200);
+    expect(response.body.results[0]).toMatchObject({
+      status: "uncertain_match",
+      app: {
+        bundleId: "com.example.FunceAI",
+        averageUserRating: 0,
+        userRatingCount: 0,
+        price: 0,
+        formattedPrice: "Free",
+        currency: "USD",
+        fileSizeBytes: 0,
+        minimumOsVersion: "16.0",
+      },
+      alternates: [{
+        bundleId: "com.example.FunceDaily",
+        averageUserRating: 4.75,
+        userRatingCount: 1234,
+        price: 2.99,
+        formattedPrice: "$2.99",
+        currency: "USD",
+        fileSizeBytes: 1250000,
+        minimumOsVersion: "17.0",
+      }],
+      iapHints: { "4.99": "unavailable", "9.99": "unavailable" },
+    });
+  });
   it("returns one result per input name in the same order", async () => {
     const app = createApp({
       lookupAppStore: async (query) => {

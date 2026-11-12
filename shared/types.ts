@@ -6,6 +6,14 @@ export type LookupCandidate = {
   name: string;
   developer: string;
   appleId?: number;
+  bundleId?: string;
+  averageUserRating?: number;
+  userRatingCount?: number;
+  price?: number;
+  formattedPrice?: string;
+  currency?: string;
+  fileSizeBytes?: number;
+  minimumOsVersion?: string;
   appStoreUrl: string;
   iconUrl: string;
   description: string;
@@ -36,6 +44,14 @@ export type AlternateApp = Pick<
   | "name"
   | "developer"
   | "appleId"
+  | "bundleId"
+  | "averageUserRating"
+  | "userRatingCount"
+  | "price"
+  | "formattedPrice"
+  | "currency"
+  | "fileSizeBytes"
+  | "minimumOsVersion"
   | "appStoreUrl"
   | "iconUrl"
   | "category"

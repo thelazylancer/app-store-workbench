@@ -1176,32 +1176,58 @@ body.is-lightbox-open {
 
 .alternates {
   display: grid;
-  gap: 6px;
+  gap: 12px;
+  padding-top: 18px;
+  border-top: 1px solid #e2e8f0;
 }
 
 .compare-section {
-  gap: 10px;
+  gap: 12px;
+}
+
+.alternates-label {
+  color: #1d4ed8;
+}
+
+.alternates-note {
+  margin: -4px 0 0;
+  color: #64748b;
+  font-size: 0.82rem;
+  line-height: 1.5;
 }
 
 .candidate-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(260px, 0.85fr);
-  gap: 16px;
+  grid-template-columns: minmax(260px, 0.72fr) minmax(0, 1.28fr);
+  gap: 20px;
   align-items: start;
 }
 
 .alternate-list {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   min-width: 0;
+  max-height: 620px;
+  overflow-y: auto;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #f8fafc;
+  scrollbar-gutter: stable;
 }
 
 .alternate-list-header {
+  position: sticky;
+  top: -12px;
+  z-index: 1;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  padding: 0 2px 2px;
+  margin: -12px -12px 0;
+  padding: 12px 12px 10px;
+  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, #f8fafc 78%, rgba(248, 250, 252, 0) 100%);
 }
 
 .alternate-list-header strong {
@@ -1214,24 +1240,49 @@ body.is-lightbox-open {
   font-size: 0.74rem;
 }
 
+.alternate-list-items {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
 .candidate-card {
   display: grid;
   gap: 12px;
   padding: 14px;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border-radius: 14px;
   background: #ffffff;
 }
 
 .candidate-card.is-current {
   border-color: #bfdbfe;
   background: #f8fbff;
+  box-shadow: 0 16px 30px rgba(37, 99, 235, 0.08);
 }
 
 .alternate-list .candidate-card {
-  gap: 9px;
-  padding: 11px;
-  border-radius: 10px;
+  gap: 10px;
+  padding: 13px;
+  border-radius: 12px;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.035);
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.alternate-list .candidate-card:hover {
+  border-color: #bfdbfe;
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.08);
+  transform: translateY(-1px);
+}
+
+.candidate-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .candidate-card-tag {
@@ -1247,6 +1298,24 @@ body.is-lightbox-open {
   font-weight: 700;
 }
 
+.alternate-list .candidate-card-tag {
+  background: #eef2f7;
+  color: #475569;
+}
+
+.candidate-card.is-current .candidate-card-tag {
+  background: #dbeafe;
+}
+
+.candidate-card-rank {
+  flex: 0 0 auto;
+  color: #94a3b8;
+  font-size: 0.76rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
 .candidate-card-body {
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr);
@@ -1255,18 +1324,27 @@ body.is-lightbox-open {
 }
 
 .candidate-card-screenshots {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  min-width: 0;
+  display: flex;
   gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
 }
 
 .candidate-card-screenshot {
-  width: 100%;
-  aspect-ratio: 9 / 16;
+  flex: 0 0 58px;
+  width: 58px;
+  height: 103px;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   background: #f1f5f9;
   object-fit: contain;
+}
+
+.candidate-card.is-current .candidate-card-screenshot {
+  flex-basis: 72px;
+  width: 72px;
+  height: 128px;
 }
 
 .candidate-card-icon {
@@ -1300,10 +1378,120 @@ body.is-lightbox-open {
   font-size: 0.8rem;
 }
 
+.candidate-card-copy .candidate-card-apple-id {
+  color: #1d4ed8;
+  font-variant-numeric: tabular-nums;
+}
+
+.candidate-card-bundle-id {
+  color: #64748b;
+}
+
+.candidate-card-copy .identifier-value,
+.candidate-card-copy .identifier-text {
+  color: inherit;
+}
+
+.candidate-card-facts {
+  display: grid;
+  gap: 3px;
+  margin-top: 5px;
+}
+
+.candidate-card-copy .candidate-card-facts span {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.candidate-card-apple-id,
+.candidate-card-bundle-id {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.identifier-value {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.identifier-text,
+.candidate-card-copy .identifier-text {
+  min-width: 0;
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.identifier-copy {
+  flex: 0 0 auto;
+  min-height: 28px;
+  padding: 0 6px;
+  border: 1px solid #d7e1ed;
+  background: #ffffff;
+  box-shadow: none;
+  color: #1d4ed8;
+  font-size: 0.75rem;
+}
+
+.identifier-copy:hover {
+  background: #eff6ff;
+  transform: none;
+}
+
+.identifier-copy[aria-disabled="true"] {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.identifier-status,
+.candidate-card-copy .identifier-status {
+  color: #475569;
+  font-size: 0.75rem;
+  white-space: normal;
+}
+
+.candidate-card-footer {
+  min-width: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.candidate-card-footer .candidate-card-screenshots {
+  flex: 1 1 auto;
+}
+
 .candidate-card-link {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #eff6ff;
   font-weight: 600;
   color: #1d4ed8;
   text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    transform 180ms ease;
+}
+
+.candidate-card-link:hover {
+  border-color: #93c5fd;
+  background: #dbeafe;
+  color: #1e40af;
+  transform: translateY(-1px);
 }
 
 .version-notes {
@@ -1394,6 +1582,10 @@ body.is-lightbox-open {
   .candidate-grid {
     grid-template-columns: 1fr;
   }
+
+  .alternate-list {
+    max-height: 560px;
+  }
 }
 
 @media (max-width: 640px) {
@@ -1413,6 +1605,19 @@ body.is-lightbox-open {
 
   .screenshots .screenshot-trigger {
     flex-basis: clamp(150px, 48vw, 190px);
+  }
+
+  .candidate-card-footer {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  .candidate-card-footer .candidate-card-screenshots {
+    flex-basis: 100%;
+  }
+
+  .candidate-card-link {
+    margin-left: auto;
   }
 
   .screenshot-lightbox {
