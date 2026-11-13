@@ -1,8 +1,15 @@
 export const STORE_COUNTRIES = ["us", "cn", "hk", "tw", "jp", "sg", "gb", "au"] as const;
 export type StoreCountry = (typeof STORE_COUNTRIES)[number];
 
-export type SearchAppsRequest = {
-  names: string[];
+export type AppSearchQuery = {
+  name: string;
+  bundleId?: string;
+};
+
+export type SearchAppsRequest = (
+  | { queries: AppSearchQuery[]; names?: never }
+  | { names: string[]; queries?: never }
+) & {
   country?: StoreCountry;
 };
 
@@ -73,6 +80,7 @@ export type IapHints = {
 export type SearchResult =
   | {
       query: string;
+      requestedBundleId?: string;
       status: "matched";
       app: MatchedApp;
       candidates: LookupCandidate[];
@@ -82,6 +90,7 @@ export type SearchResult =
     }
   | {
       query: string;
+      requestedBundleId?: string;
       status: "uncertain_match";
       app: MatchedApp;
       candidates: LookupCandidate[];
@@ -91,6 +100,7 @@ export type SearchResult =
     }
   | {
       query: string;
+      requestedBundleId?: string;
       status: "no_match" | "search_failed";
       app: null;
       candidates: LookupCandidate[];

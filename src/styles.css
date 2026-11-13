@@ -224,8 +224,27 @@ a {
 .composer-bar {
   display: grid;
   grid-template-columns: minmax(168px, 200px) minmax(0, 1fr) auto;
-  align-items: center;
+  align-items: start;
   gap: var(--space-3);
+}
+
+.query-inputs,
+.query-rows {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.query-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--space-2);
+}
+
+.query-row.has-remove {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 42px;
 }
 
 .rail-card-head {
@@ -255,6 +274,7 @@ a {
 }
 
 .field {
+  min-width: 0;
   display: grid;
   gap: 8px;
 }
@@ -282,7 +302,7 @@ select {
   cursor: pointer;
 }
 
-.query-field-quick input {
+.query-field input {
   width: 100%;
   min-width: 0;
   min-height: 42px;
@@ -293,8 +313,7 @@ select {
   color: #0f172a;
 }
 
-.query-field input::placeholder,
-.query-field textarea::placeholder {
+.query-field input::placeholder {
   color: #64748b;
 }
 
@@ -390,9 +409,9 @@ a:focus-visible {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
 }
 
-.batch-toggle {
+.query-add {
   justify-self: start;
-  min-height: 0;
+  min-height: 28px;
   padding: 2px 0;
   border: 0;
   background: transparent;
@@ -402,19 +421,33 @@ a:focus-visible {
   box-shadow: none;
 }
 
-.batch-toggle:hover {
+.query-add:hover {
   background: transparent;
   color: #1e40af;
   transform: none;
 }
 
-.batch-editor {
-  padding-top: var(--space-3);
-  border-top: 1px solid #e2e8f0;
+.query-remove {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  padding: 0;
+  box-shadow: none;
 }
 
-.batch-editor textarea {
-  min-height: 96px;
+.query-remove svg {
+  width: 16px;
+  height: 16px;
+}
+
+.query-error {
+  margin: 0;
+  color: #b91c1c;
+  font-size: 0.82rem;
+}
+
+.query-field input[aria-invalid="true"] {
+  border-color: #b91c1c;
 }
 
 .button-icon {
@@ -720,6 +753,15 @@ a:focus-visible {
 .result-row-subtitle {
   overflow-wrap: anywhere;
   font-size: 0.8rem;
+}
+
+.requested-bundle {
+  display: block;
+  overflow-wrap: anywhere;
+  color: #475569;
+  font-size: 0.78rem;
+  font-weight: 400;
+  line-height: 1.45;
 }
 
 .result-row-meta {
@@ -1827,6 +1869,10 @@ body.is-lightbox-open {
 }
 
 @media (max-width: 840px) {
+  .composer-bar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .app-shell {
     padding: var(--space-4);
   }
@@ -1878,8 +1924,14 @@ body.is-lightbox-open {
     height: 32px;
   }
 
-  .composer-bar {
-    grid-template-columns: minmax(0, 1fr);
+  .query-row,
+  .query-row.has-remove {
+    grid-template-columns: minmax(0, 1fr) 42px;
+  }
+
+  .query-name-field,
+  .query-row:not(.has-remove) .query-bundle-field {
+    grid-column: 1 / -1;
   }
 
   .actions button {

@@ -2,6 +2,7 @@ import express from "express";
 import { classifyCandidates } from "./lib/matchResults";
 import { STORE_COUNTRIES } from "../shared/types";
 import type {
+  AppSearchQuery,
   IapHints,
   LookupCandidate,
   MatchedApp,
@@ -20,12 +21,16 @@ type AppDependencies = {
 };
 
 function isSearchAppsRequest(value: unknown): value is SearchAppsRequest {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    Array.isArray((value as SearchAppsRequest).names) &&
-    (value as SearchAppsRequest).names.every((item) => typeof item === "string")
-  );
+  if (typeof value !== "object" || value === null) return false;
+  if ("queries" in value) {
+    return !("names" in value) && Array.isArray(value.queries) && value.queries.every(
+      (item: unknown) => typeof item === "object" && item !== null &&
+        "name" in item && typeof item.name === "string" && item.name.trim().length > 0 &&
+        (!("bundleId" in item) || typeof item.bundleId === "string"),
+    );
+  }
+  return "names" in value && Array.isArray(value.names) &&
+    value.names.every((item: unknown) => typeof item === "string");
 }
 
 function parseCountry(value: unknown): StoreCountry | null {
@@ -91,22 +96,24 @@ export function createApp(deps: AppDependencies) {
 
   app.post("/api/search-apps", async (req, res) => {
     if (!isSearchAppsRequest(req.body)) {
-      return res.status(400).json({ message: "names must be an array of strings" });
+      return res.status(400).json({ message: "Supply queries with nonblank names and optional string Bundle IDs, or names as an array of strings" });
     }
     const country = parseCountry(req.body.country);
     if (!country) return res.status(400).json({ message: "Unsupported App Store country" });
 
+    const queries: AppSearchQuery[] = req.body.queries ?? req.body.names?.map((name) => ({ name })) ?? [];
     const results: SearchResult[] = [];
 
-    for (const query of req.body.names) {
+    for (const { name: query, bundleId } of queries) {
+      const requestedBundleId = bundleId?.trim();
       try {
         const candidates = await deps.lookupAppStore(query, country);
-        const result = classifyCandidates(query, candidates);
+        const result = classifyCandidates(query, candidates, requestedBundleId);
 
         if (result.app) {
           Object.assign(result, await enrichApp(result.app, country));
         }
-        if (result.status === "no_match") {
+        if (result.status === "no_match" && !requestedBundleId) {
           result.message = `No App Store match found in ${country.toUpperCase()} store`;
         }
 
@@ -114,6 +121,7 @@ export function createApp(deps: AppDependencies) {
       } catch {
         results.push({
           query,
+          ...(requestedBundleId ? { requestedBundleId } : {}),
           status: "search_failed",
           app: null,
           candidates: [],

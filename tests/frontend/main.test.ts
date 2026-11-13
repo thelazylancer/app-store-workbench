@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { searchApps } from "../../src/lib/api";
-import type { SearchAppsResponse, StoreCountry } from "../../shared/types";
+import type { AppSearchQuery, SearchAppsResponse, StoreCountry } from "../../shared/types";
 
 vi.mock("../../src/lib/api", () => ({
-  searchApps: vi.fn(async (_names: string[], country: StoreCountry = "us") => ({
+  searchApps: vi.fn(async (_queries: AppSearchQuery[], country: StoreCountry = "us") => ({
     country,
     results: [
       {
@@ -36,27 +36,30 @@ vi.mock("../../src/lib/api", () => ({
 
 const defaultSearch = vi.mocked(searchApps).getMockImplementation()!;
 
-function getQuickInput() {
-  return document.querySelector<HTMLInputElement>('[data-role="quick-query"]')!;
+function getNameInput(index = 0) {
+  return document.querySelectorAll<HTMLInputElement>('[data-role="query-name"]')[index]!;
 }
 
-function getBatchTextarea() {
-  return document.querySelector<HTMLTextAreaElement>('[data-role="batch-query"]')!;
+function getBundleInput(index = 0) {
+  return document.querySelectorAll<HTMLInputElement>('[data-role="query-bundle"]')[index]!;
 }
 
-function typeQuickQuery(value: string) {
-  const input = getQuickInput();
+function typeQuery(value: string, index = 0) {
+  const input = getNameInput(index);
   input.value = value;
-  input.dispatchEvent(new Event("input"));
+  input.dispatchEvent(new Event("input", { bubbles: true }));
   return input;
 }
 
-function createPasteEvent(text: string) {
-  const event = new Event("paste", { bubbles: true, cancelable: true });
-  Object.defineProperty(event, "clipboardData", {
-    value: { getData: (type: string) => (type === "text/plain" ? text : "") },
-  });
-  return event;
+function typeBundle(value: string, index = 0) {
+  const input = getBundleInput(index);
+  input.value = value;
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  return input;
+}
+
+function addQuery() {
+  document.querySelector<HTMLButtonElement>('[data-role="add-query"]')!.click();
 }
 
 describe("main shell", () => {
@@ -66,15 +69,21 @@ describe("main shell", () => {
     document.body.innerHTML = '<div id="app"></div>';
   });
 
-  it("keeps the default shell compact instead of showing long instructional copy", async () => {
+  it("keeps one compact paired row without legacy inputs or long instructional copy", async () => {
     await import("../../src/main");
 
     const app = document.querySelector("#app");
     expect(app?.textContent).toContain("App搜索工作台");
-    expect(app?.textContent).toContain("搜索");
+    expect(app?.textContent).toContain("添加应用");
     expect(app?.textContent).not.toContain("Competitor Workbench");
     expect(app?.textContent).not.toContain("Apple search endpoint plus rendered App Store product page");
     expect(app?.textContent).not.toContain("Captured signals");
+    expect(document.querySelectorAll(".query-row")).toHaveLength(1);
+    expect(getNameInput().labels?.[0]?.textContent).toContain("应用名称 1");
+    expect(getNameInput().getAttribute("aria-required")).toBe("true");
+    expect(getBundleInput().labels?.[0]?.textContent).toContain("Bundle ID 1（可选）");
+    expect(document.querySelector<HTMLButtonElement>('[data-role="remove-query"]')!.hidden).toBe(true);
+    expect(document.querySelector('[data-role="quick-query"], [data-role="batch-query"], [data-role="batch-toggle"], textarea')).toBeNull();
   });
 
   it("renders the filter bar and empty state shell", async () => {
@@ -98,7 +107,7 @@ describe("main shell", () => {
     const country = document.querySelector<HTMLSelectElement>('select[aria-label="App Store 区域"]')!;
     country.value = "gb";
     country.dispatchEvent(new Event("change"));
-    typeQuickQuery("Duvae");
+    typeQuery("Duvae");
     document.querySelector<HTMLButtonElement>('[data-role="search"]')!.click();
     await vi.waitFor(() => expect(document.querySelector(".result-row")).not.toBeNull());
     expect(document.querySelector(".workspace-kicker")).toBeNull();
@@ -114,16 +123,17 @@ describe("main shell", () => {
     expect(country).not.toBeNull();
     expect(Array.from(country!.options, (option) => option.value)).toEqual(["us", "cn", "hk", "tw", "jp", "sg", "gb", "au"]);
     expect(country!.value).toBe("us");
-    const quickInput = typeQuickQuery("Funce");
+    const name = typeQuery("Funce");
+    const bundle = typeBundle("com.example.Funce");
     country!.value = "jp";
     country!.dispatchEvent(new Event("change"));
-    expect(quickInput.value).toBe("Funce");
-    expect(getBatchTextarea().value).toBe("Funce");
+    expect(name.value).toBe("Funce");
+    expect(bundle.value).toBe("com.example.Funce");
     expect(document.querySelector<HTMLButtonElement>('[data-role="iap-filter"]')!.disabled).toBe(true);
     expect(document.querySelector('[data-role="iap-filter"]')?.textContent).toContain("仅美国区");
     document.querySelector<HTMLButtonElement>('[data-role="search"]')!.click();
     await vi.waitFor(() => expect(document.querySelector(".qimai-link")).not.toBeNull());
-    expect(searchApps).toHaveBeenCalledWith(["Funce"], "jp");
+    expect(searchApps).toHaveBeenCalledWith([{ name: "Funce", bundleId: "com.example.Funce" }], "jp");
     expect(document.querySelector(".qimai-link")?.getAttribute("href")).toContain("/country/jp");
     expect(document.querySelector(".primary-link")?.getAttribute("href")).toContain("/jp/app/");
     expect(document.querySelector(".iap-hints")?.textContent).toContain("仅适用于美国区");
@@ -132,13 +142,13 @@ describe("main shell", () => {
     expect(document.querySelectorAll(".result-row")).toHaveLength(0);
   });
 
-  it.each(["country", "clear", "newer search", "empty submission"])("ignores a late search response after %s", async (action) => {
-    const oldResponse = await defaultSearch(["Funce"], "us");
+  it.each(["country", "clear", "newer search", "empty submission", "invalid row"])("ignores a late search response after %s", async (action) => {
+    const oldResponse = await defaultSearch([{ name: "Funce" }], "us");
     let finish!: (response: SearchAppsResponse) => void;
     vi.mocked(searchApps).mockReturnValueOnce(new Promise((resolve) => { finish = resolve; }));
     await import("../../src/main");
     const search = document.querySelector<HTMLButtonElement>('[data-role="search"]')!;
-    typeQuickQuery("Funce");
+    typeQuery("Funce");
     search.click();
     if (action === "country") {
       const select = document.querySelector("select")!;
@@ -146,15 +156,16 @@ describe("main shell", () => {
       select.dispatchEvent(new Event("change"));
     } else if (action === "clear") {
       document.querySelector<HTMLButtonElement>('[data-role="clear"]')!.click();
-    } else if (action === "empty submission") {
-      typeQuickQuery("");
+    } else if (action === "empty submission" || action === "invalid row") {
+      typeQuery("");
+      if (action === "invalid row") typeBundle("com.example.Funce");
       search.click();
     } else {
       const latest = structuredClone(oldResponse);
       latest.results[0]!.query = "Latest";
       latest.results[0]!.app!.name = "Latest";
       vi.mocked(searchApps).mockResolvedValueOnce(latest);
-      typeQuickQuery("Latest");
+      typeQuery("Latest");
       search.click();
       await vi.waitFor(() => expect(document.querySelector(".inspector h3")?.textContent).toBe("Latest"));
     }
@@ -163,13 +174,18 @@ describe("main shell", () => {
     await Promise.resolve();
     expect(document.querySelector(".inspector h3")?.textContent).toBe(action === "newer search" ? "Latest" : undefined);
     expect(document.querySelector('[data-role="summary"]')?.textContent).not.toContain("检索失败");
+    if (action === "invalid row") {
+      expect(searchApps).toHaveBeenCalledTimes(1);
+      expect(document.querySelector<HTMLElement>('[data-role="query-error"]')!.hidden).toBe(false);
+      expect(document.querySelector('[data-role="summary"]')?.textContent).not.toContain("正在查询");
+    }
   });
 
   it("ignores an older search failure after newer results are displayed", async () => {
     let fail!: (reason: Error) => void;
     vi.mocked(searchApps).mockReturnValueOnce(new Promise((_resolve, reject) => { fail = reject; }));
     await import("../../src/main");
-    typeQuickQuery("First");
+    typeQuery("First");
     const search = document.querySelector<HTMLButtonElement>('[data-role="search"]')!;
     search.click();
     search.click();
@@ -181,11 +197,14 @@ describe("main shell", () => {
     expect(document.querySelector('[data-role="summary"]')?.textContent).toContain("共 1 项");
   });
 
-  it("uses a full-width composer disclosure with batch context and reopens it on Clear", async () => {
+  it("uses the full-width disclosure with row context and reopens it on Clear", async () => {
     await import("../../src/main");
     const composer = document.querySelector<HTMLDetailsElement>(".search-composer")!;
     const disclosure = composer.querySelector<HTMLElement>("summary")!;
-    const quickInput = typeQuickQuery("Funce, Duolingo");
+    const name = typeQuery("Funce");
+    typeBundle("com.example.Funce");
+    addQuery();
+    typeQuery("Duolingo", 1);
     expect(composer.open).toBe(true);
     expect(composer.nextElementSibling?.classList.contains("content-panel")).toBe(true);
     expect(disclosure.textContent).toContain("2 个应用名称 · US 区");
@@ -197,151 +216,244 @@ describe("main shell", () => {
     await vi.waitFor(() => expect(document.querySelector(".result-row")).not.toBeNull());
     disclosure.click();
     expect(composer.open).toBe(true);
-    expect(quickInput.value).toBe("Funce, Duolingo");
+    expect(name.value).toBe("Funce");
+    expect(getBundleInput().value).toBe("com.example.Funce");
+    expect(getNameInput(1).value).toBe("Duolingo");
     document.querySelector<HTMLButtonElement>('[data-role="clear"]')!.click();
     expect(composer.open).toBe(true);
-    expect(quickInput.value).toBe("");
-    expect(getBatchTextarea().value).toBe("");
-    expect(document.activeElement).toBe(quickInput);
+    expect(name.value).toBe("");
+    expect(getBundleInput().value).toBe("");
+    expect(document.querySelectorAll(".query-row")).toHaveLength(1);
+    expect(document.activeElement).toBe(name);
     expect(disclosure.textContent).toContain("US 区");
   });
 
-  it("opens the batch editor, mirrors parsed names, and returns focus to its toggle", async () => {
+  it("adds and removes paired rows with accessible controls, stable values and predictable focus", async () => {
     await import("../../src/main");
-    const toggle = document.querySelector<HTMLButtonElement>('[data-role="batch-toggle"]')!;
-    const panel = document.querySelector<HTMLElement>('[data-role="batch-panel"]')!;
-    const textarea = getBatchTextarea();
-    const quickInput = getQuickInput();
-    expect(panel.hidden).toBe(true);
-    expect(toggle.getAttribute("aria-expanded")).toBe("false");
-    toggle.click();
-    expect(panel.hidden).toBe(false);
-    expect(toggle.getAttribute("aria-expanded")).toBe("true");
-    expect(document.activeElement).toBe(textarea);
-    textarea.value = "Funce\nDuolingo, Monument";
-    textarea.dispatchEvent(new Event("input"));
-    expect(quickInput.value).toBe("Funce, Duolingo, Monument");
-    expect(document.querySelector(".composer-summary")?.textContent).toContain("3 个应用名称 · US 区");
-    toggle.click();
-    expect(panel.hidden).toBe(true);
-    expect(toggle.getAttribute("aria-expanded")).toBe("false");
-    expect(document.activeElement).toBe(toggle);
-    expect(quickInput.value).toBe("Funce, Duolingo, Monument");
-  });
-
-  it("normalizes multiline paste into comma-separated names and keeps parse order", async () => {
-    await import("../../src/main");
-    const quickInput = getQuickInput();
-    const textarea = getBatchTextarea();
-    quickInput.focus();
-    quickInput.setSelectionRange(0, 0);
-    quickInput.dispatchEvent(createPasteEvent("Funce\nDuolingo\n\nMonument"));
-    expect(quickInput.value).toBe("Funce, Duolingo, Monument");
-    expect(textarea.value).toBe("Funce, Duolingo, Monument");
-    quickInput.setSelectionRange(0, 7);
-    quickInput.dispatchEvent(createPasteEvent("A\nB"));
-    expect(quickInput.value).toBe("A, B, Duolingo, Monument");
-    document.querySelector<HTMLButtonElement>('[data-role="search"]')!.click();
-    expect(searchApps).toHaveBeenCalledWith(["A", "B", "Duolingo", "Monument"], "us");
-  });
-
-  it("keeps the quick input caret while syncing the canonical query field", async () => {
-    await import("../../src/main");
-    const quickInput = typeQuickQuery("Funce, Duolingo");
-    quickInput.setSelectionRange(7, 7);
-    quickInput.dispatchEvent(new Event("input"));
-    expect(quickInput.selectionStart).toBe(7);
-    expect(quickInput.selectionEnd).toBe(7);
-    expect(getBatchTextarea().value).toBe("Funce, Duolingo");
-  });
-
-  it("submits on Enter in the quick input except during IME composition", async () => {
-    await import("../../src/main");
-    const quickInput = typeQuickQuery("Funce");
-    const batchEnter = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
-    getBatchTextarea().dispatchEvent(batchEnter);
-    expect(batchEnter.defaultPrevented).toBe(false);
+    const first = typeQuery("First");
+    typeBundle("com.first");
+    addQuery();
+    expect(document.activeElement).toBe(getNameInput(1));
+    typeQuery("Second", 1);
+    typeBundle("com.second", 1);
+    addQuery();
+    const third = typeQuery("Third", 2);
+    const thirdBundle = typeBundle("com.third", 2);
+    const remove = document.querySelectorAll<HTMLButtonElement>('[data-role="remove-query"]')[1]!;
+    expect(remove.hidden).toBe(false);
+    expect(remove.getAttribute("aria-label")).toBe("移除应用 2");
+    remove.click();
+    expect(document.querySelectorAll(".query-row")).toHaveLength(2);
+    expect(getNameInput()).toBe(first);
+    expect(first.value).toBe("First");
+    expect(getBundleInput().value).toBe("com.first");
+    expect(getNameInput(1)).toBe(third);
+    expect(getBundleInput(1)).toBe(thirdBundle);
+    expect(thirdBundle.value).toBe("com.third");
+    expect(third.labels?.[0]?.textContent).toContain("应用名称 2");
+    expect(document.activeElement).toBe(third);
+    document.querySelectorAll<HTMLButtonElement>('[data-role="remove-query"]')[1]!.click();
+    expect(document.querySelectorAll(".query-row")).toHaveLength(1);
+    expect(document.querySelector<HTMLButtonElement>('[data-role="remove-query"]')!.hidden).toBe(true);
+    expect(document.activeElement).toBe(first);
     expect(searchApps).not.toHaveBeenCalled();
+  });
+
+  it("sends each trimmed name and optional Bundle ID in row order without splitting or deduplicating names", async () => {
+    await import("../../src/main");
+    typeQuery(" Funce, Daily ");
+    typeBundle("  com.example.first  ");
+    addQuery();
+    typeQuery(" Funce, Daily ", 1);
+    typeBundle("com.example.second", 1);
+    addQuery();
+    typeQuery(" Name only ", 2);
+    typeBundle("  \t ", 2);
+    addQuery();
+    typeQuery("  ", 3);
+    typeBundle(" \t ", 3);
+    document.querySelector<HTMLButtonElement>('[data-role="search"]')!.click();
+    expect(searchApps).toHaveBeenCalledTimes(1);
+    expect(searchApps).toHaveBeenCalledWith([
+      { name: "Funce, Daily", bundleId: "com.example.first" },
+      { name: "Funce, Daily", bundleId: "com.example.second" },
+      { name: "Name only" },
+    ], "us");
+    expect(document.querySelector(".composer-summary")?.textContent).toContain("3 个应用名称 · US 区");
+  });
+
+  it("validates a Bundle-only row locally and sends all rows after the name is supplied", async () => {
+    await import("../../src/main");
+    typeQuery("First");
+    addQuery();
+    typeBundle("com.example.second", 1);
+    const name = getNameInput(1);
+    const composer = document.querySelector<HTMLDetailsElement>(".search-composer")!;
+    const search = document.querySelector<HTMLButtonElement>('[data-role="search"]')!;
+    const error = document.querySelector<HTMLElement>('[data-role="query-error"]')!;
+    search.focus();
+    search.click();
+    expect(searchApps).not.toHaveBeenCalled();
+    expect(composer.open).toBe(true);
+    expect(error.hidden).toBe(false);
+    expect(error.textContent).toBe("请填写应用名称");
+    expect(error.getAttribute("role")).toBe("alert");
+    expect(name.getAttribute("aria-invalid")).toBe("true");
+    expect(name.getAttribute("aria-describedby")).toBe(error.id);
+    expect(document.activeElement).toBe(name);
+    typeQuery("Second", 1);
+    expect(error.hidden).toBe(true);
+    expect(name.hasAttribute("aria-invalid")).toBe(false);
+    search.click();
+    expect(searchApps).toHaveBeenCalledWith([
+      { name: "First" }, { name: "Second", bundleId: "com.example.second" },
+    ], "us");
+  });
+
+  it("ignores entirely blank rows and resets existing results on an empty overall submission", async () => {
+    await import("../../src/main");
+    const name = typeQuery("Funce");
+    const search = document.querySelector<HTMLButtonElement>('[data-role="search"]')!;
+    search.click();
+    await vi.waitFor(() => expect(document.querySelector(".result-row")).not.toBeNull());
+    document.querySelector<HTMLElement>(".composer-summary")!.click();
+    typeQuery(" \t ");
+    typeBundle("  ");
+    addQuery();
+    typeQuery(" ", 1);
+    search.click();
+    expect(searchApps).toHaveBeenCalledTimes(1);
+    expect(document.querySelectorAll(".result-row")).toHaveLength(0);
+    expect(document.querySelector(".empty-state")?.textContent).toContain("输入应用名称后显示结果");
+    expect(document.querySelector('[data-role="summary"]')?.textContent).toBe("尚未检索");
+    expect(document.querySelector<HTMLElement>('[data-role="query-error"]')!.hidden).toBe(true);
+    expect(document.querySelector<HTMLDetailsElement>(".search-composer")!.open).toBe(true);
+    expect(getNameInput()).toBe(name);
+  });
+
+  it("keeps native row nodes, selection and caret intact during edits", async () => {
+    await import("../../src/main");
+    const name = typeQuery("Funce, Daily");
+    const bundle = typeBundle("com.example.Funce");
+    addQuery();
+    name.focus();
+    name.setSelectionRange(2, 5, "backward");
+    name.dispatchEvent(new Event("input", { bubbles: true }));
+    expect(getNameInput()).toBe(name);
+    expect(getBundleInput()).toBe(bundle);
+    expect(document.activeElement).toBe(name);
+    expect(name.selectionStart).toBe(2);
+    expect(name.selectionEnd).toBe(5);
+    expect(name.selectionDirection).toBe("backward");
+    bundle.focus();
+    bundle.setSelectionRange(4, 11, "backward");
+    bundle.dispatchEvent(new Event("input", { bubbles: true }));
+    expect(document.activeElement).toBe(bundle);
+    expect(bundle.selectionStart).toBe(4);
+    expect(bundle.selectionEnd).toBe(11);
+    expect(bundle.selectionDirection).toBe("backward");
+    expect(name.value).toBe("Funce, Daily");
+  });
+
+  it.each(["query-name", "query-bundle"])("submits on Enter in %s except during IME composition", async (role) => {
+    await import("../../src/main");
+    typeQuery("Funce");
+    typeBundle("com.example.Funce");
+    const input = document.querySelector<HTMLInputElement>(`[data-role="${role}"]`)!;
     const composingEnter = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
     Object.defineProperty(composingEnter, "isComposing", { value: true });
-    quickInput.dispatchEvent(composingEnter);
+    input.dispatchEvent(composingEnter);
+    expect(composingEnter.defaultPrevented).toBe(false);
+    const legacyComposition = new KeyboardEvent("keydown", { key: "Enter", keyCode: 229, bubbles: true, cancelable: true });
+    input.dispatchEvent(legacyComposition);
+    expect(legacyComposition.defaultPrevented).toBe(false);
     expect(searchApps).not.toHaveBeenCalled();
-    quickInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
-    await vi.waitFor(() => expect(searchApps).toHaveBeenCalledWith(["Funce"], "us"));
+    const enter = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
+    input.dispatchEvent(enter);
+    expect(enter.defaultPrevented).toBe(true);
+    await vi.waitFor(() => expect(searchApps).toHaveBeenCalledWith([{ name: "Funce", bundleId: "com.example.Funce" }], "us"));
   });
 
-  it.each(["editing", "outside"])("does not collapse the composer or steal %s focus when results finish", async (location) => {
-    const response = await defaultSearch(["Funce"], "us");
+  it.each(["name", "bundle", "outside"])("does not collapse the composer or steal %s focus when results finish", async (location) => {
+    const response = await defaultSearch([{ name: "Funce" }], "us");
     let finish!: (response: SearchAppsResponse) => void;
     vi.mocked(searchApps).mockReturnValueOnce(new Promise((resolve) => { finish = resolve; }));
     await import("../../src/main");
     const composer = document.querySelector<HTMLDetailsElement>(".search-composer")!;
-    const quickInput = getQuickInput();
-    const textarea = getBatchTextarea();
     const search = document.querySelector<HTMLButtonElement>('[data-role="search"]')!;
-    typeQuickQuery("Funce");
+    typeQuery("Funce");
     search.focus();
     search.click();
     expect(composer.open).toBe(false);
     composer.querySelector<HTMLElement>("summary")!.click();
     expect(composer.open).toBe(true);
+    const name = typeQuery("Next name");
+    const bundle = typeBundle("com.example.next");
     const outside = document.createElement("button");
     document.body.append(outside);
-    let focused: HTMLElement;
-    if (location === "editing") {
-      document.querySelector<HTMLButtonElement>('[data-role="batch-toggle"]')!.click();
-      textarea.value = "Next name";
-      textarea.dispatchEvent(new Event("input"));
-      focused = textarea;
-    } else {
-      typeQuickQuery("Next name");
-      focused = outside;
-    }
+    const focused = location === "name" ? name : location === "bundle" ? bundle : outside;
     focused.focus();
-    expect(document.activeElement).toBe(focused);
     finish(response);
     await vi.waitFor(() => expect(document.querySelector(".result-row")).not.toBeNull());
     expect(composer.open).toBe(true);
     expect(document.activeElement).toBe(focused);
-    expect(quickInput.value).toBe("Next name");
+    expect(name.value).toBe("Next name");
+    expect(bundle.value).toBe("com.example.next");
     outside.remove();
   });
 
-  it("closes the batch editor and focuses the quick input on Clear", async () => {
+  it("clears validation and extra rows and focuses the first name on Clear", async () => {
     await import("../../src/main");
     const composer = document.querySelector<HTMLDetailsElement>(".search-composer")!;
-    const toggle = document.querySelector<HTMLButtonElement>('[data-role="batch-toggle"]')!;
-    const panel = document.querySelector<HTMLElement>('[data-role="batch-panel"]')!;
-    const textarea = getBatchTextarea();
-    const quickInput = getQuickInput();
-    toggle.click();
-    textarea.value = "Funce\nDuolingo";
-    textarea.dispatchEvent(new Event("input"));
-    expect(quickInput.value).toBe("Funce, Duolingo");
+    const name = typeQuery("Funce");
+    typeBundle("com.first");
+    addQuery();
+    typeBundle("com.second", 1);
+    document.querySelector<HTMLButtonElement>('[data-role="search"]')!.click();
+    expect(document.querySelector<HTMLElement>('[data-role="query-error"]')!.hidden).toBe(false);
     composer.open = false;
     document.querySelector<HTMLButtonElement>('[data-role="clear"]')!.click();
     expect(composer.open).toBe(true);
-    expect(panel.hidden).toBe(true);
-    expect(toggle.getAttribute("aria-expanded")).toBe("false");
-    expect(quickInput.value).toBe("");
-    expect(textarea.value).toBe("");
-    expect(document.activeElement).toBe(quickInput);
+    expect(document.querySelectorAll(".query-row")).toHaveLength(1);
+    expect(getNameInput()).toBe(name);
+    expect(name.value).toBe("");
+    expect(getBundleInput().value).toBe("");
+    expect(document.querySelector<HTMLElement>('[data-role="query-error"]')!.hidden).toBe(true);
+    expect(document.querySelector('[aria-invalid="true"]')).toBeNull();
+    expect(document.activeElement).toBe(name);
   });
 
   it("updates filter counts after a search completes", async () => {
     await import("../../src/main");
-
-    const searchButton = document.querySelector('[data-role="search"]') as HTMLButtonElement;
-
-    typeQuickQuery("Funce");
-    searchButton.click();
+    typeQuery("Funce");
+    document.querySelector<HTMLButtonElement>('[data-role="search"]')!.click();
     await Promise.resolve();
     await Promise.resolve();
 
     expect(document.querySelector(".filter-bar")?.hasAttribute("hidden")).toBe(false);
     expect(document.querySelector('[data-role="status-filter"]')?.textContent).toContain("全部 1");
-    expect(document.querySelector('[data-role="status-filter"][data-value="matched"]')?.textContent).toContain(
-      "已匹配 1",
-    );
+    expect(document.querySelector('[data-role="status-filter"][data-value="matched"]')?.textContent).toContain("已匹配 1");
+  });
+});
+
+describe("structured search API client", () => {
+  it("posts paired queries and country instead of legacy names", async () => {
+    const { searchApps: postSearch } = await vi.importActual<typeof import("../../src/lib/api")>("../../src/lib/api");
+    const response: SearchAppsResponse = { country: "jp", results: [] };
+    const fetchSearch = vi.fn(async (_url: string, _options?: RequestInit) => new Response(JSON.stringify(response)));
+    vi.stubGlobal("fetch", fetchSearch);
+    try {
+      const queries = [{ name: "Funce", bundleId: "com.first" }, { name: "Funce", bundleId: "com.second" }, { name: "Name only" }];
+      await expect(postSearch(queries, "jp")).resolves.toEqual(response);
+      expect(fetchSearch).toHaveBeenCalledWith("/api/search-apps", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ queries, country: "jp" }),
+      });
+      await postSearch([{ name: "Default country" }]);
+      expect(fetchSearch.mock.calls[1]?.[1]?.body).toBe(JSON.stringify({ queries: [{ name: "Default country" }], country: "us" }));
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

@@ -55,7 +55,37 @@ function escapeRegExp(value: string): string {
 export function classifyCandidates(
   query: string,
   candidates: LookupCandidate[],
+  bundleId?: string,
 ): SearchResult {
+  const requestedBundleId = bundleId?.trim();
+  if (requestedBundleId) {
+    const candidate = candidates.find(
+      (item) => item.bundleId?.trim().toLowerCase() === requestedBundleId.toLowerCase(),
+    );
+    if (!candidate) {
+      return {
+        query,
+        requestedBundleId,
+        candidates,
+        status: "no_match",
+        app: null,
+        alternates: [],
+        iapHints: null,
+        message: "No App Store candidate matched the supplied Bundle ID",
+      };
+    }
+    return {
+      query,
+      requestedBundleId,
+      candidates,
+      status: "matched",
+      app: toMatchedApp(candidate),
+      alternates: [],
+      iapHints: null,
+      message: null,
+    };
+  }
+
   const normalizedQuery = query.trim().toLowerCase();
   const wholeWord = new RegExp(`(^|\\s)${escapeRegExp(normalizedQuery)}(\\s|$)`);
   const normalized = candidates.map((candidate) => ({

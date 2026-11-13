@@ -70,6 +70,88 @@ describe("renderResults", () => {
     if (status === "no_match") expect(host.querySelector<HTMLButtonElement>('[data-role="detail-tab"]')!.disabled).toBe(true);
   });
 
+  it.each([0, 1, 2])("shows the candidate Bundle filter only when the original response has multiple candidates: %i", (count) => {
+    const host = document.createElement("div");
+    const candidates = [identityApp, alternateApp].slice(0, count);
+    renderResults(host, [{ ...identityResult, candidates, app: null, status: "no_match", iapHints: null }]);
+    expect(host.querySelectorAll('[data-role="candidate-bundle-filter"]')).toHaveLength(count > 1 ? 1 : 0);
+    expect(host.querySelectorAll('[data-role="candidate-filter-clear"]')).toHaveLength(count > 1 ? 1 : 0);
+    expect(host.querySelectorAll(".candidate-card")).toHaveLength(count);
+    expect(host.querySelector('[data-role="candidates-tab"]')?.textContent).toBe(`候选（${count}）`);
+    if (count > 0) expect(host.querySelector('[data-role="candidate-count"]')?.textContent).toBe(`共 ${count} 个候选`);
+  });
+
+  it("keeps a multiple-result filter visible at one and zero matches and restores it with Clear", () => {
+    const fetchDetails = vi.fn();
+    vi.stubGlobal("fetch", fetchDetails);
+    const host = document.createElement("div");
+    document.body.append(host);
+    try {
+      renderResults(host, [identityResult]);
+      const input = host.querySelector<HTMLInputElement>('[data-role="candidate-bundle-filter"]')!;
+      const clear = host.querySelector<HTMLButtonElement>('[data-role="candidate-filter-clear"]')!;
+      input.focus();
+      for (const [value, count] of [["com.example.FunceAI", 1], ["com.no-match", 0]] as const) {
+        input.value = value;
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        expect(host.querySelector('[data-role="candidate-bundle-filter"]')).toBe(input);
+        expect(host.querySelector('[data-role="candidate-filter-clear"]')).toBe(clear);
+        expect(input.closest("[hidden]")).toBeNull();
+        expect(clear.disabled).toBe(false);
+        expect(document.activeElement).toBe(input);
+        expect(host.querySelectorAll(".candidate-card")).toHaveLength(count);
+        expect(host.querySelector('[data-role="candidate-count"]')?.textContent).toBe(`筛选 ${count} / 2 个候选`);
+        expect(host.querySelector('[data-role="candidates-tab"]')?.textContent).toBe("候选（2）");
+      }
+      clear.click();
+      expect(input.value).toBe("");
+      expect(clear.disabled).toBe(true);
+      expect(document.activeElement).toBe(input);
+      expect(host.querySelectorAll(".candidate-card")).toHaveLength(2);
+      expect(host.querySelector('[data-role="candidate-count"]')?.textContent).toBe("共 2 个候选");
+      expect(fetchDetails).not.toHaveBeenCalled();
+    } finally {
+      renderResults(host, [], false);
+      host.remove();
+    }
+  });
+
+  it("distinguishes repeated names by requested Bundle ID in the queue and active query context", () => {
+    const host = document.createElement("div");
+    const bundles = ["com.requested.first", "com.requested.second"];
+    renderResults(host, bundles.map((requestedBundleId) => ({ ...identityResult, requestedBundleId })));
+    const rows = host.querySelectorAll<HTMLButtonElement>(".result-row");
+    expect(Array.from(rows, (row) => row.querySelector("strong")?.textContent)).toEqual(["Funce", "Funce"]);
+    expect(Array.from(rows, (row) => row.querySelector(".requested-bundle")?.textContent))
+      .toEqual(bundles.map((bundle) => `Bundle ID：${bundle}`));
+    expect(host.querySelector(".query-context .requested-bundle")?.textContent).toBe("Bundle ID：com.requested.first");
+    rows[1]!.click();
+    expect(host.querySelector(".query-context .requested-bundle")?.textContent).toBe("Bundle ID：com.requested.second");
+    expect(host.querySelector(".query-queue-summary")?.textContent).toContain("当前：Funce · com.requested.second");
+    expect(host.querySelector('.info-list [aria-label="复制 Bundle ID：com.example.FunceAI"]')).not.toBeNull();
+    renderResults(host, [identityResult]);
+    expect(host.querySelector(".requested-bundle")).toBeNull();
+  });
+
+  it.each([0, 2])("translates an explicit missing Bundle match with %i candidates without a generic store failure", (count) => {
+    const host = document.createElement("div");
+    renderResults(host, [{
+      ...identityResult,
+      app: null,
+      status: "no_match",
+      iapHints: null,
+      requestedBundleId: "com.requested.missing",
+      candidates: [identityApp, alternateApp].slice(0, count),
+      message: "No App Store candidate matched the supplied Bundle ID",
+    }], true, { country: "jp" });
+    expect(host.querySelector('[data-role="candidates-panel"]')?.textContent).toContain("未找到与指定 Bundle ID 匹配的候选应用");
+    expect(host.querySelector('[data-role="detail-panel"] .result-message')?.textContent).toBe("未找到与指定 Bundle ID 匹配的候选应用");
+    expect(host.querySelector(".query-context .requested-bundle")?.textContent).toBe("Bundle ID：com.requested.missing");
+    expect(host.textContent).not.toContain("No App Store candidate");
+    expect(host.textContent).not.toContain("未在 JP 区 App Store 找到结果");
+    expect(host.querySelectorAll(".candidate-card")).toHaveLength(count);
+  });
+
   it("switches and focuses tabs with arrows and Home/End without fetching details", () => {
     const fetchDetails = vi.fn();
     vi.stubGlobal("fetch", fetchDetails);
@@ -217,7 +299,7 @@ describe("renderResults", () => {
     expect(fetchDetails).not.toHaveBeenCalled();
   });
 
-  it("retains each query's filter and filtered page, resets on edits and clear, and restores the full list", () => {
+  it("retains each repeated-name query's filter and filtered page, resets on edits and clear, and restores the full list", () => {
     const host = document.createElement("div");
     document.body.append(host);
     const candidates = Array.from({ length: 27 }, (_, index) => ({
@@ -225,7 +307,10 @@ describe("renderResults", () => {
     }));
     const result: SearchResult = { ...identityResult, status: "no_match", app: null, candidates, iapHints: null };
     try {
-      renderResults(host, [result, { ...result, query: "Second query" }]);
+      renderResults(host, [
+        { ...result, requestedBundleId: "com.keep.16" },
+        { ...result, requestedBundleId: "com.other.2" },
+      ]);
       host.querySelector<HTMLButtonElement>('[data-role="candidates-next"]')!.click();
       host.querySelector<HTMLButtonElement>('[data-role="candidates-next"]')!.click();
       const first = host.querySelector<HTMLInputElement>('[data-role="candidate-bundle-filter"]')!;

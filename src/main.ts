@@ -1,9 +1,8 @@
 import "./styles.css";
 import { searchApps } from "./lib/api";
 import { filterResults, type ResultFilters, type ResultStatusFilter } from "./lib/filterResults";
-import { parseQueries } from "./lib/parseQueries";
 import { renderResults } from "./lib/renderResults";
-import type { SearchResult, StoreCountry } from "../shared/types";
+import type { AppSearchQuery, SearchResult, StoreCountry } from "../shared/types";
 
 function requireElement<T extends Element>(element: T | null, label: string): T {
   if (!element) {
@@ -58,40 +57,16 @@ app.innerHTML = `
                 </select>
               </label>
 
-              <label class="field query-field query-field-quick">
-                <span class="visually-hidden">应用名称</span>
-                <input
-                  type="text"
-                  data-role="quick-query"
-                  placeholder="输入应用名称，多个用逗号分隔"
-                  autocomplete="off"
-                  spellcheck="false"
-                />
-              </label>
+              <div class="query-inputs">
+                <div class="query-rows" data-role="query-rows"></div>
+                <button type="button" class="query-add" data-role="add-query">添加应用</button>
+                <p class="query-error" id="query-error" data-role="query-error" role="alert" hidden></p>
+              </div>
 
               <div class="actions">
                 <button type="button" data-role="search">开始搜索</button>
                 <button type="button" class="secondary-button" data-role="clear">清空结果</button>
               </div>
-            </div>
-
-            <button
-              type="button"
-              class="batch-toggle"
-              data-role="batch-toggle"
-              aria-expanded="false"
-              aria-controls="batch-query-panel"
-            >批量编辑</button>
-
-            <div class="batch-editor" id="batch-query-panel" data-role="batch-panel" hidden>
-              <label class="field query-field query-field-batch">
-                <span>批量应用名称</span>
-                <textarea
-                  rows="4"
-                  data-role="batch-query"
-                  placeholder="每行一个应用名称，也可用逗号分隔"
-                ></textarea>
-              </label>
             </div>
           </section>
         </details>
@@ -111,21 +86,17 @@ app.innerHTML = `
   </main>
 `;
 
-const textarea = requireElement(
-  app.querySelector<HTMLTextAreaElement>('[data-role="batch-query"]'),
-  "search textarea",
+const queryRows = requireElement(
+  app.querySelector<HTMLElement>('[data-role="query-rows"]'),
+  "application query rows",
 );
-const quickInput = requireElement(
-  app.querySelector<HTMLInputElement>('[data-role="quick-query"]'),
-  "quick search input",
+const addQueryButton = requireElement(
+  app.querySelector<HTMLButtonElement>('[data-role="add-query"]'),
+  "add application button",
 );
-const batchToggle = requireElement(
-  app.querySelector<HTMLButtonElement>('[data-role="batch-toggle"]'),
-  "batch editor toggle",
-);
-const batchPanel = requireElement(
-  app.querySelector<HTMLElement>('[data-role="batch-panel"]'),
-  "batch editor panel",
+const queryError = requireElement(
+  app.querySelector<HTMLElement>('[data-role="query-error"]'),
+  "application query error",
 );
 const button = requireElement(
   app.querySelector<HTMLButtonElement>('[data-role="search"]'),
@@ -148,83 +119,90 @@ let responseCountry: StoreCountry = "us";
 let searchGeneration = 0;
 let hasSearched = false;
 
+function getQueryRows() {
+  return Array.from(queryRows.querySelectorAll<HTMLElement>(".query-row"));
+}
+
 function syncComposerSummary() {
-  const count = parseQueries(textarea.value).length;
+  const count = Array.from(queryRows.querySelectorAll<HTMLInputElement>('[data-role="query-name"]'))
+    .filter((input) => input.value.trim()).length;
   const context = requireElement(app.querySelector('[data-role="composer-context"]'), "composer context");
   const country = selectedCountry.toUpperCase();
   context.textContent = count > 0 ? `${count} 个应用名称 · ${country} 区` : `${country} 区`;
 }
 
-function normalizeQueryBreaks(value: string) {
-  return value.replace(/\s*[\r\n]+\s*/g, ", ");
+function clearQueryValidation() {
+  queryError.hidden = true;
+  queryError.textContent = "";
+  queryRows.querySelectorAll<HTMLInputElement>('[data-role="query-name"]').forEach((input) => {
+    input.removeAttribute("aria-invalid");
+    input.removeAttribute("aria-describedby");
+  });
 }
 
-function syncCanonicalFromQuick() {
-  if (textarea.value !== quickInput.value) textarea.value = quickInput.value;
+function syncQueryRows() {
+  const rows = getQueryRows();
+  rows.forEach((row, index) => {
+    row.setAttribute("aria-label", `应用 ${index + 1}`);
+    row.querySelector('[data-role="name-label"]')!.textContent = `应用名称 ${index + 1}`;
+    row.querySelector('[data-role="bundle-label"]')!.textContent = `Bundle ID ${index + 1}（可选）`;
+    const remove = row.querySelector<HTMLButtonElement>('[data-role="remove-query"]')!;
+    remove.hidden = rows.length === 1;
+    remove.setAttribute("aria-label", `移除应用 ${index + 1}`);
+    row.classList.toggle("has-remove", rows.length > 1);
+  });
   syncComposerSummary();
 }
 
-function setBatchOpen(open: boolean, moveFocus = true) {
-  batchPanel.hidden = !open;
-  batchToggle.setAttribute("aria-expanded", String(open));
-  batchToggle.textContent = open ? "收起批量编辑" : "批量编辑";
-
-  if (!moveFocus) return;
-  if (open) {
-    textarea.focus();
-  } else {
-    batchToggle.focus();
-  }
+function createQueryRow() {
+  const row = document.createElement("div");
+  row.className = "query-row";
+  row.setAttribute("role", "group");
+  row.innerHTML = `
+    <label class="field query-field query-name-field">
+      <span class="visually-hidden" data-role="name-label"></span>
+      <input type="text" data-role="query-name" placeholder="输入应用名称" aria-required="true" autocomplete="off" spellcheck="false" />
+    </label>
+    <label class="field query-field query-bundle-field">
+      <span class="visually-hidden" data-role="bundle-label"></span>
+      <input type="text" data-role="query-bundle" placeholder="Bundle ID（可选）" autocomplete="off" autocapitalize="none" spellcheck="false" />
+    </label>
+    <button type="button" class="secondary-button query-remove" data-role="remove-query" hidden>
+      <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M5 5L15 15M15 5L5 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
+    </button>
+  `;
+  row.querySelector<HTMLButtonElement>('[data-role="remove-query"]')!.addEventListener("click", () => {
+    const index = getQueryRows().indexOf(row);
+    row.remove();
+    clearQueryValidation();
+    syncQueryRows();
+    const rows = getQueryRows();
+    rows[Math.min(index, rows.length - 1)]?.querySelector<HTMLInputElement>('[data-role="query-name"]')?.focus();
+  });
+  return row;
 }
 
-quickInput.addEventListener("input", () => {
-  const raw = quickInput.value;
-
-  if (/[\r\n]/.test(raw)) {
-    const caret = quickInput.selectionStart ?? raw.length;
-    const normalized = normalizeQueryBreaks(raw);
-    const caretBefore = normalizeQueryBreaks(raw.slice(0, caret)).length;
-    quickInput.value = normalized;
-    quickInput.setSelectionRange(caretBefore, caretBefore);
-  }
-
-  syncCanonicalFromQuick();
+queryRows.addEventListener("input", () => {
+  clearQueryValidation();
+  syncComposerSummary();
 });
 
-quickInput.addEventListener("paste", (event) => {
-  const pasted = event.clipboardData?.getData("text/plain") ?? "";
-  if (!/[\r\n]/.test(pasted)) return;
-
-  event.preventDefault();
-  const start = quickInput.selectionStart ?? quickInput.value.length;
-  const end = quickInput.selectionEnd ?? start;
-  const normalized = normalizeQueryBreaks(pasted);
-  const before = quickInput.value.slice(0, start);
-  const after = quickInput.value.slice(end);
-  const prefix = before && !/[\s,]$/.test(before) ? ", " : "";
-  const suffix = after && !/^[\s,]/.test(after) ? ", " : "";
-  const insertion = `${prefix}${normalized}${suffix}`;
-  quickInput.value = before + insertion + after;
-  const caret = start + insertion.length;
-  quickInput.setSelectionRange(caret, caret);
-  syncCanonicalFromQuick();
-});
-
-quickInput.addEventListener("keydown", (event) => {
-  if (event.key !== "Enter") return;
+queryRows.addEventListener("keydown", (event) => {
+  if (!(event.target instanceof HTMLInputElement) || event.key !== "Enter") return;
   if (event.isComposing || event.keyCode === 229) return;
   event.preventDefault();
   button.click();
 });
 
-batchToggle.addEventListener("click", () => {
-  setBatchOpen(Boolean(batchPanel.hidden));
+addQueryButton.addEventListener("click", () => {
+  const row = createQueryRow();
+  queryRows.append(row);
+  syncQueryRows();
+  row.querySelector<HTMLInputElement>('[data-role="query-name"]')!.focus();
 });
 
-textarea.addEventListener("input", () => {
-  quickInput.value = parseQueries(textarea.value).join(", ");
-  syncComposerSummary();
-});
+queryRows.append(createQueryRow());
+syncQueryRows();
 
 function updateSummary(items: SearchResult[], searched: boolean) {
   if (!searched) {
@@ -467,10 +445,33 @@ function bindFilterEvents() {
 
 button.addEventListener("click", async () => {
   const generation = ++searchGeneration;
-  const names = parseQueries(textarea.value);
+  const queries: AppSearchQuery[] = [];
+  let invalidName: HTMLInputElement | null = null;
+  clearQueryValidation();
+  for (const row of getQueryRows()) {
+    const input = row.querySelector<HTMLInputElement>('[data-role="query-name"]')!;
+    const name = input.value.trim();
+    const bundleId = row.querySelector<HTMLInputElement>('[data-role="query-bundle"]')!.value.trim();
+    if (!name && bundleId) {
+      input.setAttribute("aria-invalid", "true");
+      input.setAttribute("aria-describedby", queryError.id);
+      invalidName ??= input;
+    }
+    if (name) queries.push(bundleId ? { name, bundleId } : { name });
+  }
   syncComposerSummary();
 
-  if (names.length === 0) {
+  if (invalidName) {
+    composer.open = true;
+    queryError.textContent = "请填写应用名称";
+    queryError.hidden = false;
+    hasSearched = allResults.length > 0;
+    updateResultsView();
+    invalidName.focus();
+    return;
+  }
+
+  if (queries.length === 0) {
     composer.open = true;
     hasSearched = false;
     allResults = [];
@@ -488,10 +489,10 @@ button.addEventListener("click", async () => {
   allResults = [];
   renderResults(results, [], false);
   results.innerHTML = `<p class="empty">检索中...</p>`;
-  summary.textContent = `正在查询 ${names.length} 个应用...`;
+  summary.textContent = `正在查询 ${queries.length} 个应用...`;
 
   try {
-    const response = await searchApps(names, selectedCountry);
+    const response = await searchApps(queries, selectedCountry);
     if (generation !== searchGeneration) return;
     responseCountry = response.country;
     allResults = response.results;
@@ -505,11 +506,12 @@ button.addEventListener("click", async () => {
 
 clearButton.addEventListener("click", () => {
   searchGeneration++;
-  setBatchOpen(false, false);
-  textarea.value = "";
-  quickInput.value = "";
+  const [firstRow, ...extraRows] = getQueryRows();
+  extraRows.forEach((row) => row.remove());
+  firstRow!.querySelectorAll<HTMLInputElement>("input").forEach((input) => { input.value = ""; });
+  clearQueryValidation();
   composer.open = true;
-  syncComposerSummary();
+  syncQueryRows();
   hasSearched = false;
   allResults = [];
   filters.status = "all";
@@ -517,12 +519,13 @@ clearButton.addEventListener("click", () => {
   filters.iapMatchedOnly = false;
   syncFilterUi();
   updateResultsView();
-  quickInput.focus();
+  firstRow!.querySelector<HTMLInputElement>('[data-role="query-name"]')!.focus();
 });
 
 countrySelect.addEventListener("change", () => {
   searchGeneration++;
   selectedCountry = countrySelect.value as StoreCountry;
+  clearQueryValidation();
   syncComposerSummary();
   hasSearched = false;
   allResults = [];

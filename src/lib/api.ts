@@ -1,12 +1,12 @@
-import type { AppDetailsResponse, SearchAppsResponse, StoreCountry } from "../../shared/types";
+import type { AppDetailsResponse, AppSearchQuery, SearchAppsResponse, StoreCountry } from "../../shared/types";
 
-export async function searchApps(names: string[], country: StoreCountry = "us"): Promise<SearchAppsResponse> {
+export async function searchApps(queries: AppSearchQuery[], country: StoreCountry = "us"): Promise<SearchAppsResponse> {
   const response = await fetch("/api/search-apps", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ names, country }),
+    body: JSON.stringify({ queries, country }),
   });
 
   if (!response.ok) {

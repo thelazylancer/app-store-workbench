@@ -12,6 +12,7 @@ import type {
 } from "../../shared/types";
 
 const MAX_VISIBLE_VERSION_HISTORY = 5;
+const NO_BUNDLE_MATCH_MESSAGE = "No App Store candidate matched the supplied Bundle ID";
 const renderInstances = new WeakMap<HTMLElement, symbol>();
 const renderCleanups = new WeakMap<HTMLElement, () => void>();
 let nextWorkbenchId = 0;
@@ -36,6 +37,8 @@ function translateMessage(message: string | null | undefined) {
       return "未在美国区 App Store 找到结果";
     case "Possible match found; review alternates":
       return "可能匹配，请检查备选结果";
+    case NO_BUNDLE_MATCH_MESSAGE:
+      return "未找到与指定 Bundle ID 匹配的候选应用";
     default: {
       const store = message.match(/^No App Store match found in ([A-Z]{2}) store$/);
       return store ? `未在 ${store[1]} 区 App Store 找到结果` : message;
@@ -654,7 +657,8 @@ function createCandidates(
   clear.textContent = "清除";
   clear.setAttribute("aria-label", "清除 Bundle ID 筛选");
   filterControls.append(label, clear);
-  header.append(count, filterControls);
+  header.append(count);
+  if (candidates.length > 1) header.append(filterControls);
   list.append(header);
 
   const items = document.createElement("div");
@@ -765,6 +769,12 @@ function createInspector(
   const queryName = document.createElement("strong");
   queryName.textContent = originalResult.query;
   query.append(queryName);
+  if (originalResult.requestedBundleId) {
+    const requestedBundle = document.createElement("span");
+    requestedBundle.className = "requested-bundle";
+    requestedBundle.textContent = `Bundle ID：${originalResult.requestedBundleId}`;
+    query.append(requestedBundle);
+  }
   const verdict = document.createElement("div");
   verdict.className = "query-verdict";
   const verdictLabel = document.createElement("span");
@@ -818,6 +828,12 @@ function createInspector(
   const detailPanel = panels.detail;
   const candidates = createCandidates(originalResult, country, page, onPageChange, onInspect, inspection, candidateFilter, onFilterChange);
   if (candidates) {
+    if (originalResult.message === NO_BUNDLE_MATCH_MESSAGE) {
+      const message = document.createElement("p");
+      message.className = "result-message";
+      message.textContent = translateMessage(originalResult.message);
+      panels.candidates.append(message);
+    }
     panels.candidates.append(candidates);
   } else {
     const empty = document.createElement("p");
@@ -939,7 +955,7 @@ function createInspector(
   if (!result.app) {
     const message = document.createElement("p");
     message.className = "result-message";
-    message.textContent = result.status === "no_match" && getCandidates(originalResult).length > 0
+    message.textContent = result.message !== NO_BUNDLE_MATCH_MESSAGE && result.status === "no_match" && getCandidates(originalResult).length > 0
       ? "未自动匹配，请核对候选应用。"
       : translateMessage(result.message) ?? "暂无可展示详情。";
     detailPanel.append(message);
@@ -1131,6 +1147,12 @@ function createResultRow(result: SearchResult) {
   const title = document.createElement("strong");
   title.textContent = result.query;
   copy.append(title);
+  if (result.requestedBundleId) {
+    const requestedBundle = document.createElement("span");
+    requestedBundle.className = "requested-bundle";
+    requestedBundle.textContent = `Bundle ID：${result.requestedBundleId}`;
+    copy.append(requestedBundle);
+  }
 
   const sub = document.createElement("span");
   sub.className = "result-row-subtitle";
@@ -1363,7 +1385,7 @@ export function renderResults(
     selectedIndex = index;
     const result = results[index]!;
     view = !result.app || (result.status !== "matched" && getCandidates(result).length > 0) ? "candidates" : "detail";
-    currentQuery.textContent = `当前：${result.query}`;
+    currentQuery.textContent = `当前：${result.query}${result.requestedBundleId ? ` · ${result.requestedBundleId}` : ""}`;
 
     rows.forEach((row, rowIndex) => {
       const isActive = rowIndex === selectedIndex;
