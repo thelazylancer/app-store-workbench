@@ -17,6 +17,7 @@ const results: SearchResult[] = [
       screenshotUrls: ["https://example.com/1.png"],
       iapItems: [{ name: "Pack", price: "$4.99" }],
     },
+    candidates: [],
     alternates: [],
     iapHints: {
       "4.99": "found",
@@ -39,6 +40,7 @@ const results: SearchResult[] = [
       screenshotUrls: [],
       iapItems: [],
     },
+    candidates: [],
     alternates: [],
     iapHints: {
       "4.99": "unavailable",
@@ -51,6 +53,7 @@ const results: SearchResult[] = [
     query: "Missing App",
     status: "no_match",
     app: null,
+    candidates: [],
     alternates: [],
     iapHints: null,
     message: "No App Store match found in US store",

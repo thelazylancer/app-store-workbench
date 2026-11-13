@@ -1,9 +1,32 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { lookupAppStore } from "../../server/lib/appleLookup";
+import { lookupAppById, lookupAppStore } from "../../server/lib/appleLookup";
 
 describe("lookupAppStore", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it("looks up the exact app ID in the selected storefront using the same baseline normalization", async () => {
+    const fetchApple = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      results: [999, undefined, 123].map((trackId) => ({
+        trackId, trackName: "Selected", sellerName: "Own Dev",
+        trackViewUrl: "https://apps.apple.com/us/app/selected/id123",
+        bundleId: " com.selected.App ", price: 0,
+        description: "Own description", version: "1.2", releaseNotes: "Own history",
+      })),
+    })));
+    const app = await lookupAppById(123, "cn");
+    expect(app).toMatchObject({
+      appleId: 123, bundleId: "com.selected.App", price: 0,
+      appStoreUrl: "https://apps.apple.com/cn/app/selected/id123",
+      description: "Own description",
+      versionHistory: [{ version: "1.2", releasedAt: null, notes: "Own history" }],
+    });
+    const url = new URL(String(fetchApple.mock.calls[0]![0]));
+    expect(url.pathname).toBe("/lookup");
+    expect(url.searchParams.get("id")).toBe("123");
+    expect(url.searchParams.get("country")).toBe("cn");
+    expect(url.searchParams.get("entity")).toBe("software");
   });
 
   it("preserves trimmed Bundle IDs and omits missing or invalid values", async () => {

@@ -3,7 +3,7 @@ import { searchApps } from "./lib/api";
 import { filterResults, type ResultFilters, type ResultStatusFilter } from "./lib/filterResults";
 import { parseQueries } from "./lib/parseQueries";
 import { renderResults } from "./lib/renderResults";
-import type { SearchResult } from "../shared/types";
+import type { SearchResult, StoreCountry } from "../shared/types";
 
 function requireElement<T extends Element>(element: T | null, label: string): T {
   if (!element) {
@@ -20,63 +20,78 @@ app.innerHTML = `
     <section class="workspace-frame">
       <header class="workspace-header">
         <div class="workspace-title">
-          <p class="workspace-kicker">美国区 App Store</p>
           <h1>App搜索工作台</h1>
-          <p class="workspace-subtitle">检索真实商店页，聚焦截图、价格带和上架信息。</p>
         </div>
-        <div class="workspace-badges" aria-label="Store metadata">
-          <div class="meta-chip">
-            <span class="meta-chip-label">区域</span>
-            <strong>US</strong>
-          </div>
-          <div class="meta-chip">
-            <span class="meta-chip-label">来源</span>
-            <strong>商店渲染页</strong>
-          </div>
-          <div class="meta-chip">
-            <span class="meta-chip-label">内容</span>
-            <strong>URL、图标、简介、截图、内购</strong>
-          </div>
+        <div class="workspace-badges" aria-label="商店信息">
+          <span data-role="country-code">US</span>
         </div>
       </header>
 
       <div class="workspace-grid">
-        <aside class="search-rail">
+        <details class="search-composer" open>
+          <summary class="composer-summary">
+            <span class="composer-context" data-role="composer-context">US 区</span>
+            <span class="composer-edit">编辑搜索</span>
+            <span class="composer-collapse">收起</span>
+          </summary>
           <section class="rail-card">
-            <div class="rail-card-head">
-              <div>
-                <p class="panel-label">查询</p>
-                <h2>搜索</h2>
+            <div class="composer-bar">
+              <label class="field storefront-field">
+                <span class="visually-hidden">App Store 区域</span>
+                <select aria-label="App Store 区域" data-role="country">
+                  <option value="us">美国 · US</option>
+                  <option value="cn">中国大陆 · CN</option>
+                  <option value="hk">中国香港 · HK</option>
+                  <option value="tw">中国台湾 · TW</option>
+                  <option value="jp">日本 · JP</option>
+                  <option value="sg">新加坡 · SG</option>
+                  <option value="gb">英国 · GB</option>
+                  <option value="au">澳大利亚 · AU</option>
+                </select>
+              </label>
+
+              <label class="field query-field query-field-quick">
+                <span class="visually-hidden">应用名称</span>
+                <input
+                  type="text"
+                  data-role="quick-query"
+                  placeholder="输入应用名称，多个用逗号分隔"
+                  autocomplete="off"
+                  spellcheck="false"
+                />
+              </label>
+
+              <div class="actions">
+                <button type="button" data-role="search">开始搜索</button>
+                <button type="button" class="secondary-button" data-role="clear">清空结果</button>
               </div>
-              <span class="rail-pill">US</span>
             </div>
 
-            <label class="field">
-              <span>应用名称</span>
-              <textarea placeholder="Funce&#10;Duolingo"></textarea>
-              <p class="field-note">支持单个或批量应用名称，每行一个。</p>
-            </label>
+            <button
+              type="button"
+              class="batch-toggle"
+              data-role="batch-toggle"
+              aria-expanded="false"
+              aria-controls="batch-query-panel"
+            >批量编辑</button>
 
-            <div class="actions">
-              <button type="button" data-role="search">开始搜索</button>
-              <button type="button" class="secondary-button" data-role="clear">清空结果</button>
-            </div>
-
-            <div class="search-hints">
-              <span class="search-hint-chip">应用名称</span>
-              <span class="search-hint-chip">逐行输入</span>
-              <span class="search-hint-chip">批量检索</span>
+            <div class="batch-editor" id="batch-query-panel" data-role="batch-panel" hidden>
+              <label class="field query-field query-field-batch">
+                <span>批量应用名称</span>
+                <textarea
+                  rows="4"
+                  data-role="batch-query"
+                  placeholder="每行一个应用名称，也可用逗号分隔"
+                ></textarea>
+              </label>
             </div>
           </section>
-        </aside>
+        </details>
 
         <section class="content-panel">
           <div class="results-panel-head">
-            <div>
-              <p class="panel-label">结果</p>
-              <h2>商店页信息</h2>
-            </div>
-            <p class="results-summary" data-role="summary">输入一个或多个应用名称开始检索</p>
+            <h2>商店页信息</h2>
+            <p class="results-summary" data-role="summary">尚未检索</p>
           </div>
 
           <section class="results" aria-live="polite">
@@ -89,8 +104,20 @@ app.innerHTML = `
 `;
 
 const textarea = requireElement(
-  app.querySelector<HTMLTextAreaElement>("textarea"),
+  app.querySelector<HTMLTextAreaElement>('[data-role="batch-query"]'),
   "search textarea",
+);
+const quickInput = requireElement(
+  app.querySelector<HTMLInputElement>('[data-role="quick-query"]'),
+  "quick search input",
+);
+const batchToggle = requireElement(
+  app.querySelector<HTMLButtonElement>('[data-role="batch-toggle"]'),
+  "batch editor toggle",
+);
+const batchPanel = requireElement(
+  app.querySelector<HTMLElement>('[data-role="batch-panel"]'),
+  "batch editor panel",
 );
 const button = requireElement(
   app.querySelector<HTMLButtonElement>('[data-role="search"]'),
@@ -105,11 +132,95 @@ const summary = requireElement(
   app.querySelector<HTMLElement>('[data-role="summary"]'),
   "results summary",
 );
+const countrySelect = requireElement(app.querySelector<HTMLSelectElement>('[data-role="country"]'), "country selector");
+const composer = requireElement(app.querySelector<HTMLDetailsElement>(".search-composer"), "search composer");
+const composerSummary = requireElement(app.querySelector<HTMLElement>(".composer-summary"), "composer summary");
+let selectedCountry: StoreCountry = "us";
+let responseCountry: StoreCountry = "us";
+let searchGeneration = 0;
 let hasSearched = false;
+
+function syncComposerSummary() {
+  const count = parseQueries(textarea.value).length;
+  const context = requireElement(app.querySelector('[data-role="composer-context"]'), "composer context");
+  const country = selectedCountry.toUpperCase();
+  context.textContent = count > 0 ? `${count} 个应用名称 · ${country} 区` : `${country} 区`;
+}
+
+function normalizeQueryBreaks(value: string) {
+  return value.replace(/\s*[\r\n]+\s*/g, ", ");
+}
+
+function syncCanonicalFromQuick() {
+  if (textarea.value !== quickInput.value) textarea.value = quickInput.value;
+  syncComposerSummary();
+}
+
+function setBatchOpen(open: boolean, moveFocus = true) {
+  batchPanel.hidden = !open;
+  batchToggle.setAttribute("aria-expanded", String(open));
+  batchToggle.textContent = open ? "收起批量编辑" : "批量编辑";
+
+  if (!moveFocus) return;
+  if (open) {
+    textarea.focus();
+  } else {
+    batchToggle.focus();
+  }
+}
+
+quickInput.addEventListener("input", () => {
+  const raw = quickInput.value;
+
+  if (/[\r\n]/.test(raw)) {
+    const caret = quickInput.selectionStart ?? raw.length;
+    const normalized = normalizeQueryBreaks(raw);
+    const caretBefore = normalizeQueryBreaks(raw.slice(0, caret)).length;
+    quickInput.value = normalized;
+    quickInput.setSelectionRange(caretBefore, caretBefore);
+  }
+
+  syncCanonicalFromQuick();
+});
+
+quickInput.addEventListener("paste", (event) => {
+  const pasted = event.clipboardData?.getData("text/plain") ?? "";
+  if (!/[\r\n]/.test(pasted)) return;
+
+  event.preventDefault();
+  const start = quickInput.selectionStart ?? quickInput.value.length;
+  const end = quickInput.selectionEnd ?? start;
+  const normalized = normalizeQueryBreaks(pasted);
+  const before = quickInput.value.slice(0, start);
+  const after = quickInput.value.slice(end);
+  const prefix = before && !/[\s,]$/.test(before) ? ", " : "";
+  const suffix = after && !/^[\s,]/.test(after) ? ", " : "";
+  const insertion = `${prefix}${normalized}${suffix}`;
+  quickInput.value = before + insertion + after;
+  const caret = start + insertion.length;
+  quickInput.setSelectionRange(caret, caret);
+  syncCanonicalFromQuick();
+});
+
+quickInput.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") return;
+  if (event.isComposing || event.keyCode === 229) return;
+  event.preventDefault();
+  button.click();
+});
+
+batchToggle.addEventListener("click", () => {
+  setBatchOpen(Boolean(batchPanel.hidden));
+});
+
+textarea.addEventListener("input", () => {
+  quickInput.value = parseQueries(textarea.value).join(", ");
+  syncComposerSummary();
+});
 
 function updateSummary(items: SearchResult[], searched: boolean) {
   if (!searched) {
-    summary.textContent = "输入一个或多个应用名称开始检索";
+    summary.textContent = "尚未检索";
     return;
   }
 
@@ -124,10 +235,10 @@ function updateSummary(items: SearchResult[], searched: boolean) {
 
   summary.textContent =
     `共 ${items.length} 项 · ` +
-    `${matched} 项已匹配 · ` +
-    `${uncertain} 项待确认 · ` +
-    `${withScreenshots} 项有截图 · ` +
-    `${failed} 项未解决`;
+    `已匹配 ${matched} · ` +
+    `待确认 ${uncertain} · ` +
+    `有截图 ${withScreenshots} · ` +
+    `未解决 ${failed}`;
 }
 
 function createButtonIcon(kind: "search" | "clear") {
@@ -174,11 +285,6 @@ function createFilterBar() {
   const statusCluster = document.createElement("section");
   statusCluster.className = "filter-cluster";
 
-  const statusLabel = document.createElement("p");
-  statusLabel.className = "filter-cluster-label";
-  statusLabel.textContent = "匹配状态";
-  statusCluster.append(statusLabel);
-
   const statusGroup = document.createElement("div");
   statusGroup.className = "filter-group filter-segment";
   statusGroup.setAttribute("role", "tablist");
@@ -192,13 +298,10 @@ function createFilterBar() {
   const toggleCluster = document.createElement("section");
   toggleCluster.className = "filter-cluster filter-cluster-secondary";
 
-  const toggleLabel = document.createElement("p");
-  toggleLabel.className = "filter-cluster-label";
-  toggleLabel.textContent = "结果约束";
-  toggleCluster.append(toggleLabel);
-
   const toggleGroup = document.createElement("div");
   toggleGroup.className = "filter-group filter-group-toggles";
+  toggleGroup.setAttribute("role", "group");
+  toggleGroup.setAttribute("aria-label", "结果筛选");
   toggleGroup.append(createFilterButton("screenshots-filter", "off", "仅看有截图"));
   toggleGroup.append(createFilterButton("iap-filter", "off", "命中 4.99 / 9.99"));
   toggleCluster.append(toggleGroup);
@@ -207,7 +310,7 @@ function createFilterBar() {
   return bar;
 }
 
-function createEmptyState(title: string, description: string, filtered = false) {
+function createEmptyState(title: string, filtered = false) {
   const state = document.createElement("section");
   state.className = `empty-state${filtered ? " is-filtered" : ""}`;
 
@@ -215,26 +318,10 @@ function createEmptyState(title: string, description: string, filtered = false) 
   mark.className = "empty-state-mark";
   state.append(mark);
 
-  const badge = document.createElement("p");
-  badge.className = "empty-state-kicker";
-  badge.textContent = filtered ? "当前筛选下无结果" : "等待搜索";
-  state.append(badge);
-
   const heading = document.createElement("h3");
   heading.textContent = title;
   state.append(heading);
 
-  const copy = document.createElement("p");
-  copy.className = "empty-state-copy";
-  copy.textContent = description;
-  state.append(copy);
-
-  if (!filtered) {
-    const note = document.createElement("p");
-    note.className = "empty-state-note";
-    note.textContent = "支持单个搜索，也支持逐行输入多个应用名称。";
-    state.append(note);
-  }
   return state;
 }
 
@@ -298,20 +385,22 @@ function syncFilterUi() {
   screenshotsFilter?.classList.toggle("is-active", filters.screenshotsOnly);
 
   const iapFilter = app.querySelector<HTMLButtonElement>('[data-role="iap-filter"]');
-  iapFilter?.classList.toggle("is-active", filters.iapMatchedOnly);
+  if (iapFilter) {
+    iapFilter.classList.toggle("is-active", filters.iapMatchedOnly);
+    iapFilter.disabled = selectedCountry !== "us";
+    iapFilter.textContent = selectedCountry === "us" ? "命中 4.99 / 9.99" : "美元价格筛选仅美国区";
+  }
 }
 
 function updateResultsView() {
   if (!hasSearched) {
+    renderResults(results, [], false);
     filterBar.hidden = true;
     results.classList.add("is-idle");
     syncFilterUi();
     updateSummary([], false);
     results.replaceChildren(
-      createEmptyState(
-        "输入应用名称后显示结果",
-        "搜索后在这里查看商店页信息。",
-      ),
+      createEmptyState("输入应用名称后显示结果"),
     );
     void refreshMotion("empty");
     return;
@@ -324,10 +413,10 @@ function updateResultsView() {
   updateSummary(filtered, hasSearched);
 
   if (filtered.length === 0) {
+    renderResults(results, [], false);
     results.replaceChildren(
       createEmptyState(
         "没有符合当前筛选的结果",
-        "调整筛选条件后继续查看。",
         true,
       ),
     );
@@ -335,7 +424,7 @@ function updateResultsView() {
     return;
   }
 
-  renderResults(results, filtered, hasSearched);
+  renderResults(results, filtered, hasSearched, { country: responseCountry });
   void refreshMotion("results");
 }
 
@@ -369,9 +458,12 @@ function bindFilterEvents() {
 }
 
 button.addEventListener("click", async () => {
+  const generation = ++searchGeneration;
   const names = parseQueries(textarea.value);
+  syncComposerSummary();
 
   if (names.length === 0) {
+    composer.open = true;
     hasSearched = false;
     allResults = [];
     filters.status = "all";
@@ -382,23 +474,34 @@ button.addEventListener("click", async () => {
     return;
   }
 
+  if (composer.contains(document.activeElement)) composerSummary.focus();
+  composer.open = false;
   hasSearched = true;
   allResults = [];
+  renderResults(results, [], false);
   results.innerHTML = `<p class="empty">检索中...</p>`;
   summary.textContent = `正在查询 ${names.length} 个应用...`;
 
   try {
-    const response = await searchApps(names);
+    const response = await searchApps(names, selectedCountry);
+    if (generation !== searchGeneration) return;
+    responseCountry = response.country;
     allResults = response.results;
     updateResultsView();
   } catch {
+    if (generation !== searchGeneration) return;
     summary.textContent = "检索失败";
     results.innerHTML = `<p class="result-message">请求失败，请稍后重试</p>`;
   }
 });
 
 clearButton.addEventListener("click", () => {
+  searchGeneration++;
+  setBatchOpen(false, false);
   textarea.value = "";
+  quickInput.value = "";
+  composer.open = true;
+  syncComposerSummary();
   hasSearched = false;
   allResults = [];
   filters.status = "all";
@@ -406,7 +509,23 @@ clearButton.addEventListener("click", () => {
   filters.iapMatchedOnly = false;
   syncFilterUi();
   updateResultsView();
-  textarea.focus();
+  quickInput.focus();
+});
+
+countrySelect.addEventListener("change", () => {
+  searchGeneration++;
+  selectedCountry = countrySelect.value as StoreCountry;
+  syncComposerSummary();
+  hasSearched = false;
+  allResults = [];
+  filters.status = "all";
+  filters.screenshotsOnly = false;
+  filters.iapMatchedOnly = false;
+  app.querySelectorAll('[data-role="country-code"]').forEach((label) => {
+    label.textContent = selectedCountry.toUpperCase();
+  });
+  updateResultsView();
+  summary.textContent = `已切换至 ${selectedCountry.toUpperCase()} 区`;
 });
 
 decorateActionButtons();

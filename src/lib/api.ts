@@ -1,12 +1,12 @@
-import type { SearchAppsResponse } from "../../shared/types";
+import type { AppDetailsResponse, SearchAppsResponse, StoreCountry } from "../../shared/types";
 
-export async function searchApps(names: string[]): Promise<SearchAppsResponse> {
+export async function searchApps(names: string[], country: StoreCountry = "us"): Promise<SearchAppsResponse> {
   const response = await fetch("/api/search-apps", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ names }),
+    body: JSON.stringify({ names, country }),
   });
 
   if (!response.ok) {
@@ -14,4 +14,10 @@ export async function searchApps(names: string[]): Promise<SearchAppsResponse> {
   }
 
   return (await response.json()) as SearchAppsResponse;
+}
+
+export async function getAppDetails(appleId: number, country: StoreCountry): Promise<AppDetailsResponse> {
+  const response = await fetch(`/api/app-details/${appleId}?country=${country}`);
+  if (!response.ok) throw new Error("App detail request failed");
+  return (await response.json()) as AppDetailsResponse;
 }

@@ -1,4 +1,4 @@
-import type { LookupCandidate } from "../../shared/types";
+import type { LookupCandidate, StoreCountry } from "../../shared/types";
 
 type AppleLookupResponse = {
   results?: Array<{
@@ -51,12 +51,13 @@ function buildVersionHistoryEntry(result: AppleLookupResult) {
 
 export async function lookupAppStore(
   query: string,
-  country: "us",
+  country: StoreCountry,
 ): Promise<LookupCandidate[]> {
   const params = new URLSearchParams({
     term: query,
     country,
     entity: "software",
+    limit: "200",
   });
 
   const response = await fetch(`https://itunes.apple.com/search?${params.toString()}`);
@@ -67,6 +68,18 @@ export async function lookupAppStore(
 
   const body = (await response.json()) as AppleLookupResponse;
 
+  return normalizeResults(body, country);
+}
+
+export async function lookupAppById(appleId: number, country: StoreCountry): Promise<LookupCandidate | null> {
+  const params = new URLSearchParams({ id: String(appleId), country, entity: "software" });
+  const response = await fetch(`https://itunes.apple.com/lookup?${params.toString()}`);
+  if (!response.ok) throw new Error(`Apple lookup failed with ${response.status}`);
+  const body = (await response.json()) as AppleLookupResponse;
+  return normalizeResults(body, country).find((candidate) => candidate.appleId === appleId) ?? null;
+}
+
+function normalizeResults(body: AppleLookupResponse, country: StoreCountry): LookupCandidate[] {
   return (body.results ?? [])
     .map((result): LookupCandidate | null => {
       const name = result.trackName;
@@ -109,7 +122,7 @@ export async function lookupAppStore(
           ? { fileSizeBytes }
           : {}),
         ...(minimumOsVersion ? { minimumOsVersion } : {}),
-        appStoreUrl,
+        appStoreUrl: appStoreUrl.replace(/^(https:\/\/apps\.apple\.com\/)[a-z]{2}\//i, `$1${country}/`),
         iconUrl: result.artworkUrl512 ?? result.artworkUrl100 ?? "",
         description: result.description ?? "",
         screenshotUrls: result.screenshotUrls ?? [],

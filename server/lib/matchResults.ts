@@ -70,6 +70,7 @@ export function classifyCandidates(
   if (exact.length === 1) {
     return {
       query,
+      candidates,
       status: "matched",
       app: toMatchedApp(exact[0]),
       alternates: [],
@@ -90,6 +91,7 @@ export function classifyCandidates(
   if (plausible.length === 1) {
     return {
       query,
+      candidates,
       status: "matched",
       app: toMatchedApp(plausible[0]),
       alternates: [],
@@ -101,6 +103,7 @@ export function classifyCandidates(
   if (plausible.length > 1) {
     return {
       query,
+      candidates,
       status: "uncertain_match",
       app: toMatchedApp(plausible[0]),
       alternates: plausible.slice(1, 3).map(toAlternateApp),
@@ -111,6 +114,7 @@ export function classifyCandidates(
 
   return {
     query,
+    candidates,
     status: "no_match",
     app: null,
     alternates: [],

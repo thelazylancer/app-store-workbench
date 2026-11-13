@@ -1,12 +1,28 @@
+import { getAppDetails } from "./api";
 import type {
   AlternateApp,
   AppVersionHistoryItem,
+  IapHints,
   IapHintState,
   IapItem,
+  LookupCandidate,
+  MatchedApp,
   SearchResult,
+  StoreCountry,
 } from "../../shared/types";
 
 const MAX_VISIBLE_VERSION_HISTORY = 5;
+const renderInstances = new WeakMap<HTMLElement, symbol>();
+const renderCleanups = new WeakMap<HTMLElement, () => void>();
+let nextWorkbenchId = 0;
+
+type CanvasView = "candidates" | "detail";
+
+type CandidateInspection = {
+  app: MatchedApp;
+  iapHints: IapHints | null;
+  state: "loading" | "ready" | "failed" | "baseline";
+};
 
 function translateMessage(message: string | null | undefined) {
   if (!message) {
@@ -20,12 +36,14 @@ function translateMessage(message: string | null | undefined) {
       return "未在美国区 App Store 找到结果";
     case "Possible match found; review alternates":
       return "可能匹配，请检查备选结果";
-    default:
-      return message;
+    default: {
+      const store = message.match(/^No App Store match found in ([A-Z]{2}) store$/);
+      return store ? `未在 ${store[1]} 区 App Store 找到结果` : message;
+    }
   }
 }
 
-function createStatusBadge(status: SearchResult["status"]) {
+function createStatusBadge(status: SearchResult["status"], candidateCount = 0) {
   const badge = document.createElement("span");
   badge.className = `status-badge status-${status}`;
 
@@ -37,7 +55,7 @@ function createStatusBadge(status: SearchResult["status"]) {
       badge.textContent = "待确认";
       break;
     case "no_match":
-      badge.textContent = "未找到";
+      badge.textContent = candidateCount > 0 ? "未自动匹配" : "未找到";
       break;
     case "search_failed":
       badge.textContent = "失败";
@@ -445,17 +463,22 @@ function createCandidateCard(
   label: string,
   current = false,
   rank?: number,
+  country: StoreCountry = "us",
+  onInspect?: () => void,
 ) {
   const card = document.createElement("article");
   card.className = `candidate-card${current ? " is-current" : ""}`;
+  card.dataset.candidateKey = candidateKey(app);
 
   const header = document.createElement("div");
   header.className = "candidate-card-header";
 
-  const eyebrow = document.createElement("span");
-  eyebrow.className = "candidate-card-tag";
-  eyebrow.textContent = label;
-  header.append(eyebrow);
+  if (label) {
+    const eyebrow = document.createElement("span");
+    eyebrow.className = "candidate-card-tag";
+    eyebrow.textContent = label;
+    header.append(eyebrow);
+  }
 
   if (typeof rank === "number") {
     const rankLabel = document.createElement("span");
@@ -495,19 +518,25 @@ function createCandidateCard(
 
   const appleId = document.createElement("div");
   appleId.className = "candidate-card-apple-id";
+  const appleIdLabel = document.createElement("span");
+  appleIdLabel.className = "identifier-label";
+  appleIdLabel.textContent = "Apple ID：";
   appleId.append(
-    "Apple ID：",
+    appleIdLabel,
     createIdentifier("Apple ID", typeof app.appleId === "number" ? String(app.appleId) : undefined),
   );
   copy.append(appleId);
 
   const bundleId = document.createElement("div");
   bundleId.className = "candidate-card-bundle-id";
-  bundleId.append("Bundle ID：", createIdentifier("Bundle ID", app.bundleId));
+  const bundleIdLabel = document.createElement("span");
+  bundleIdLabel.className = "identifier-label";
+  bundleIdLabel.textContent = "Bundle ID：";
+  bundleId.append(bundleIdLabel, createIdentifier("Bundle ID", app.bundleId));
   copy.append(bundleId);
 
   const meta = document.createElement("span");
-  meta.textContent = `${app.category ?? "类目未知"} · ${app.screenshotUrls.length} 张搜索图`;
+  meta.textContent = `${app.category ?? "类目未知"} · ${app.screenshotUrls.length} 张截图`;
   copy.append(meta);
 
   const facts = document.createElement("div");
@@ -543,21 +572,226 @@ function createCandidateCard(
     footer.append(screenshots);
   }
 
+  if (onInspect) {
+    const inspect = document.createElement("button");
+    inspect.type = "button";
+    inspect.className = "candidate-inspect";
+    inspect.dataset.role = "candidate-inspect";
+    inspect.dataset.candidateKey = candidateKey(app);
+    inspect.setAttribute("aria-label", `查看 ${app.name} 的详情，${app.appleId ? `Apple ID ${app.appleId}` : app.developer}`);
+    inspect.setAttribute("aria-pressed", String(current));
+    inspect.textContent = current ? "重新查看详情" : "查看详情";
+    inspect.addEventListener("click", onInspect);
+    footer.append(inspect);
+  }
+
   const action = document.createElement("a");
-  action.href = app.appStoreUrl;
+  action.href = app.appStoreUrl.replace(/^(https:\/\/apps\.apple\.com\/)[a-z]{2}\//i, `$1${country}/`);
   action.target = "_blank";
   action.rel = "noreferrer";
   action.className = "candidate-card-link";
-  action.textContent = "打开候选";
+  action.textContent = "打开商店页";
   footer.append(action);
   card.append(footer);
 
   return card;
 }
 
-function createInspector(result: SearchResult) {
+function getCandidates(result: SearchResult): LookupCandidate[] {
+  return result.candidates ?? [
+    ...(result.app ? [result.app] : []),
+    ...result.alternates.map((app) => ({ ...app, description: "", versionHistory: [] })),
+  ];
+}
+
+function candidateKey(app: Pick<LookupCandidate, "appleId" | "appStoreUrl">) {
+  return typeof app.appleId === "number" && Number.isSafeInteger(app.appleId) && app.appleId > 0
+    ? `id:${app.appleId}` : `url:${app.appStoreUrl}`;
+}
+
+function createCandidates(
+  result: SearchResult,
+  country: StoreCountry,
+  page: number,
+  onPageChange: (page: number, control: string) => void,
+  onInspect: (candidate: LookupCandidate) => void,
+  inspection: CandidateInspection | null,
+) {
+  const candidates = getCandidates(result);
+  if (candidates.length === 0) return null;
+
+  const section = document.createElement("section");
+  section.className = "alternates compare-section";
+  const title = document.createElement("h4");
+  title.className = "alternates-label";
+  title.textContent = "候选对比";
+  section.append(title);
+
+  const list = document.createElement("div");
+  list.className = "alternate-list";
+  const header = document.createElement("div");
+  header.className = "alternate-list-header";
+  const count = document.createElement("strong");
+  count.dataset.role = "candidate-count";
+  count.textContent = `共 ${candidates.length} 个候选`;
+  header.append(count);
+  list.append(header);
+
+  const items = document.createElement("div");
+  items.className = "alternate-list-items";
+  const visible = candidates.slice(page * 10, (page + 1) * 10);
+  const currentApp = inspection?.app ?? result.app;
+  for (const [index, candidate] of visible.entries()) {
+    const current = currentApp !== null && candidateKey(candidate) === candidateKey(currentApp);
+    items.append(createCandidateCard(
+      current ? currentApp! : candidate,
+      current ? inspection ? "当前查看" : "自动匹配应用" : "",
+      current, page * 10 + index + 1, country, () => onInspect(candidate),
+    ));
+  }
+  list.append(items);
+
+  const pages = Math.ceil(candidates.length / 10);
+  for (const location of ["top", "bottom"]) {
+    const navigation = document.createElement("nav");
+    navigation.className = "candidate-pagination";
+    navigation.setAttribute("aria-label", `候选结果分页（${location === "top" ? "顶部" : "底部"}）`);
+    const rolePrefix = location === "top" ? "candidates-top" : "candidates";
+    const previous = document.createElement("button");
+    previous.type = "button";
+    previous.className = "secondary-button";
+    previous.dataset.role = `${rolePrefix}-prev`;
+    previous.textContent = "上一页";
+    previous.setAttribute("aria-label", `${location === "top" ? "顶部" : "底部"}：上一页候选`);
+    previous.disabled = page === 0;
+    previous.addEventListener("click", () => onPageChange(page - 1, `${rolePrefix}-prev`));
+    const position = document.createElement("span");
+    position.dataset.role = location === "top" ? "candidate-page-top" : "candidate-page";
+    position.setAttribute("role", "status");
+    position.textContent = `第 ${page + 1} / ${pages} 页`;
+    const next = document.createElement("button");
+    next.type = "button";
+    next.className = "secondary-button";
+    next.dataset.role = `${rolePrefix}-next`;
+    next.textContent = "下一页";
+    next.setAttribute("aria-label", `${location === "top" ? "顶部" : "底部"}：下一页候选`);
+    next.disabled = page + 1 >= pages;
+    next.addEventListener("click", () => onPageChange(page + 1, `${rolePrefix}-next`));
+    navigation.append(previous, position, next);
+    section.append(navigation);
+    if (location === "top") section.append(list);
+  }
+  return section;
+}
+
+function createInspector(
+  originalResult: SearchResult,
+  country: StoreCountry,
+  page: number,
+  onPageChange: (page: number, control: string) => void,
+  onInspect: (candidate: LookupCandidate) => void,
+  inspection: CandidateInspection | null,
+  view: CanvasView,
+  id: string,
+  onViewChange: (view: CanvasView, candidate?: string) => void,
+) {
+  const result = inspection
+    ? { ...originalResult, app: inspection.app, iapHints: inspection.iapHints }
+    : originalResult;
   const inspector = document.createElement("div");
   inspector.className = "inspector";
+  if (result.app) inspector.dataset.appKey = candidateKey(result.app);
+
+  const context = document.createElement("div");
+  context.className = "query-context";
+  const query = document.createElement("p");
+  query.className = "query-label";
+  query.append("搜索词：");
+  const queryName = document.createElement("strong");
+  queryName.textContent = originalResult.query;
+  query.append(queryName);
+  const verdict = document.createElement("div");
+  verdict.className = "query-verdict";
+  const verdictLabel = document.createElement("span");
+  verdictLabel.textContent = `${country.toUpperCase()} 区 · 原始匹配`;
+  verdict.append(verdictLabel, createStatusBadge(originalResult.status, getCandidates(originalResult).length));
+  context.append(query, verdict);
+  inspector.append(context);
+
+  const tabs = document.createElement("div");
+  tabs.className = "canvas-tabs";
+  tabs.setAttribute("role", "tablist");
+  tabs.setAttribute("aria-label", "结果视图");
+  const panels = {} as Record<CanvasView, HTMLElement>;
+  const controls: HTMLButtonElement[] = [];
+  for (const name of ["candidates", "detail"] as const) {
+    const tab = document.createElement("button");
+    tab.type = "button";
+    tab.className = "canvas-tab";
+    tab.dataset.role = `${name}-tab`;
+    tab.id = `${id}-${name}-tab`;
+    tab.setAttribute("role", "tab");
+    tab.setAttribute("aria-controls", `${id}-${name}-panel`);
+    tab.setAttribute("aria-selected", String(view === name));
+    tab.tabIndex = view === name ? 0 : -1;
+    tab.disabled = name === "detail" && !result.app;
+    tab.textContent = name === "candidates" ? `候选（${getCandidates(originalResult).length}）` : result.app ? "详情" : "详情（未选择）";
+    tab.addEventListener("click", () => onViewChange(name));
+    controls.push(tab);
+    tabs.append(tab);
+
+    const panel = document.createElement("section");
+    panel.className = `canvas-panel ${name}-panel`;
+    panel.dataset.role = `${name}-panel`;
+    panel.id = `${id}-${name}-panel`;
+    panel.setAttribute("role", "tabpanel");
+    panel.setAttribute("aria-labelledby", tab.id);
+    panel.hidden = view !== name;
+    panels[name] = panel;
+  }
+  tabs.addEventListener("keydown", (event) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    const available = controls.filter((control) => !control.disabled);
+    const index = available.indexOf(event.target as HTMLButtonElement);
+    if (index < 0) return;
+    event.preventDefault();
+    const next = event.key === "Home" ? 0 : event.key === "End" ? available.length - 1
+      : (index + (event.key === "ArrowRight" ? 1 : -1) + available.length) % available.length;
+    onViewChange(available[next]!.dataset.role === "candidates-tab" ? "candidates" : "detail");
+  });
+  inspector.append(tabs, panels.candidates, panels.detail);
+  const detailPanel = panels.detail;
+  const candidates = createCandidates(originalResult, country, page, onPageChange, onInspect, inspection);
+  if (candidates) {
+    panels.candidates.append(candidates);
+  } else {
+    const empty = document.createElement("p");
+    empty.className = "empty-subtle";
+    empty.textContent = translateMessage(originalResult.message) ?? "商店本次没有返回候选应用。";
+    panels.candidates.append(empty);
+  }
+
+  if (result.app) {
+    const actions = document.createElement("div");
+    actions.className = "detail-actions";
+    const back = document.createElement("button");
+    back.type = "button";
+    back.className = "secondary-button";
+    back.dataset.role = "back-to-candidates";
+    back.textContent = "返回候选";
+    back.addEventListener("click", () => onViewChange("candidates", candidateKey(result.app!)));
+    actions.append(back);
+    if (inspection) {
+      const retry = document.createElement("button");
+      retry.type = "button";
+      retry.className = "secondary-button";
+      retry.dataset.role = "detail-retry";
+      retry.textContent = "重新查看详情";
+      retry.addEventListener("click", () => onInspect(inspection.app));
+      actions.append(retry);
+    }
+    detailPanel.append(actions);
+  }
 
   const top = document.createElement("div");
   top.className = "inspector-top";
@@ -565,10 +799,10 @@ function createInspector(result: SearchResult) {
   const meta = document.createElement("div");
   meta.className = "inspector-meta";
 
-  const query = document.createElement("p");
-  query.className = "query-label";
-  query.textContent = `搜索词：${result.query}`;
-  meta.append(query);
+  const viewing = document.createElement("p");
+  viewing.className = "viewing-label";
+  viewing.textContent = inspection ? "当前查看的应用" : "自动匹配的应用";
+  meta.append(viewing);
 
   const headingRow = document.createElement("div");
   headingRow.className = "inspector-heading-row";
@@ -605,7 +839,7 @@ function createInspector(result: SearchResult) {
     factRow.append(createFactPill(`${result.app.screenshotUrls.length} 张截图`));
     factRow.append(createFactPill(formatIapItemCount(result.app.iapItems)));
 
-    if (result.iapHints) {
+    if (country === "us" && result.iapHints) {
       factRow.append(createFactPill(`4.99 ${formatIapHint(result.iapHints["4.99"])}`));
       factRow.append(createFactPill(`9.99 ${formatIapHint(result.iapHints["9.99"])}`));
     }
@@ -621,14 +855,39 @@ function createInspector(result: SearchResult) {
   headingRow.append(headingCopy);
   meta.append(headingRow);
   top.append(meta);
-  top.append(createStatusBadge(result.status));
-  inspector.append(top);
+  detailPanel.append(top);
+  if (inspection) {
+    detailPanel.dataset.state = inspection.state;
+
+    if (inspection.state === "ready") {
+      const readyState = document.createElement("p");
+      readyState.className = "candidate-detail-state visually-hidden";
+      readyState.dataset.role = "detail-state";
+      readyState.setAttribute("role", "status");
+      readyState.textContent = "商店详情已加载";
+      detailPanel.append(readyState);
+    } else {
+      const detailState = document.createElement("p");
+      detailState.className = "candidate-detail-state";
+      detailState.dataset.role = "detail-state";
+      detailState.setAttribute("role", "status");
+      detailState.textContent = inspection.state === "loading"
+        ? "详情加载中…"
+        : inspection.state === "failed"
+          ? "详情加载失败，可重试或打开商店页。"
+          : "未提供 Apple ID，仅展示搜索信息。";
+      detailState.setAttribute("aria-busy", String(inspection.state === "loading"));
+      detailPanel.append(detailState);
+    }
+  }
 
   if (!result.app) {
     const message = document.createElement("p");
     message.className = "result-message";
-    message.textContent = translateMessage(result.message) ?? "暂无可展示详情。";
-    inspector.append(message);
+    message.textContent = result.status === "no_match" && getCandidates(originalResult).length > 0
+      ? "未自动匹配，请核对候选应用。"
+      : translateMessage(result.message) ?? "暂无可展示详情。";
+    detailPanel.append(message);
     return inspector;
   }
 
@@ -674,8 +933,9 @@ function createInspector(result: SearchResult) {
   const links = document.createElement("div");
   links.className = "inspector-links inspector-links-inline";
 
+  const appStoreUrl = result.app.appStoreUrl.replace(/^(https:\/\/apps\.apple\.com\/)[a-z]{2}\//i, `$1${country}/`);
   const storeLink = document.createElement("a");
-  storeLink.href = result.app.appStoreUrl;
+  storeLink.href = appStoreUrl;
   storeLink.target = "_blank";
   storeLink.rel = "noreferrer";
   storeLink.className = "primary-link";
@@ -685,7 +945,7 @@ function createInspector(result: SearchResult) {
   const appleId = result.app.appleId;
   if (typeof appleId === "number" && Number.isSafeInteger(appleId) && appleId > 0) {
     const qimaiLink = document.createElement("a");
-    qimaiLink.href = `https://www.qimai.cn/app/baseinfo/appid/${appleId}/country/us`;
+    qimaiLink.href = `https://www.qimai.cn/app/baseinfo/appid/${appleId}/country/${country}`;
     qimaiLink.target = "_blank";
     qimaiLink.rel = "noreferrer";
     qimaiLink.className = "secondary-link qimai-link";
@@ -693,66 +953,9 @@ function createInspector(result: SearchResult) {
     links.append(qimaiLink);
   }
 
-  const rawLink = document.createElement("a");
-  rawLink.href = result.app.appStoreUrl;
-  rawLink.target = "_blank";
-  rawLink.rel = "noreferrer";
-  rawLink.className = "secondary-link";
-  rawLink.textContent = result.app.appStoreUrl.replace("?uo=4", "");
-  links.append(rawLink);
-
   overviewSection.append(links);
 
-  if (result.status === "uncertain_match" && result.alternates.length > 0) {
-    const alternates = document.createElement("section");
-    alternates.className = "alternates compare-section";
-
-    const label = document.createElement("p");
-    label.className = "alternates-label";
-    label.textContent = "候选对比";
-    alternates.append(label);
-
-    const note = document.createElement("p");
-    note.className = "alternates-note";
-    note.textContent = "名称相近的结果集中展示，优先核对 Apple ID、Bundle ID、开发者和截图。";
-    alternates.append(note);
-
-    const candidateGrid = document.createElement("div");
-    candidateGrid.className = "candidate-grid";
-    candidateGrid.append(
-      createCandidateCard(result.app, "当前命中", true),
-    );
-
-    const alternateList = document.createElement("div");
-    alternateList.className = "alternate-list";
-
-    const alternateListHeader = document.createElement("div");
-    alternateListHeader.className = "alternate-list-header";
-
-    const alternateListTitle = document.createElement("strong");
-    alternateListTitle.textContent = `${result.alternates.length} 个备选`;
-    alternateListHeader.append(alternateListTitle);
-
-    const alternateListHint = document.createElement("span");
-    alternateListHint.textContent = "用于确认匹配";
-    alternateListHeader.append(alternateListHint);
-    alternateList.append(alternateListHeader);
-
-    const alternateItems = document.createElement("div");
-    alternateItems.className = "alternate-list-items";
-
-    for (const [index, alternate] of result.alternates.entries()) {
-      alternateItems.append(createCandidateCard(alternate, "备选项", false, index + 1));
-    }
-
-    alternateList.append(alternateItems);
-    candidateGrid.append(alternateList);
-    alternates.append(candidateGrid);
-
-    inspector.append(alternates);
-  }
-
-  if (result.message) {
+  if (result.message && !inspection) {
     const message = document.createElement("p");
     message.className = "result-message";
     message.textContent = translateMessage(result.message);
@@ -779,9 +982,11 @@ function createInspector(result: SearchResult) {
 
   const hints = document.createElement("p");
   hints.className = "iap-hints";
-  hints.textContent = result.iapHints
-    ? `4.99 ${formatIapHint(result.iapHints["4.99"])} · 9.99 ${formatIapHint(result.iapHints["9.99"])}`
-    : "暂无价格线索";
+  hints.textContent = country !== "us"
+    ? "4.99 / 9.99 美元价格线索仅适用于美国区"
+    : result.iapHints
+      ? `4.99 ${formatIapHint(result.iapHints["4.99"])} · 9.99 ${formatIapHint(result.iapHints["9.99"])}`
+      : "暂无价格线索";
   pricingSection.append(hints);
 
   if (result.app.iapItems.length > 0) {
@@ -801,7 +1006,7 @@ function createInspector(result: SearchResult) {
   }
 
   detailGrid.append(pricingSection);
-  inspector.append(detailGrid);
+  detailPanel.append(detailGrid);
 
   const screenshotsSection = document.createElement("section");
   screenshotsSection.className = "detail-section screenshots-section";
@@ -834,11 +1039,11 @@ function createInspector(result: SearchResult) {
   } else {
     const empty = document.createElement("p");
     empty.className = "empty-subtle";
-    empty.textContent = "未从商店渲染页提取到截图。";
+    empty.textContent = "未提取到截图。";
     screenshotsSection.append(empty);
   }
 
-  inspector.append(screenshotsSection);
+  detailPanel.append(screenshotsSection);
 
   return inspector;
 }
@@ -869,14 +1074,17 @@ function createResultRow(result: SearchResult) {
   copy.className = "result-row-copy";
 
   const title = document.createElement("strong");
-  title.textContent = result.app ? result.app.name : result.query;
+  title.textContent = result.query;
   copy.append(title);
 
   const sub = document.createElement("span");
   sub.className = "result-row-subtitle";
+  const candidates = getCandidates(result);
   sub.textContent = result.app
-    ? result.app.developer
-    : translateMessage(result.message) ?? "未找到结果";
+    ? `${result.app.name} · ${result.app.developer}`
+    : result.status === "no_match" && candidates.length > 0
+      ? `${candidates.length} 个候选`
+      : translateMessage(result.message) ?? "未找到结果";
   copy.append(sub);
 
   if (result.app) {
@@ -889,9 +1097,15 @@ function createResultRow(result: SearchResult) {
     copy.append(meta);
   }
 
+  if (candidates.length > 0 && (result.app !== null || result.status !== "no_match")) {
+    const candidateCount = document.createElement("span");
+    candidateCount.className = "result-row-meta";
+    candidateCount.textContent = `${candidates.length} 个候选`;
+    copy.append(candidateCount);
+  }
   identity.append(copy);
   row.append(identity);
-  row.append(createStatusBadge(result.status));
+  row.append(createStatusBadge(result.status, candidates.length));
 
   return row;
 }
@@ -900,7 +1114,14 @@ export function renderResults(
   host: HTMLElement,
   results: SearchResult[],
   hasSearched = true,
+  options: { country?: StoreCountry } = {},
 ) {
+  renderCleanups.get(host)?.();
+  renderCleanups.delete(host);
+  const instance = Symbol();
+  renderInstances.set(host, instance);
+  const country = options.country ?? "us";
+  const wasConnected = host.isConnected;
   document.querySelectorAll(".screenshot-lightbox").forEach((lightbox) => {
     lightbox.dispatchEvent(new Event("lightbox-dispose"));
     lightbox.remove();
@@ -920,27 +1141,36 @@ export function renderResults(
 
   const workbench = document.createElement("div");
   workbench.className = "results-workbench";
+  const id = `results-${++nextWorkbenchId}`;
 
-  const listPanel = document.createElement("section");
+  const listPanel = document.createElement("details");
   listPanel.className = "result-list-panel";
+  const queueSummary = document.createElement("summary");
+  queueSummary.className = "query-queue-summary";
+  const currentQuery = document.createElement("strong");
+  const queueCount = document.createElement("span");
+  queueCount.textContent = `全部 ${results.length} 项`;
+  queueSummary.append(currentQuery, queueCount);
+  listPanel.append(queueSummary);
 
   const listHeader = document.createElement("div");
   listHeader.className = "panel-subhead";
-  listHeader.textContent = "结果列表";
+  listHeader.textContent = `查询队列 · ${results.length} 项`;
   listPanel.append(listHeader);
 
   const list = document.createElement("div");
   list.className = "result-list";
   listPanel.append(list);
+  const compactQueue = typeof window.matchMedia === "function" ? window.matchMedia("(max-width: 959px)") : null;
+  const syncQueue = () => {
+    listPanel.open = !compactQueue?.matches || list.contains(document.activeElement);
+  };
+  syncQueue();
+  compactQueue?.addEventListener("change", syncQueue);
+  renderCleanups.set(host, () => compactQueue?.removeEventListener("change", syncQueue));
 
   const inspectorPanel = document.createElement("section");
   inspectorPanel.className = "inspector-panel";
-
-  const inspectorHeader = document.createElement("div");
-  inspectorHeader.className = "panel-subhead";
-  inspectorHeader.textContent = "详情";
-  inspectorPanel.append(inspectorHeader);
-
   const inspectorBody = document.createElement("div");
   inspectorBody.className = "inspector-body";
   inspectorPanel.append(inspectorBody);
@@ -960,8 +1190,117 @@ export function renderResults(
     selectedIndex = 0;
   }
 
+  const candidatePages = results.map(() => 0);
+  let inspection: CandidateInspection | null = null;
+  let selectionToken = 0;
+  let view: CanvasView = "detail";
+
+  function focusCandidate(key: string, preventScroll = true) {
+    const control = Array.from(inspectorBody.querySelectorAll<HTMLButtonElement>('[data-role="candidate-inspect"]'))
+      .find((button) => button.dataset.candidateKey === key && !button.closest("[hidden]"));
+    control?.focus({ preventScroll });
+    return control;
+  }
+
+  function setView(next: CanvasView, candidate?: string) {
+    view = next;
+    document.querySelectorAll('.screenshot-lightbox:not([hidden])').forEach((lightbox) => lightbox.dispatchEvent(new Event("lightbox-dispose")));
+    inspectorBody.querySelectorAll<HTMLButtonElement>(".canvas-tab").forEach((tab) => {
+      const selected = tab.dataset.role === `${view}-tab`;
+      tab.setAttribute("aria-selected", String(selected));
+      tab.tabIndex = selected ? 0 : -1;
+    });
+    inspectorBody.querySelectorAll<HTMLElement>(".canvas-panel").forEach((panel) => {
+      panel.hidden = panel.dataset.role !== `${view}-panel`;
+    });
+    if (candidate && focusCandidate(candidate, false)) return;
+    inspectorBody.querySelector<HTMLButtonElement>(`[data-role="${view}-tab"]`)?.focus();
+  }
+
+  async function inspectCandidate(candidate: LookupCandidate) {
+    const token = ++selectionToken;
+    const resultIndex = selectedIndex;
+    const key = candidateKey(candidate);
+    const hasId = typeof candidate.appleId === "number" && Number.isSafeInteger(candidate.appleId) && candidate.appleId > 0;
+    inspection = {
+      app: { ...candidate, category: candidate.category ?? null, versionHistory: candidate.versionHistory ?? [], iapItems: [] },
+      iapHints: null,
+      state: hasId ? "loading" : "baseline",
+    };
+    view = "detail";
+    renderInspector();
+    inspectorBody.querySelector<HTMLButtonElement>('[data-role="detail-tab"]')?.focus();
+    if (!hasId) return;
+    const isCurrent = () => token === selectionToken && resultIndex === selectedIndex
+      && renderInstances.get(host) === instance && host.contains(workbench)
+      && (!wasConnected || host.isConnected)
+      && inspection !== null && candidateKey(inspection.app) === key;
+    try {
+      const detail = await getAppDetails(candidate.appleId!, country);
+      if (!isCurrent()) return;
+      if (detail.country !== country || detail.app.appleId !== candidate.appleId) {
+        throw new Error("Candidate detail identity changed");
+      }
+      inspection = { app: detail.app, iapHints: detail.iapHints, state: "ready" };
+    } catch {
+      if (!isCurrent()) return;
+      inspection!.state = "failed";
+    }
+    renderInspector();
+  }
+
+  function renderInspector() {
+    const active = document.activeElement instanceof HTMLElement && inspectorBody.contains(document.activeElement)
+      ? document.activeElement : null;
+    const focused = active?.closest<HTMLButtonElement>('[data-role="candidate-inspect"]')?.dataset.candidateKey;
+    const focusedRole = active?.matches('[role="tab"], .candidate-pagination button, [data-role="detail-retry"], [data-role="back-to-candidates"]') ? active.dataset.role : null;
+    const focusedControl = active?.matches(".identifier-copy, .screenshot-trigger") ? active : null;
+    const section = focusedControl?.closest<HTMLElement>(".info-list, .candidate-card, .screenshots-section");
+    const focusIdentity = section && focusedControl ? {
+      appKey: inspectorBody.querySelector<HTMLElement>(".inspector")?.dataset.appKey,
+      section: section.matches(".candidate-card") ? ".candidate-card"
+        : section.matches(".info-list") ? ".info-list" : ".screenshots-section",
+      candidateKey: section.dataset.candidateKey,
+      label: focusedControl.getAttribute("aria-label"),
+      screenshotUrl: focusedControl.querySelector("img")?.getAttribute("src"),
+    } : null;
+    document.querySelectorAll(".screenshot-lightbox").forEach((lightbox) => {
+      lightbox.dispatchEvent(new Event("lightbox-dispose"));
+      lightbox.remove();
+    });
+    document.body?.classList.remove("is-lightbox-open");
+    inspectorBody.replaceChildren(createInspector(
+      results[selectedIndex], country, candidatePages[selectedIndex]!,
+      (page, control) => {
+        candidatePages[selectedIndex] = page;
+        renderInspector();
+        const target = inspectorBody.querySelector<HTMLButtonElement>(`[data-role="${control}"]`);
+        (target?.disabled ? inspectorBody.querySelector<HTMLButtonElement>(`.candidate-pagination button:not(:disabled)`) : target)?.focus();
+      },
+      (candidate) => { void inspectCandidate(candidate); }, inspection, view, id, setView,
+    ));
+    if (focused) focusCandidate(focused);
+    if (focusedRole) {
+      const control = inspectorBody.querySelector<HTMLButtonElement>(`[data-role="${focusedRole}"]`);
+      if (control && !control.disabled && !control.closest("[hidden]")) control.focus({ preventScroll: true });
+    }
+    if (focusIdentity && focusIdentity.appKey === inspectorBody.querySelector<HTMLElement>(".inspector")?.dataset.appKey) {
+      const scope = Array.from(inspectorBody.querySelectorAll<HTMLElement>(focusIdentity.section))
+        .find((element) => element.dataset.candidateKey === focusIdentity.candidateKey);
+      Array.from(scope?.querySelectorAll<HTMLButtonElement>(".identifier-copy, .screenshot-trigger") ?? [])
+        .find((control) => !control.closest("[hidden]") && control.getAttribute("aria-label") === focusIdentity.label
+          && control.querySelector("img")?.getAttribute("src") === focusIdentity.screenshotUrl)
+        ?.focus({ preventScroll: true });
+    }
+  }
+
   function setSelectedIndex(index: number) {
+    selectionToken++;
+    inspection = null;
     selectedIndex = index;
+    const result = results[index]!;
+    view = !result.app || (result.status !== "matched" && getCandidates(result).length > 0) ? "candidates" : "detail";
+    currentQuery.textContent = `当前：${result.query}`;
 
     rows.forEach((row, rowIndex) => {
       const isActive = rowIndex === selectedIndex;
@@ -969,13 +1308,17 @@ export function renderResults(
       row.setAttribute("aria-pressed", String(isActive));
     });
 
-    inspectorBody.replaceChildren(createInspector(results[selectedIndex]));
+    renderInspector();
   }
 
   for (const [index, result] of results.entries()) {
     const row = createResultRow(result);
     row.addEventListener("click", () => {
       setSelectedIndex(index);
+      if (compactQueue?.matches) {
+        listPanel.open = false;
+        queueSummary.focus({ preventScroll: true });
+      }
     });
     rows.push(row);
     list.append(row);

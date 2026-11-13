@@ -1,5 +1,9 @@
+export const STORE_COUNTRIES = ["us", "cn", "hk", "tw", "jp", "sg", "gb", "au"] as const;
+export type StoreCountry = (typeof STORE_COUNTRIES)[number];
+
 export type SearchAppsRequest = {
   names: string[];
+  country?: StoreCountry;
 };
 
 export type LookupCandidate = {
@@ -71,6 +75,7 @@ export type SearchResult =
       query: string;
       status: "matched";
       app: MatchedApp;
+      candidates: LookupCandidate[];
       alternates: AlternateApp[];
       iapHints: IapHints | null;
       message: null;
@@ -79,6 +84,7 @@ export type SearchResult =
       query: string;
       status: "uncertain_match";
       app: MatchedApp;
+      candidates: LookupCandidate[];
       alternates: AlternateApp[];
       iapHints: IapHints | null;
       message: string;
@@ -87,11 +93,19 @@ export type SearchResult =
       query: string;
       status: "no_match" | "search_failed";
       app: null;
+      candidates: LookupCandidate[];
       alternates: AlternateApp[];
       iapHints: null;
       message: string;
     };
 
+export type AppDetailsResponse = {
+  country: StoreCountry;
+  app: MatchedApp;
+  iapHints: IapHints;
+};
+
 export type SearchAppsResponse = {
+  country: StoreCountry;
   results: SearchResult[];
 };

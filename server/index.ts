@@ -1,9 +1,10 @@
 import { createApp } from "./app";
-import { lookupAppStore } from "./lib/appleLookup";
+import { lookupAppById, lookupAppStore } from "./lib/appleLookup";
 import { buildIapHints } from "./lib/iapHints";
 import { fetchProductPageDetails } from "./lib/productPage";
 
 const app = createApp({
+  lookupAppById,
   lookupAppStore,
   fetchProductPageDetails,
   buildIapHints,

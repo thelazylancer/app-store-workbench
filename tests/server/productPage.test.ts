@@ -1,5 +1,31 @@
-import { describe, expect, it } from "vitest";
-import { parseProductPageHtml } from "../../server/lib/productPage";
+import { describe, expect, it, vi } from "vitest";
+import { chromium, type Browser } from "playwright-core";
+import { fetchProductPageDetails, parseProductPageHtml } from "../../server/lib/productPage";
+
+it("keeps the URL storefront and rejects failed product-page navigation", async () => {
+  const page = {
+    goto: vi.fn(async (_url: string, _options: unknown) => ({ ok: () => false, status: () => 404 })),
+    content: vi.fn(async () => "<body></body>"),
+    close: vi.fn(async () => {}),
+  };
+  const newPage = vi.fn(async (_options: unknown) => page);
+  vi.stubEnv("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH", process.execPath);
+  vi.spyOn(chromium, "launch").mockResolvedValue({ newPage } as unknown as Browser);
+  try {
+    await expect(fetchProductPageDetails("https://apps.apple.com/jp/app/id123?l=en"))
+      .rejects.toThrow("404");
+    expect(newPage.mock.calls[0]?.[0]).toEqual({
+      locale: "en-US",
+      extraHTTPHeaders: { "Accept-Language": "en-US,en;q=0.9" },
+    });
+    expect(page.goto.mock.calls[0]?.[0]).toBe("https://apps.apple.com/jp/app/id123?l=en");
+    expect(page.close).toHaveBeenCalled();
+    expect(page.content).not.toHaveBeenCalled();
+  } finally {
+    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+  }
+});
 
 describe("parseProductPageHtml", () => {
   it("extracts screenshot urls and in-app purchases from a rendered product page", () => {

@@ -11,8 +11,6 @@ export type ProductPageDetails = {
   versionHistory: AppVersionHistoryItem[];
 };
 
-const US_APPLE_STOREFRONT = "143441-1,29";
-
 let browserPromise: Promise<Browser> | null = null;
 
 function dedupe<T>(items: T[]) {
@@ -200,15 +198,17 @@ export async function fetchProductPageDetails(
     locale: "en-US",
     extraHTTPHeaders: {
       "Accept-Language": "en-US,en;q=0.9",
-      "X-Apple-Store-Front": US_APPLE_STOREFRONT,
     },
   });
 
   try {
-    await page.goto(appStoreUrl, {
+    const response = await page.goto(appStoreUrl, {
       waitUntil: "networkidle",
       timeout: 120_000,
     });
+    if (!response?.ok()) {
+      throw new Error(`Product page unavailable: ${response?.status() ?? "navigation failed"}`);
+    }
 
     const html = await page.content();
     return parseProductPageHtml(html);
