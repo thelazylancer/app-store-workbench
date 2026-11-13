@@ -7,7 +7,8 @@
     "dev:server": "tsx watch server/index.ts",
     "dev": "concurrently \"npm:dev:server\" \"npm:dev:web\"",
     "build": "vite build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "fetch:app-store": "tsx scripts/fetch-app-store-details.ts"
   },
   "dependencies": {
     "app-store-scraper": "github:facundoolano/app-store-scraper#master",
