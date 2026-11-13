@@ -1,5 +1,6 @@
 import express from "express";
 import { stat } from "node:fs/promises";
+import { mapWithConcurrency } from "./lib/concurrency";
 import { classifyCandidates } from "./lib/matchResults";
 import type { IpaDownloadManager } from "./lib/ipaDownload";
 import { STORE_COUNTRIES } from "../shared/types";
@@ -24,6 +25,10 @@ type AppDependencies = {
 };
 
 const BUNDLE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,254}$/;
+const configuredSearchConcurrency = Number(process.env.SEARCH_CONCURRENCY);
+const SEARCH_CONCURRENCY = Number.isSafeInteger(configuredSearchConcurrency) && configuredSearchConcurrency > 0
+  ? configuredSearchConcurrency
+  : 3;
 
 function isSearchAppsRequest(value: unknown): value is SearchAppsRequest {
   if (typeof value !== "object" || value === null) return false;
@@ -107,9 +112,7 @@ export function createApp(deps: AppDependencies) {
     if (!country) return res.status(400).json({ message: "Unsupported App Store country" });
 
     const queries: AppSearchQuery[] = req.body.queries ?? req.body.names?.map((name) => ({ name })) ?? [];
-    const results: SearchResult[] = [];
-
-    for (const { name: query, bundleId } of queries) {
+    const results = await mapWithConcurrency(queries, SEARCH_CONCURRENCY, async ({ name: query, bundleId }) => {
       const requestedBundleId = bundleId?.trim();
       try {
         const candidates = await deps.lookupAppStore(query, country);
@@ -122,9 +125,9 @@ export function createApp(deps: AppDependencies) {
           result.message = `No App Store match found in ${country.toUpperCase()} store`;
         }
 
-        results.push(result);
+        return result;
       } catch {
-        results.push({
+        return {
           query,
           ...(requestedBundleId ? { requestedBundleId } : {}),
           status: "search_failed",
@@ -133,9 +136,9 @@ export function createApp(deps: AppDependencies) {
           alternates: [],
           iapHints: null,
           message: "Search failed",
-        });
+        } satisfies SearchResult;
       }
-    }
+    });
 
     const body: SearchAppsResponse = { country, results };
     return res.json(body);
@@ -183,6 +186,21 @@ export function createApp(deps: AppDependencies) {
       return res.status(409).json({ message: "This IPA download is not waiting for a verification code" });
     }
     return res.status(202).json(updated);
+  });
+
+  app.delete("/api/ipa-download/:id", (req, res) => {
+    if (!deps.ipaDownload) {
+      return res.status(503).json({ message: "IPA download is unavailable" });
+    }
+    const existing = deps.ipaDownload.getJob(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ message: "IPA download job not found" });
+    }
+    const cancelled = deps.ipaDownload.cancelJob(req.params.id);
+    if (!cancelled) {
+      return res.status(409).json({ message: "This IPA download has already finished" });
+    }
+    return res.status(202).json(cancelled);
   });
 
   app.get("/api/ipa-download/:id/file", async (req, res) => {

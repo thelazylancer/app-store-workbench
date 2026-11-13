@@ -46,6 +46,14 @@ export async function getIpaDownload(id: string): Promise<IpaDownloadJob> {
   return (await response.json()) as IpaDownloadJob;
 }
 
+export async function cancelIpaDownload(id: string): Promise<IpaDownloadJob> {
+  const response = await fetch(`/api/ipa-download/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) throw new Error("IPA download cancellation failed");
+  return (await response.json()) as IpaDownloadJob;
+}
+
 export async function submitIpaAuthCode(id: string, code: string): Promise<IpaDownloadJob> {
   const response = await fetch(`/api/ipa-download/${encodeURIComponent(id)}/auth-code`, {
     method: "POST",

@@ -1,5 +1,7 @@
 import type { LookupCandidate, StoreCountry } from "../../shared/types";
 
+const APPLE_REQUEST_TIMEOUT_MS = 15_000;
+
 type AppleLookupResponse = {
   results?: Array<{
     trackId?: unknown;
@@ -60,7 +62,9 @@ export async function lookupAppStore(
     limit: "200",
   });
 
-  const response = await fetch(`https://itunes.apple.com/search?${params.toString()}`);
+  const response = await fetch(`https://itunes.apple.com/search?${params.toString()}`, {
+    signal: AbortSignal.timeout(APPLE_REQUEST_TIMEOUT_MS),
+  });
 
   if (!response.ok) {
     throw new Error(`Apple search failed with ${response.status}`);
@@ -73,7 +77,9 @@ export async function lookupAppStore(
 
 export async function lookupAppById(appleId: number, country: StoreCountry): Promise<LookupCandidate | null> {
   const params = new URLSearchParams({ id: String(appleId), country, entity: "software" });
-  const response = await fetch(`https://itunes.apple.com/lookup?${params.toString()}`);
+  const response = await fetch(`https://itunes.apple.com/lookup?${params.toString()}`, {
+    signal: AbortSignal.timeout(APPLE_REQUEST_TIMEOUT_MS),
+  });
   if (!response.ok) throw new Error(`Apple lookup failed with ${response.status}`);
   const body = (await response.json()) as AppleLookupResponse;
   return normalizeResults(body, country).find((candidate) => candidate.appleId === appleId) ?? null;

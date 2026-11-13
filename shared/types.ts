@@ -120,7 +120,13 @@ export type SearchAppsResponse = {
   results: SearchResult[];
 };
 
-export type IpaDownloadStatus = "queued" | "running" | "awaiting_auth_code" | "done" | "failed";
+export type IpaDownloadStatus =
+  | "queued"
+  | "running"
+  | "awaiting_auth_code"
+  | "done"
+  | "failed"
+  | "cancelled";
 
 export type IpaDownloadErrorCode =
   | "terms_required"
@@ -129,6 +135,7 @@ export type IpaDownloadErrorCode =
   | "not_authenticated"
   | "storefront_unavailable"
   | "timeout"
+  | "cancelled"
   | "unknown";
 
 export type IpaDownloadActiveJob = {

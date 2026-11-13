@@ -23,6 +23,7 @@ describe("lookupAppStore", () => {
       versionHistory: [{ version: "1.2", releasedAt: null, notes: "Own history" }],
     });
     const url = new URL(String(fetchApple.mock.calls[0]![0]));
+    expect(fetchApple.mock.calls[0]![1]).toEqual(expect.objectContaining({ signal: expect.any(AbortSignal) }));
     expect(url.pathname).toBe("/lookup");
     expect(url.searchParams.get("id")).toBe("123");
     expect(url.searchParams.get("country")).toBe("cn");

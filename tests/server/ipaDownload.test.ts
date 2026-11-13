@@ -239,6 +239,113 @@ describe("IPA download manager", () => {
     expect(manager.getJob(first.id)?.status).toBe("done");
   });
 
+  it("cancels a queued job without starting it", async () => {
+    const dir = await tempDir();
+    const started: string[] = [];
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const runner: DownloadRunner = async (bundleId, outPath) => {
+      started.push(bundleId);
+      await gate;
+      await writeFile(outPath, bundleId);
+      return { exitCode: 0, output: "success=true" };
+    };
+    const manager = createIpaDownloadManager({ ipatoolBin: "ipatool", downloadsDir: dir, runner });
+
+    const first = manager.createJob("com.example.one");
+    const second = manager.createJob("com.example.two");
+    await vi.waitFor(() => expect(manager.getJob(first.id)?.status).toBe("running"));
+
+    const cancelled = manager.cancelJob(second.id);
+    expect(cancelled).toMatchObject({ status: "cancelled", errorCode: "cancelled", fileUrl: null });
+    release();
+    await vi.waitFor(() => expect(manager.getJob(first.id)?.status).toBe("done"));
+    expect(started).toEqual(["com.example.one"]);
+    expect(manager.getJob(second.id)?.status).toBe("cancelled");
+  });
+
+  it("aborts a running job and starts the next queued job", async () => {
+    const dir = await tempDir();
+    const started: string[] = [];
+    const runner: DownloadRunner = (bundleId, outPath, _onOutput, signal) => {
+      started.push(bundleId);
+      if (bundleId === "com.example.slow") {
+        return new Promise((_resolve, reject) => {
+          signal.addEventListener("abort", () => reject(new Error("aborted")));
+        });
+      }
+      return writeFile(outPath, bundleId).then(() => ({ exitCode: 0, output: "success=true" }));
+    };
+    const manager = createIpaDownloadManager({ ipatoolBin: "ipatool", downloadsDir: dir, runner });
+
+    const first = manager.createJob("com.example.slow");
+    const second = manager.createJob("com.example.next");
+    await vi.waitFor(() => expect(manager.getJob(first.id)?.status).toBe("running"));
+
+    expect(manager.cancelJob(first.id)).toMatchObject({ status: "cancelled", errorCode: "cancelled" });
+    await vi.waitFor(() => expect(manager.getJob(first.id)?.status).toBe("cancelled"));
+    await vi.waitFor(() => expect(manager.getJob(second.id)?.status).toBe("done"));
+    expect(started).toEqual(["com.example.slow", "com.example.next"]);
+    expect(manager.getFilePath(first.id)).toBeNull();
+  });
+
+  it("restores completed jobs after a restart and fails interrupted ones", async () => {
+    const dir = await tempDir();
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const runner: DownloadRunner = async (bundleId, outPath) => {
+      if (bundleId === "com.example.interrupted") {
+        await gate;
+        return { exitCode: 1, output: "success=false" };
+      }
+      await writeFile(outPath, bundleId);
+      return { exitCode: 0, output: "success=true" };
+    };
+    const manager = createIpaDownloadManager({
+      ipatoolBin: "ipatool", downloadsDir: dir, runner, persistJobs: true,
+    });
+    const completed = manager.createJob("com.example.done");
+    await vi.waitFor(() => expect(manager.getJob(completed.id)?.status).toBe("done"));
+
+    const interrupted = manager.createJob("com.example.interrupted");
+    await vi.waitFor(() => expect(manager.getJob(interrupted.id)?.status).toBe("running"));
+
+    const restarted = createIpaDownloadManager({
+      ipatoolBin: "ipatool", downloadsDir: dir, runner, persistJobs: true,
+    });
+    expect(restarted.getJob(completed.id)).toMatchObject({
+      status: "done",
+      fileUrl: `/api/ipa-download/${completed.id}/file`,
+    });
+    expect(restarted.getJob(interrupted.id)).toMatchObject({
+      status: "failed",
+      errorCode: "unknown",
+    });
+
+    release();
+    await vi.waitFor(() => expect(manager.getJob(interrupted.id)?.status).toBe("failed"));
+    await vi.waitFor(() => expect(restarted.getJob(completed.id)?.status).toBe("done"));
+  });
+
+  it("caps retained job records without removing the active job", async () => {
+    const dir = await tempDir();
+    const manager = createIpaDownloadManager({
+      ipatoolBin: "ipatool", downloadsDir: dir, runner: successRunner, maxJobs: 1,
+    });
+
+    const first = manager.createJob("com.example.first");
+    await vi.waitFor(() => expect(manager.getJob(first.id)?.status).toBe("done"));
+    const second = manager.createJob("com.example.second");
+    await vi.waitFor(() => expect(manager.getJob(second.id)?.status).toBe("done"));
+
+    expect(manager.getJob(first.id)).toBeNull();
+    expect(manager.getJob(second.id)?.status).toBe("done");
+  });
+
   it("removes only IPA files older than the retention window", async () => {
     const dir = await tempDir();
     await writeFile(path.join(dir, "old.ipa"), "old");

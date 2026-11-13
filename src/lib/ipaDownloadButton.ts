@@ -1,4 +1,4 @@
-import { getIpaDownload, startIpaDownload, submitIpaAuthCode } from "./api";
+import { cancelIpaDownload, getIpaDownload, startIpaDownload, submitIpaAuthCode } from "./api";
 import type { IpaDownloadErrorCode, IpaDownloadJob } from "../../shared/types";
 
 type IpaButtonState = Omit<
@@ -22,6 +22,7 @@ const ERROR_MESSAGES: Record<IpaDownloadErrorCode, string> = {
   not_authenticated: "服务器尚未登录 Apple ID",
   storefront_unavailable: "App Store 商店服务暂不可用，请重试",
   timeout: "下载超时，请重试",
+  cancelled: "下载已取消",
   unknown: "下载失败，请重试",
 };
 
@@ -110,6 +111,14 @@ export function createIpaDownloadControl(bundleId: string): HTMLElement {
 
   form.append(input, submit);
 
+  const cancel = document.createElement("button");
+  cancel.type = "button";
+  cancel.className = "secondary-button ipa-download-cancel";
+  cancel.dataset.role = "ipa-download-cancel";
+  cancel.textContent = "取消";
+  cancel.hidden = true;
+  cancel.setAttribute("aria-label", "取消当前 IPA 下载");
+
   const status = document.createElement("span");
   status.className = "ipa-download-status";
   status.setAttribute("role", "status");
@@ -120,6 +129,8 @@ export function createIpaDownloadControl(bundleId: string): HTMLElement {
     button.disabled = false;
     button.title = "";
     form.hidden = true;
+    cancel.hidden = true;
+    cancel.disabled = false;
     status.textContent = "";
     if (!state) {
       button.textContent = "下载 IPA";
@@ -129,6 +140,7 @@ export function createIpaDownloadControl(bundleId: string): HTMLElement {
       case "queued": {
         button.textContent = queuedLabel(state);
         button.disabled = true;
+        cancel.hidden = false;
         const ahead = state.queuePosition ?? 0;
         if (ahead > 0) {
           status.textContent = state.activeJob
@@ -140,6 +152,7 @@ export function createIpaDownloadControl(bundleId: string): HTMLElement {
       case "running": {
         button.textContent = runningLabel(state);
         button.disabled = true;
+        cancel.hidden = false;
         const preparing = state.progress === null && !(state.bytesDownloaded ?? 0);
         const elapsedMs = Date.now() - Date.parse(state.startedAt);
         if (preparing && elapsedMs >= 90_000) {
@@ -154,7 +167,11 @@ export function createIpaDownloadControl(bundleId: string): HTMLElement {
         break;
       case "done":
         button.textContent = "保存 IPA";
-        button.title = "服务器保留 7 天，请及时保存";
+        button.title = "下载文件会定期清理，请及时保存";
+        break;
+      case "cancelled":
+        button.textContent = "重新下载";
+        status.textContent = ERROR_MESSAGES.cancelled;
         break;
       case "failed":
         button.textContent = "重试下载";
@@ -176,9 +193,26 @@ export function createIpaDownloadControl(bundleId: string): HTMLElement {
       triggerSave(state.fileUrl);
       return;
     }
-    if (!state || state.status === "failed") {
+    if (!state || state.status === "failed" || state.status === "cancelled") {
       void begin(bundleId, button, render);
     }
+  });
+
+  cancel.addEventListener("click", () => {
+    const state = states.get(bundleId);
+    if (!state || (state.status !== "queued" && state.status !== "running") || !state.jobId) return;
+    cancel.disabled = true;
+    status.textContent = "正在取消…";
+    void (async () => {
+      try {
+        applyJob(bundleId, await cancelIpaDownload(state.jobId));
+        render();
+      } catch {
+        status.textContent = "取消失败，请重试";
+      } finally {
+        cancel.disabled = false;
+      }
+    })();
   });
 
   form.addEventListener("submit", (event) => {
@@ -213,7 +247,7 @@ export function createIpaDownloadControl(bundleId: string): HTMLElement {
     poll(bundleId, button, render);
   }
 
-  wrapper.append(button, form, status);
+  wrapper.append(button, cancel, form, status);
   return wrapper;
 }
 

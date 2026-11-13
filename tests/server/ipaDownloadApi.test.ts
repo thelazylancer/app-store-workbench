@@ -49,6 +49,32 @@ describe("IPA download API", () => {
     expect((await request(app).get("/api/ipa-download/abc")).status).toBe(503);
     expect((await request(app).get("/api/ipa-download/abc/file")).status).toBe(503);
     expect((await request(app).post("/api/ipa-download/abc/auth-code").send({ code: "123456" })).status).toBe(503);
+    expect((await request(app).delete("/api/ipa-download/abc")).status).toBe(503);
+  });
+
+  it("cancels active jobs and rejects finished or unknown jobs", async () => {
+    const dir = await tempDir();
+    const runner: DownloadRunner = (bundleId, outPath, _onOutput, signal) => {
+      if (bundleId === "com.example.slow") {
+        return new Promise((_resolve, reject) => {
+          signal.addEventListener("abort", () => reject(new Error("aborted")));
+        });
+      }
+      return writeFile(outPath, bundleId).then(() => ({ exitCode: 0, output: "success=true" }));
+    };
+    const manager = createIpaDownloadManager({ ipatoolBin: "ipatool", downloadsDir: dir, runner });
+    const app = buildApp(manager);
+
+    const slow = await request(app).post("/api/ipa-download").send({ bundleId: "com.example.slow" });
+    await vi.waitFor(() => expect(manager.getJob(slow.body.id)?.status).toBe("running"));
+    const cancelled = await request(app).delete(`/api/ipa-download/${slow.body.id}`);
+    expect(cancelled.status).toBe(202);
+    expect(cancelled.body).toMatchObject({ status: "cancelled", errorCode: "cancelled" });
+
+    const done = await request(app).post("/api/ipa-download").send({ bundleId: "com.example.done" });
+    await vi.waitFor(() => expect(manager.getJob(done.body.id)?.status).toBe("done"));
+    expect((await request(app).delete(`/api/ipa-download/${done.body.id}`)).status).toBe(409);
+    expect((await request(app).delete("/api/ipa-download/unknown")).status).toBe(404);
   });
 
   it("accepts a 6-digit verification code only for jobs that are waiting for one", async () => {

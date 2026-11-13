@@ -83,6 +83,38 @@ describe("IPA download control", () => {
     expect(fetchMock).toHaveBeenNthCalledWith(1, "/api/ipa-download", expect.objectContaining({ method: "POST" }));
   });
 
+  it("cancels a running download and offers a retry", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(job()), { status: 202 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(job({ status: "running", progress: 12 }))))
+      .mockResolvedValueOnce(new Response(JSON.stringify(job({
+        status: "cancelled",
+        errorCode: "cancelled",
+      }))));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const control = createIpaDownloadControl("com.example.app");
+    document.body.replaceChildren(control);
+    const button = control.querySelector<HTMLButtonElement>('[data-role="ipa-download"]')!;
+    const cancel = control.querySelector<HTMLButtonElement>('[data-role="ipa-download-cancel"]')!;
+    const status = control.querySelector(".ipa-download-status")!;
+    expect(cancel.hidden).toBe(true);
+
+    button.click();
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(button.textContent).toContain("12%");
+    expect(cancel.hidden).toBe(false);
+
+    cancel.click();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchMock).toHaveBeenNthCalledWith(3, "/api/ipa-download/job-1", expect.objectContaining({
+      method: "DELETE",
+    }));
+    expect(button.textContent).toBe("重新下载");
+    expect(status.textContent).toContain("已取消");
+    expect(cancel.hidden).toBe(true);
+  });
+
   it("explains a long preparation phase after 90 seconds", async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify(job()), { status: 202 }))

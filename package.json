@@ -8,13 +8,12 @@
     "dev": "concurrently \"npm:dev:server\" \"npm:dev:web\"",
     "build": "vite build",
     "test": "vitest run",
+    "build:ipatool": "bash scripts/build-ipatool.sh",
     "fetch:app-store": "tsx scripts/fetch-app-store-details.ts"
   },
   "dependencies": {
-    "app-store-scraper": "github:facundoolano/app-store-scraper#master",
     "express": "^5.2.1",
-    "gsap": "^3.15.0",
-    "playwright-core": "^1.61.1"
+    "gsap": "^3.15.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

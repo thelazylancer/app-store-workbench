@@ -1,14 +1,17 @@
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { mkdir, readdir, stat, unlink } from "node:fs/promises";
 import path from "node:path";
 import type { IpaDownloadErrorCode, IpaDownloadJob, IpaDownloadStatus } from "../../shared/types";
 
 const DEFAULT_TIMEOUT_MS = 60 * 60 * 1000;
 const DEFAULT_RETENTION_DAYS = 7;
+const DEFAULT_MAX_JOBS = 200;
 const STOREFRONT_RETRY_LIMIT = 1;
 const HOUR_MS = 60 * 60 * 1000;
 const PROGRESS_POLL_MS = 1000;
+const PERSISTED_JOBS_FILE = ".jobs.json";
 
 export type DownloadRunner = (
   bundleId: string,
@@ -23,6 +26,7 @@ export type IpaDownloadManager = {
   getJob(id: string): IpaDownloadJob | null;
   getFilePath(id: string): string | null;
   submitAuthCode(id: string, code: string): IpaDownloadJob | null;
+  cancelJob(id: string): IpaDownloadJob | null;
   cleanupExpired(referenceTime?: number): Promise<string[]>;
 };
 
@@ -34,6 +38,8 @@ export type IpaDownloadManagerOptions = {
   proxyUrl?: string;
   runner?: DownloadRunner;
   now?: () => number;
+  persistJobs?: boolean;
+  maxJobs?: number;
 };
 
 type JobRecord = {
@@ -48,9 +54,28 @@ type JobRecord = {
   error: string | null;
   output: string;
   authCode: string | null;
+  cancelRequested: boolean;
   createdAt: number;
   updatedAt: number;
 };
+
+type PersistedJob = Omit<JobRecord, "output" | "authCode" | "cancelRequested">;
+
+function isTerminalStatus(status: IpaDownloadStatus): boolean {
+  return status === "done" || status === "failed" || status === "cancelled";
+}
+
+function isPersistedJob(value: unknown): value is PersistedJob {
+  if (typeof value !== "object" || value === null) return false;
+  const job = value as Record<string, unknown>;
+  return typeof job.id === "string" && job.id.length > 0
+    && typeof job.bundleId === "string" && job.bundleId.length > 0
+    && typeof job.fileName === "string" && job.fileName.length > 0
+    && typeof job.status === "string"
+    && ["queued", "running", "awaiting_auth_code", "done", "failed", "cancelled"].includes(job.status)
+    && typeof job.createdAt === "number" && Number.isFinite(job.createdAt)
+    && typeof job.updatedAt === "number" && Number.isFinite(job.updatedAt);
+}
 
 function createDefaultRunner(ipatoolBin: string, proxyUrl?: string): DownloadRunner {
   const proxy = proxyUrl?.trim();
@@ -111,6 +136,8 @@ function errorMessage(code: IpaDownloadErrorCode): string {
       return "App Store storefront resolution failed; retry the download";
     case "timeout":
       return "IPA download timed out";
+    case "cancelled":
+      return "IPA download cancelled";
     default:
       return "IPA download failed";
   }
@@ -129,15 +156,76 @@ export function createIpaDownloadManager(options: IpaDownloadManagerOptions): Ip
   const downloadsDir = options.downloadsDir;
   const retentionDays = options.retentionDays ?? DEFAULT_RETENTION_DAYS;
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const maxJobs = options.maxJobs ?? DEFAULT_MAX_JOBS;
+  const persistJobs = options.persistJobs ?? false;
+  const persistPath = path.join(downloadsDir, PERSISTED_JOBS_FILE);
   const runner = options.runner ?? createDefaultRunner(options.ipatoolBin, options.proxyUrl);
   const now = options.now ?? Date.now;
 
   const jobs = new Map<string, JobRecord>();
   const queue: string[] = [];
+  const controllers = new Map<string, AbortController>();
   let activeId: string | null = null;
+
+  function pruneJobs(cutoff = now() - retentionDays * 24 * HOUR_MS) {
+    for (const [id, record] of jobs) {
+      if (isTerminalStatus(record.status) && record.updatedAt < cutoff) {
+        jobs.delete(id);
+      }
+    }
+
+    const removable = [...jobs.values()]
+      .filter((record) => isTerminalStatus(record.status))
+      .sort((left, right) => left.updatedAt - right.updatedAt);
+    while (jobs.size > maxJobs && removable.length > 0) {
+      jobs.delete(removable.shift()!.id);
+    }
+  }
+
+  function persistJobsToDisk() {
+    if (!persistJobs) return;
+    try {
+      mkdirSync(downloadsDir, { recursive: true });
+      const payload: PersistedJob[] = [...jobs.values()].map(
+        ({ output: _output, authCode: _authCode, cancelRequested: _cancelRequested, ...record }) => record,
+      );
+      const temporaryPath = `${persistPath}.tmp`;
+      writeFileSync(temporaryPath, JSON.stringify(payload), "utf8");
+      renameSync(temporaryPath, persistPath);
+    } catch {
+      // Persistence is best effort; an unwritable directory must not break downloads.
+    }
+  }
+
+  function loadPersistedJobs() {
+    if (!persistJobs) return;
+    try {
+      const payload: unknown = JSON.parse(readFileSync(persistPath, "utf8"));
+      if (!Array.isArray(payload)) return;
+      for (const item of payload) {
+        if (!isPersistedJob(item) || jobs.has(item.id)) continue;
+        const interrupted = !isTerminalStatus(item.status);
+        jobs.set(item.id, {
+          ...item,
+          status: interrupted ? "failed" : item.status,
+          progress: interrupted ? null : item.progress,
+          bytesDownloaded: interrupted ? null : item.bytesDownloaded,
+          errorCode: interrupted ? "unknown" : item.errorCode,
+          error: interrupted ? "Server restarted before the download finished" : item.error,
+          output: "",
+          authCode: null,
+          cancelRequested: false,
+        });
+      }
+      pruneJobs();
+    } catch {
+      // A missing or malformed jobs file simply starts with an empty history.
+    }
+  }
 
   function toView(record: JobRecord): IpaDownloadJob {
     const active = activeId !== null && activeId !== record.id ? jobs.get(activeId) : undefined;
+    const activeRunning = active?.status === "running";
     const queuedIndex = record.status === "queued" ? queue.indexOf(record.id) : -1;
     return {
       id: record.id,
@@ -145,7 +233,7 @@ export function createIpaDownloadManager(options: IpaDownloadManagerOptions): Ip
       status: record.status,
       progress: record.progress,
       bytesDownloaded: record.bytesDownloaded,
-      queuePosition: queuedIndex >= 0 ? queuedIndex + (activeId !== null ? 1 : 0) : null,
+      queuePosition: queuedIndex >= 0 ? queuedIndex + (activeRunning ? 1 : 0) : null,
       activeJob: active && active.status === "running"
         ? { bundleId: active.bundleId, status: active.status, progress: active.progress }
         : null,
@@ -159,10 +247,13 @@ export function createIpaDownloadManager(options: IpaDownloadManagerOptions): Ip
     };
   }
 
-  async function attemptDownload(record: JobRecord): Promise<"done" | IpaDownloadErrorCode> {
+  async function attemptDownload(
+    record: JobRecord,
+  ): Promise<"done" | "cancelled" | IpaDownloadErrorCode> {
     const outPath = path.join(downloadsDir, record.fileName);
     const tmpPath = `${outPath}.tmp`;
     const controller = new AbortController();
+    controllers.set(record.id, controller);
     let timedOut = false;
     const timer = setTimeout(() => {
       timedOut = true;
@@ -178,7 +269,7 @@ export function createIpaDownloadManager(options: IpaDownloadManagerOptions): Ip
     }, PROGRESS_POLL_MS);
     progressTimer.unref?.();
 
-    let outcome: "done" | IpaDownloadErrorCode;
+    let outcome: "done" | "cancelled" | IpaDownloadErrorCode;
     try {
       await mkdir(downloadsDir, { recursive: true });
       record.output = "";
@@ -196,17 +287,24 @@ export function createIpaDownloadManager(options: IpaDownloadManagerOptions): Ip
         record.authCode ?? undefined,
       );
       if (result.output) record.output = result.output;
-      const size = timedOut ? null : await fileSize(outPath);
-      if (!timedOut && result.exitCode === 0 && !/success=false/i.test(record.output) && size !== null) {
-        record.sizeBytes = size;
-        record.bytesDownloaded = size;
-        outcome = "done";
+      if (record.cancelRequested) {
+        outcome = "cancelled";
       } else {
-        outcome = timedOut ? "timeout" : classifyOutput(record.output);
+        const size = timedOut ? null : await fileSize(outPath);
+        if (!timedOut && result.exitCode === 0 && !/success=false/i.test(record.output) && size !== null) {
+          record.sizeBytes = size;
+          record.bytesDownloaded = size;
+          outcome = "done";
+        } else {
+          outcome = timedOut ? "timeout" : classifyOutput(record.output);
+        }
       }
     } catch {
-      outcome = timedOut ? "timeout" : classifyOutput(record.output);
+      outcome = record.cancelRequested
+        ? "cancelled"
+        : timedOut ? "timeout" : classifyOutput(record.output);
     } finally {
+      controllers.delete(record.id);
       clearTimeout(timer);
       clearInterval(progressTimer);
     }
@@ -214,18 +312,45 @@ export function createIpaDownloadManager(options: IpaDownloadManagerOptions): Ip
       record.bytesDownloaded = null;
       await unlink(tmpPath).catch(() => {});
     }
+    if (outcome === "cancelled") {
+      await unlink(outPath).catch(() => {});
+      record.sizeBytes = null;
+    }
     return outcome;
   }
 
   async function execute(record: JobRecord) {
+    if (record.status === "cancelled" || record.cancelRequested) {
+      record.status = "cancelled";
+      record.progress = null;
+      record.bytesDownloaded = null;
+      record.errorCode = "cancelled";
+      record.error = errorMessage("cancelled");
+      record.updatedAt = now();
+      persistJobsToDisk();
+      activeId = null;
+      pump();
+      return;
+    }
+
     record.status = "running";
     record.progress = null;
     record.errorCode = null;
     record.error = null;
+    record.cancelRequested = false;
     record.updatedAt = now();
 
     for (let attempt = 0; attempt <= STOREFRONT_RETRY_LIMIT; attempt++) {
       const outcome = await attemptDownload(record);
+      if (record.cancelRequested || outcome === "cancelled") {
+        record.status = "cancelled";
+        record.progress = null;
+        record.bytesDownloaded = null;
+        record.errorCode = "cancelled";
+        record.error = errorMessage("cancelled");
+        record.updatedAt = now();
+        break;
+      }
       if (outcome === "storefront_unavailable" && attempt < STOREFRONT_RETRY_LIMIT) {
         // Retry the transient storefront lookup; keep any submitted auth code for the retry.
         continue;
@@ -237,7 +362,6 @@ export function createIpaDownloadManager(options: IpaDownloadManagerOptions): Ip
         record.updatedAt = now();
         break;
       }
-      if (outcome === "storefront_unavailable" && attempt < STOREFRONT_RETRY_LIMIT) continue;
 
       if (outcome === "purchase_auth_required" || outcome === "auth_code_invalid") {
         // Park the job until the user supplies a fresh 2FA code instead of failing it.
@@ -258,6 +382,8 @@ export function createIpaDownloadManager(options: IpaDownloadManagerOptions): Ip
       break;
     }
 
+    pruneJobs();
+    persistJobsToDisk();
     activeId = null;
     pump();
   }
@@ -275,6 +401,8 @@ export function createIpaDownloadManager(options: IpaDownloadManagerOptions): Ip
     void execute(record);
   }
 
+  loadPersistedJobs();
+
   return {
     createJob(bundleId: string) {
       const id = randomUUID();
@@ -285,17 +413,21 @@ export function createIpaDownloadManager(options: IpaDownloadManagerOptions): Ip
         status: "queued",
         progress: null,
         bytesDownloaded: null,
-        fileName: `${bundleId}-${id.slice(0, 8)}.ipa`,
+        // Keep the on-disk name below common 255-byte filename limits.
+        fileName: `${bundleId.slice(0, 200)}-${id.slice(0, 8)}.ipa`,
         sizeBytes: null,
         errorCode: null,
         error: null,
         output: "",
         authCode: null,
+        cancelRequested: false,
         createdAt: timestamp,
         updatedAt: timestamp,
       };
       jobs.set(id, record);
       queue.push(id);
+      pruneJobs();
+      persistJobsToDisk();
       queueMicrotask(pump);
       return toView(record);
     },
@@ -317,9 +449,33 @@ export function createIpaDownloadManager(options: IpaDownloadManagerOptions): Ip
       record.status = "queued";
       record.errorCode = null;
       record.error = null;
+      record.cancelRequested = false;
       record.updatedAt = now();
       queue.unshift(id);
+      persistJobsToDisk();
       queueMicrotask(pump);
+      return toView(record);
+    },
+
+    cancelJob(id: string) {
+      const record = jobs.get(id);
+      if (!record || isTerminalStatus(record.status)) return null;
+
+      if (record.status === "queued") {
+        const index = queue.indexOf(id);
+        if (index >= 0) queue.splice(index, 1);
+      }
+
+      record.cancelRequested = true;
+      record.status = "cancelled";
+      record.progress = null;
+      record.bytesDownloaded = null;
+      record.errorCode = "cancelled";
+      record.error = errorMessage("cancelled");
+      record.updatedAt = now();
+      controllers.get(id)?.abort();
+      pruneJobs();
+      persistJobsToDisk();
       return toView(record);
     },
 
@@ -346,6 +502,8 @@ export function createIpaDownloadManager(options: IpaDownloadManagerOptions): Ip
       } catch {
         // A missing or unreadable downloads directory leaves nothing to clean.
       }
+      pruneJobs(cutoff);
+      persistJobsToDisk();
       return removed;
     },
   };
