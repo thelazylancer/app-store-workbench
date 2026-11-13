@@ -1,0 +1,42 @@
+--- a/cmd/download.go
++++ b/cmd/download.go
+@@ -25,6 +25,7 @@
+ 		bundleID          string
+ 		externalVersionID string
+ 		platformValue     string
++		authCode          string
+ 	)
+ 
+ 	cmd := &cobra.Command{
+@@ -47,6 +48,23 @@
+ 			}
+ 
+ 			acc := infoResult.Account
++
++			// A supplied 2FA code refreshes the stored password token up front,
++			// so purchases that need a fresh session can proceed without an
++			// interactive retry.
++			if authCode != "" {
++				loginResult, err := store.Login(appstore.LoginInput{
++					Email:    acc.Email,
++					Password: acc.Password,
++					AuthCode: authCode,
++				})
++				if err != nil {
++					return err
++				}
++
++				acc = loginResult.Account
++			}
++
+ 			var lastErr error
+ 			purchaseRequired := false
+ 			purchased := false
+@@ -173,6 +191,7 @@
+ 	cmd.Flags().StringVar(&externalVersionID, "external-version-id", "", "External version identifier of the target app (defaults to latest version when not specified)")
+ 	cmd.Flags().StringVar(&platformValue, "platform", "", "Platform to download for: iphone (iOS), ipad (iPadOS), appletv (tvOS), watchos, visionos, or macos")
+ 	cmd.Flags().BoolVar(&acquireLicense, "purchase", false, "Obtain a license for the app if needed")
++	cmd.Flags().StringVar(&authCode, "auth-code", "", "6-digit 2FA code used to refresh the account session before downloading")
+ 
+ 	return cmd
+ }

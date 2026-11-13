@@ -119,3 +119,37 @@ export type SearchAppsResponse = {
   country: StoreCountry;
   results: SearchResult[];
 };
+
+export type IpaDownloadStatus = "queued" | "running" | "awaiting_auth_code" | "done" | "failed";
+
+export type IpaDownloadErrorCode =
+  | "terms_required"
+  | "purchase_auth_required"
+  | "auth_code_invalid"
+  | "not_authenticated"
+  | "storefront_unavailable"
+  | "timeout"
+  | "unknown";
+
+export type IpaDownloadActiveJob = {
+  bundleId: string;
+  status: IpaDownloadStatus;
+  progress: number | null;
+};
+
+export type IpaDownloadJob = {
+  id: string;
+  bundleId: string;
+  status: IpaDownloadStatus;
+  progress: number | null;
+  bytesDownloaded: number | null;
+  queuePosition: number | null;
+  activeJob: IpaDownloadActiveJob | null;
+  fileName: string | null;
+  sizeBytes: number | null;
+  errorCode: IpaDownloadErrorCode | null;
+  error: string | null;
+  fileUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+};

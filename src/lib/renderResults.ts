@@ -1,4 +1,5 @@
 import { getAppDetails } from "./api";
+import { createIpaDownloadControl } from "./ipaDownloadButton";
 import type {
   AlternateApp,
   AppVersionHistoryItem,
@@ -852,6 +853,9 @@ function createInspector(
     back.textContent = "返回候选";
     back.addEventListener("click", () => onViewChange("candidates", candidateKey(result.app!)));
     actions.append(back);
+    if (result.app.bundleId) {
+      actions.append(createIpaDownloadControl(result.app.bundleId));
+    }
     if (inspection) {
       const retry = document.createElement("button");
       retry.type = "button";
@@ -1333,7 +1337,7 @@ export function renderResults(
     const focusedFilter = active instanceof HTMLInputElement && active === candidateFilters[selectedIndex] && !active.closest("[hidden]")
       ? { control: active, start: active.selectionStart, end: active.selectionEnd, direction: active.selectionDirection } : null;
     const focused = active?.closest<HTMLButtonElement>('[data-role="candidate-inspect"]')?.dataset.candidateKey;
-    const focusedRole = active?.matches('[role="tab"], .candidate-pagination button, [data-role="detail-retry"], [data-role="back-to-candidates"], [data-role="candidate-filter-clear"]') ? active.dataset.role : null;
+    const focusedRole = active?.matches('[role="tab"], .candidate-pagination button, [data-role="detail-retry"], [data-role="back-to-candidates"], [data-role="candidate-filter-clear"], [data-role="ipa-download"]') ? active.dataset.role : null;
     const focusedControl = active?.matches(".identifier-copy, .screenshot-trigger") ? active : null;
     const section = focusedControl?.closest<HTMLElement>(".info-list, .candidate-card, .screenshots-section");
     const focusIdentity = section && focusedControl ? {

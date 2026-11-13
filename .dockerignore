@@ -14,3 +14,4 @@ tests
 .env
 .env.*
 .DS_Store
+downloads

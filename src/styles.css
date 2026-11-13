@@ -907,6 +907,35 @@ a:focus-visible {
   box-shadow: none;
 }
 
+.ipa-download-control {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ipa-download-status {
+  font-size: 0.78rem;
+  color: #b42318;
+}
+
+.ipa-auth-form {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ipa-auth-form input {
+  width: 9ch;
+  padding: 8px 12px;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+  border: 1px solid #d7e1ed;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0f172a;
+}
+
 .viewing-label {
   margin: 0;
   font-size: 0.82rem;

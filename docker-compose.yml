@@ -4,8 +4,22 @@ services:
       context: .
       target: app
     restart: unless-stopped
+    user: "1000:1000"
     environment:
       NODE_ENV: production
+      HOME: /home/app
+      IPATOOL_BIN: /usr/local/bin/ipatool
+      DOWNLOADS_DIR: /app/downloads
+      IPA_RETENTION_DAYS: ${IPA_RETENTION_DAYS:-7}
+      IPA_DOWNLOAD_TIMEOUT_MINUTES: ${IPA_DOWNLOAD_TIMEOUT_MINUTES:-60}
+      IPATOOL_KEYCHAIN_PASSPHRASE: ${IPATOOL_KEYCHAIN_PASSPHRASE:-}
+      IPATOOL_PROXY: ${IPATOOL_PROXY:-}
+    volumes:
+      - ${IPA_DATA_DIR:-/srv/data/app-store-workbench}/ipatool:/home/app/.ipatool
+      - ${IPA_DATA_DIR:-/srv/data/app-store-workbench}/ipa:/app/downloads
+    networks:
+      - default
+      - proxy
     expose:
       - "3001"
     healthcheck:
@@ -29,3 +43,8 @@ services:
         condition: service_healthy
     ports:
       - "${WEB_PORT:-80}:80"
+
+networks:
+  proxy:
+    external: true
+    name: ${IPATOOL_PROXY_NETWORK:-network-proxy_default}

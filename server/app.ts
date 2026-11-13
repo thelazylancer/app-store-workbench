@@ -1,5 +1,7 @@
 import express from "express";
+import { stat } from "node:fs/promises";
 import { classifyCandidates } from "./lib/matchResults";
+import type { IpaDownloadManager } from "./lib/ipaDownload";
 import { STORE_COUNTRIES } from "../shared/types";
 import type {
   AppSearchQuery,
@@ -18,7 +20,10 @@ type AppDependencies = {
   lookupAppStore: (query: string, country: StoreCountry) => Promise<LookupCandidate[]>;
   fetchProductPageDetails: (appStoreUrl: string) => Promise<ProductPageDetails>;
   buildIapHints: (items: ProductPageDetails["iapItems"] | null) => Promise<IapHints>;
+  ipaDownload?: IpaDownloadManager;
 };
+
+const BUNDLE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,254}$/;
 
 function isSearchAppsRequest(value: unknown): value is SearchAppsRequest {
   if (typeof value !== "object" || value === null) return false;
@@ -134,6 +139,67 @@ export function createApp(deps: AppDependencies) {
 
     const body: SearchAppsResponse = { country, results };
     return res.json(body);
+  });
+
+  app.post("/api/ipa-download", (req, res) => {
+    if (!deps.ipaDownload) {
+      return res.status(503).json({ message: "IPA download is unavailable" });
+    }
+    const bundleId = typeof req.body?.bundleId === "string" ? req.body.bundleId.trim() : "";
+    if (!BUNDLE_ID_PATTERN.test(bundleId)) {
+      return res.status(400).json({ message: "A valid Bundle ID is required" });
+    }
+    return res.status(202).json(deps.ipaDownload.createJob(bundleId));
+  });
+
+  app.get("/api/ipa-download/:id", (req, res) => {
+    if (!deps.ipaDownload) {
+      return res.status(503).json({ message: "IPA download is unavailable" });
+    }
+    const job = deps.ipaDownload.getJob(req.params.id);
+    if (!job) {
+      return res.status(404).json({ message: "IPA download job not found" });
+    }
+    return res.json(job);
+  });
+
+  app.post("/api/ipa-download/:id/auth-code", (req, res) => {
+    if (!deps.ipaDownload) {
+      return res.status(503).json({ message: "IPA download is unavailable" });
+    }
+    const code = typeof req.body?.code === "string" ? req.body.code.trim() : "";
+    if (!/^\d{6}$/.test(code)) {
+      return res.status(400).json({ message: "A 6-digit verification code is required" });
+    }
+    const job = deps.ipaDownload.getJob(req.params.id);
+    if (!job) {
+      return res.status(404).json({ message: "IPA download job not found" });
+    }
+    if (job.status !== "awaiting_auth_code") {
+      return res.status(409).json({ message: "This IPA download is not waiting for a verification code" });
+    }
+    const updated = deps.ipaDownload.submitAuthCode(req.params.id, code);
+    if (!updated) {
+      return res.status(409).json({ message: "This IPA download is not waiting for a verification code" });
+    }
+    return res.status(202).json(updated);
+  });
+
+  app.get("/api/ipa-download/:id/file", async (req, res) => {
+    if (!deps.ipaDownload) {
+      return res.status(503).json({ message: "IPA download is unavailable" });
+    }
+    const job = deps.ipaDownload.getJob(req.params.id);
+    const filePath = job?.status === "done" ? deps.ipaDownload.getFilePath(req.params.id) : null;
+    if (!job || !filePath) {
+      return res.status(404).json({ message: "IPA file is not ready" });
+    }
+    try {
+      await stat(filePath);
+    } catch {
+      return res.status(404).json({ message: "IPA file is not available" });
+    }
+    return res.download(filePath, `${job.bundleId}.ipa`);
   });
 
   return app;
