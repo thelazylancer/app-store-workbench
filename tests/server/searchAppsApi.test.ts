@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../../server/app";
 import { lookupAppById, lookupAppStore } from "../../server/lib/appleLookup";
 import { buildIapHints } from "../../server/lib/iapHints";
+import { fetchProductPageDetails } from "../../server/lib/productPage";
 
 describe("GET /api/app-details/:appleId", () => {
   afterEach(() => vi.restoreAllMocks());
@@ -22,7 +23,18 @@ describe("GET /api/app-details/:appleId", () => {
     expect(page).not.toHaveBeenCalled();
   });
 
-  it("preserves the candidate's own lookup facts when page enrichment fails", async () => {
+  it.each(["transport failure", "malformed IAP catalog"])("preserves lookup facts and unknown IAP after real HTTP client %s", async (failure) => {
+    const fetchApple = vi.spyOn(globalThis, "fetch");
+    if (failure === "transport failure") {
+      fetchApple.mockRejectedValue(new Error("Connection unavailable"));
+    } else {
+      const page = new Response(JSON.stringify({
+        storePlatformData: { "product-dv": { results: { "456": { id: "456", hasInAppPurchases: true } } } },
+        pageData: { componentName: "software_page", id: "456", addOns: [{ name: "Unreadable price" }] },
+      }), { headers: { "Content-Type": "application/json" } });
+      Object.defineProperty(page, "url", { value: "https://apps.apple.com/us/app/id456?l=en" });
+      fetchApple.mockResolvedValue(page);
+    }
     const app = createApp({
       lookupAppStore,
       lookupAppById: async () => ({
@@ -30,7 +42,7 @@ describe("GET /api/app-details/:appleId", () => {
         iconUrl: "", description: "Own description", screenshotUrls: ["Own screenshot"],
         versionHistory: [{ version: "Own lookup", releasedAt: null, notes: "Own history" }],
       }),
-      fetchProductPageDetails: async () => { throw new Error("Page failed"); },
+      fetchProductPageDetails,
       buildIapHints,
     });
     const response = await request(app).get("/api/app-details/456");
@@ -39,7 +51,8 @@ describe("GET /api/app-details/:appleId", () => {
       appleId: 456, description: "Own description", screenshotUrls: ["Own screenshot"], iapItems: [],
       versionHistory: [{ version: "Own lookup", releasedAt: null, notes: "Own history" }],
     });
-    expect(response.body.iapHints).toMatchObject({ "4.99": "unavailable", "9.99": "unavailable" });
+    expect(response.body.iapHints).toEqual({ "4.99": "unavailable", "9.99": "unavailable", source: "best_effort" });
+    expect(fetchApple).toHaveBeenCalledWith("https://apps.apple.com/us/app/id456?l=en", expect.objectContaining({ signal: expect.any(AbortSignal) }));
   });
 
   it("returns a candidate's own localized detail without inheriting primary facts", async () => {

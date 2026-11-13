@@ -1,9 +1,4 @@
-import { JSDOM } from "jsdom";
-import { existsSync, readdirSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
-import { chromium, type Browser } from "playwright-core";
-import type { AppVersionHistoryItem, IapItem } from "../../shared/types";
+import type { AppVersionHistoryItem, IapItem, StoreCountry } from "../../shared/types";
 
 export type ProductPageDetails = {
   screenshotUrls: string[];
@@ -11,208 +6,147 @@ export type ProductPageDetails = {
   versionHistory: AppVersionHistoryItem[];
 };
 
-let browserPromise: Promise<Browser> | null = null;
-
-function dedupe<T>(items: T[]) {
-  return [...new Set(items)];
-}
-
-function extractFirstSrcsetUrl(srcset: string) {
-  return srcset.split(",")[0]?.trim().split(" ")[0] ?? "";
-}
+const STOREFRONTS: Record<StoreCountry, number> = {
+  us: 143441,
+  cn: 143465,
+  hk: 143463,
+  tw: 143470,
+  jp: 143462,
+  sg: 143464,
+  gb: 143444,
+  au: 143460,
+};
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function extractJsonProductData(document: Document): {
-  iapItems: IapItem[];
-  versionHistory: AppVersionHistoryItem[];
-} {
-  const rawPayload = document.body?.textContent?.trim();
+function parseProductUrl(value: string) {
+  const url = new URL(value);
+  const match = url.pathname.match(/^\/([a-z]{2})\/app\/(?:[^/]+\/)?id(\d+)\/?$/i);
+  const country = match?.[1]?.toLowerCase() as StoreCountry;
+  const appleId = Number(match?.[2]);
 
-  if (!rawPayload) {
-    return { iapItems: [], versionHistory: [] };
+  if (url.protocol !== "https:" || url.hostname !== "apps.apple.com"
+    || url.username || url.password || url.port || !Object.hasOwn(STOREFRONTS, country)
+    || !Number.isSafeInteger(appleId) || appleId <= 0) {
+    throw new Error("Invalid App Store product URL");
   }
 
-  let payload: unknown;
+  return { country, appleId };
+}
 
+function materializeMediaUrl(item: unknown): string {
+  if (!isRecord(item) || typeof item.url !== "string") return "";
+  let url = item.url.trim();
+
+  if (url.includes("{")) {
+    const { width, height } = item;
+    if (typeof width !== "number" || typeof height !== "number"
+      || !Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width <= 0 || height <= 0) {
+      return "";
+    }
+    url = url.replaceAll("{w}", String(width)).replaceAll("{h}", String(height))
+      .replaceAll("{c}", "bb").replaceAll("{f}", "jpg");
+  }
+
+  if (/[{}]|%7[bd]/i.test(url)) return "";
   try {
-    payload = JSON.parse(rawPayload);
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" || parsed.protocol === "http:" ? parsed.toString() : "";
   } catch {
-    return { iapItems: [], versionHistory: [] };
+    return "";
   }
-
-  const pageData = isRecord(payload) ? payload.pageData : null;
-  const addOns = isRecord(pageData) && Array.isArray(pageData.addOns)
-    ? pageData.addOns
-    : [];
-  const versionEntries = isRecord(pageData) && Array.isArray(pageData.versionHistory)
-    ? pageData.versionHistory
-    : [];
-
-  return {
-    iapItems: addOns.flatMap((addOn) => {
-      if (
-        !isRecord(addOn) ||
-        typeof addOn.name !== "string" ||
-        typeof addOn.price !== "string"
-      ) {
-        return [];
-      }
-
-      const name = addOn.name.trim();
-      const price = addOn.price.trim();
-
-      return name && price ? [{ name, price }] : [];
-    }),
-    versionHistory: versionEntries.flatMap((entry) => {
-      if (!isRecord(entry) || typeof entry.versionString !== "string") {
-        return [];
-      }
-
-      const version = entry.versionString.trim();
-
-      if (!version) {
-        return [];
-      }
-
-      return [
-        {
-          version,
-          releasedAt: typeof entry.releaseDate === "string" ? entry.releaseDate : null,
-          notes: typeof entry.releaseNotes === "string" ? entry.releaseNotes.trim() : "",
-        },
-      ];
-    }),
-  };
-}
-
-function resolveMacChromiumExecutable() {
-  const browsersRoot = join(homedir(), "Library", "Caches", "ms-playwright");
-
-  if (!existsSync(browsersRoot)) {
-    return null;
-  }
-
-  for (const entry of readdirSync(browsersRoot)) {
-    if (!entry.startsWith("chromium-")) {
-      continue;
-    }
-
-    const candidate = join(
-      browsersRoot,
-      entry,
-      "chrome-mac",
-      "Chromium.app",
-      "Contents",
-      "MacOS",
-      "Chromium",
-    );
-
-    if (existsSync(candidate)) {
-      return candidate;
-    }
-  }
-
-  return null;
-}
-
-function resolveChromiumExecutable() {
-  const fromEnv = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
-
-  if (fromEnv && existsSync(fromEnv)) {
-    return fromEnv;
-  }
-
-  const macExecutable = resolveMacChromiumExecutable();
-
-  if (macExecutable) {
-    return macExecutable;
-  }
-
-  throw new Error(
-    "Chromium executable not found. Set PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH.",
-  );
-}
-
-async function getBrowser() {
-  if (!browserPromise) {
-    browserPromise = chromium.launch({
-      headless: true,
-      executablePath: resolveChromiumExecutable(),
-    });
-  }
-
-  return browserPromise;
-}
-
-export function parseProductPageHtml(html: string): ProductPageDetails {
-  const dom = new JSDOM(html);
-  const document = dom.window.document;
-
-  const screenshotUrls = dedupe(
-    Array.from(document.querySelectorAll('picture source[type="image/jpeg"][sizes*="230px"]'))
-      .map((node) => node.getAttribute("srcset") ?? "")
-      .map(extractFirstSrcsetUrl)
-      .filter(Boolean),
-  );
-
-  const iapItems: IapItem[] = [];
-  const terms = Array.from(document.querySelectorAll("dt"));
-  const iapTerm = terms.find(
-    (node) => node.textContent?.trim().toLowerCase() === "in-app purchases",
-  );
-
-  const iapList = iapTerm?.nextElementSibling?.querySelectorAll("li .text-pair");
-
-  if (iapList) {
-    for (const pair of iapList) {
-      const spans = pair.querySelectorAll("span");
-      const name = spans[0]?.textContent?.trim() ?? "";
-      const price = spans[1]?.textContent?.trim() ?? "";
-
-      if (!name || !price) {
-        continue;
-      }
-
-      iapItems.push({ name, price });
-    }
-  }
-
-  const jsonProductData = extractJsonProductData(document);
-  const parsedIapItems = iapItems.length > 0 ? iapItems : jsonProductData.iapItems;
-
-  return {
-    screenshotUrls,
-    iapItems: parsedIapItems,
-    versionHistory: jsonProductData.versionHistory,
-  };
 }
 
 export async function fetchProductPageDetails(
   appStoreUrl: string,
 ): Promise<ProductPageDetails> {
-  const browser = await getBrowser();
-  const page = await browser.newPage({
-    locale: "en-US",
-    extraHTTPHeaders: {
+  const { country, appleId } = parseProductUrl(appStoreUrl);
+  const response = await fetch(appStoreUrl, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36",
+      "X-Apple-Store-Front": `${STOREFRONTS[country]},29`,
       "Accept-Language": "en-US,en;q=0.9",
     },
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!response.ok) {
+    throw new Error(`Product page unavailable: ${response.status}`);
+  }
+  const finalUrl = parseProductUrl(response.url);
+  if (finalUrl.country !== country || finalUrl.appleId !== appleId) {
+    throw new Error("Product page redirected to another app or storefront");
+  }
+  if (response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() !== "application/json") {
+    throw new Error("Product page did not return JSON");
+  }
+
+  const payload: unknown = await response.json();
+  const platform = isRecord(payload) && isRecord(payload.storePlatformData)
+    ? payload.storePlatformData["product-dv"] : null;
+  const results = isRecord(platform) && isRecord(platform.results) ? platform.results : null;
+  const product = results?.[String(appleId)];
+  const pageData = isRecord(payload) ? payload.pageData : null;
+  if (!isRecord(product) || Object.keys(product).length === 0
+    || !isRecord(pageData) || pageData.componentName !== "software_page") {
+    throw new Error("Product page payload is missing app details");
+  }
+  for (const id of [product.id, pageData.id]) {
+    if (id !== undefined && id !== appleId && id !== String(appleId)) {
+      throw new Error("Product page payload belongs to another app");
+    }
+  }
+  if (product.url !== undefined) {
+    const productUrl = typeof product.url === "string" ? parseProductUrl(product.url) : null;
+    if (productUrl?.country !== country || productUrl.appleId !== appleId) {
+      throw new Error("Product payload belongs to another app or storefront");
+    }
+  }
+  const metrics = pageData.metricsBase;
+  if (isRecord(metrics) && metrics.storeFront !== undefined
+    && metrics.storeFront !== STOREFRONTS[country] && metrics.storeFront !== String(STOREFRONTS[country])) {
+    throw new Error("Product page payload belongs to another storefront");
+  }
+
+  const hasIap = product.hasInAppPurchases;
+  const addOns = pageData.addOns;
+  if ((hasIap !== undefined && typeof hasIap !== "boolean")
+    || (addOns !== undefined && !Array.isArray(addOns))
+    || (hasIap === true && (!Array.isArray(addOns) || addOns.length === 0))) {
+    throw new Error("Product page in-app purchases are unavailable");
+  }
+  const iapItems = (addOns ?? []).map((addOn: unknown) => {
+    if (!isRecord(addOn) || typeof addOn.name !== "string" || typeof addOn.price !== "string"
+      || !addOn.name.trim() || !addOn.price.trim()) {
+      throw new Error("Product page in-app purchase is malformed");
+    }
+    return { name: addOn.name.trim(), price: addOn.price.trim() };
   });
 
-  try {
-    const response = await page.goto(appStoreUrl, {
-      waitUntil: "networkidle",
-      timeout: 120_000,
-    });
-    if (!response?.ok()) {
-      throw new Error(`Product page unavailable: ${response?.status() ?? "navigation failed"}`);
-    }
+  const galleries = isRecord(product.screenshotsByType)
+    ? Object.entries(product.screenshotsByType).flatMap(([type, items]) => {
+      if (!Array.isArray(items)) return [];
+      const urls = [...new Set(items.map(materializeMediaUrl).filter(Boolean))];
+      return urls.length > 0 ? [{ type, urls }] : [];
+    }) : [];
+  const gallery = galleries.find(({ type }) => type.toLowerCase().startsWith("iphone"))
+    ?? galleries.find(({ type }) => type.toLowerCase().startsWith("ipad"))
+    ?? galleries[0];
+  const versionEntries = Array.isArray(pageData.versionHistory) ? pageData.versionHistory : [];
 
-    const html = await page.content();
-    return parseProductPageHtml(html);
-  } finally {
-    await page.close();
-  }
+  return {
+    screenshotUrls: gallery?.urls ?? [],
+    iapItems,
+    versionHistory: versionEntries.flatMap((entry: unknown) => {
+      if (!isRecord(entry) || typeof entry.versionString !== "string" || !entry.versionString.trim()) {
+        return [];
+      }
+      return [{
+        version: entry.versionString.trim(),
+        releasedAt: typeof entry.releaseDate === "string" ? entry.releaseDate : null,
+        notes: typeof entry.releaseNotes === "string" ? entry.releaseNotes.trim() : "",
+      }];
+    }),
+  };
 }
