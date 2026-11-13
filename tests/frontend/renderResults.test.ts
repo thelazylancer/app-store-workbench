@@ -158,6 +158,208 @@ describe("renderResults", () => {
     expect(host.querySelector('[data-role="candidate-page-top"]')?.textContent).toBe("第 2 / 2 页");
   });
 
+  it.each([
+    { label: "full ID beyond the first page", value: "com.katis", indices: [16] },
+    { label: "partial ID", value: "m.kat", indices: [16] },
+    { label: "trimmed mixed case", value: "  COM.KaTiS  ", indices: [16] },
+    { label: "blank input including missing IDs", value: " \t ", indices: Array.from({ length: 10 }, (_, index) => index) },
+    { label: "literal wildcard characters", value: "com.*", indices: [] },
+    { label: "literal periods excluding missing IDs", value: ".", indices: Array.from({ length: 10 }, (_, index) => index + 1) },
+  ])("filters all returned Bundle IDs using $label while preserving provider ranks and the original result", ({ value, indices }) => {
+    const fetchDetails = vi.fn();
+    vi.stubGlobal("fetch", fetchDetails);
+    const host = document.createElement("div");
+    const candidates = Array.from({ length: 25 }, (_, index) => ({
+      ...alternateApp, appleId: 100 + index, name: "com.katis", developer: "com.katis",
+      bundleId: index === 0 ? undefined : index === 16 ? "com.katis" : index === 22 ? "comXkatis" : `com.provider.${index}`,
+    }));
+    const result: SearchResult = {
+      ...identityResult, candidates,
+      app: { ...candidates[16]!, category: null, versionHistory: [], iapItems: [] },
+    };
+    const original = JSON.stringify(result);
+    renderResults(host, [result]);
+    const row = host.querySelector(".result-row");
+    const verdict = host.querySelector(".query-context")!.textContent;
+    const originalDetails = host.querySelector(".info-list")!.textContent;
+    host.querySelector<HTMLButtonElement>('[data-role="candidates-next"]')!.click();
+    host.querySelector<HTMLButtonElement>('[data-role="candidates-next"]')!.click();
+    const input = host.querySelector<HTMLInputElement>('[data-role="candidate-bundle-filter"]')!;
+    expect(input.closest("label")?.textContent).toBe("Bundle ID");
+    input.value = value;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    const cards = Array.from(host.querySelectorAll<HTMLElement>(".candidate-card"));
+    expect(cards.map((card) => card.dataset.candidateKey)).toEqual(indices.map((index) => `id:${100 + index}`));
+    expect(cards.map((card) => card.querySelector(".candidate-card-rank")?.textContent))
+      .toEqual(indices.map((index) => `#${String(index + 1).padStart(2, "0")}`));
+    if (indices.length === 0) {
+      expect(host.querySelector('[data-role="candidate-count"]')?.textContent).toBe("筛选 0 / 25 个候选");
+      expect(host.querySelector(".alternate-list-items")?.textContent).toBe("本次返回的候选中没有匹配的 Bundle ID。");
+      expect(host.querySelectorAll(".candidate-pagination:not([hidden])")).toHaveLength(0);
+      expect(host.querySelector('[data-role="candidate-page"]')).toBeNull();
+      host.querySelector<HTMLButtonElement>('[data-role="candidate-filter-clear"]')!.click();
+      expect(input.value).toBe("");
+      expect(host.querySelectorAll(".candidate-card")).toHaveLength(10);
+      expect(host.querySelector('[data-role="candidate-count"]')?.textContent).toBe("共 25 个候选");
+      expect(host.querySelector('[data-role="candidate-page"]')?.textContent).toBe("第 1 / 3 页");
+    } else {
+      expect(host.querySelector('[data-role="candidate-page"]')?.textContent).toBe(`第 1 / ${indices.length === 1 ? 1 : 3} 页`);
+      expect(host.querySelector('[data-role="candidate-count"]')?.textContent).toBe(
+        value.trim() ? `筛选 ${value === "." ? 23 : 1} / 25 个候选` : "共 25 个候选",
+      );
+      if (indices.length === 1) expect(cards[0]!.classList.contains("is-current")).toBe(true);
+    }
+    expect(host.querySelector(".result-row")).toBe(row);
+    expect(host.querySelector(".query-context")!.textContent).toBe(verdict);
+    expect(host.querySelector(".info-list")!.textContent).toBe(originalDetails);
+    expect(host.querySelector('[data-role="candidates-tab"]')?.textContent).toBe("候选（25）");
+    expect(JSON.stringify(result)).toBe(original);
+    expect(fetchDetails).not.toHaveBeenCalled();
+  });
+
+  it("retains each query's filter and filtered page, resets on edits and clear, and restores the full list", () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const candidates = Array.from({ length: 27 }, (_, index) => ({
+      ...alternateApp, appleId: 100 + index, bundleId: `com.${index < 10 ? "other" : "keep"}.${index}`,
+    }));
+    const result: SearchResult = { ...identityResult, status: "no_match", app: null, candidates, iapHints: null };
+    try {
+      renderResults(host, [result, { ...result, query: "Second query" }]);
+      host.querySelector<HTMLButtonElement>('[data-role="candidates-next"]')!.click();
+      host.querySelector<HTMLButtonElement>('[data-role="candidates-next"]')!.click();
+      const first = host.querySelector<HTMLInputElement>('[data-role="candidate-bundle-filter"]')!;
+      first.value = "com.keep";
+      first.dispatchEvent(new Event("input", { bubbles: true }));
+      expect(host.querySelector('[data-role="candidate-page"]')?.textContent).toBe("第 1 / 2 页");
+      expect(host.querySelector('[data-role="candidate-count"]')?.textContent).toBe("筛选 17 / 27 个候选");
+      expect(host.querySelector(".candidate-card-rank")?.textContent).toBe("#11");
+      host.querySelector<HTMLButtonElement>('[data-role="candidates-next"]')!.click();
+      expect(host.querySelectorAll(".candidate-card")).toHaveLength(7);
+      expect(host.querySelector(".candidate-card-rank")?.textContent).toBe("#21");
+      expect(host.querySelector<HTMLInputElement>('[data-role="candidate-bundle-filter"]')).toBe(first);
+      host.querySelectorAll<HTMLButtonElement>(".result-row")[1]!.click();
+      const second = host.querySelector<HTMLInputElement>('[data-role="candidate-bundle-filter"]')!;
+      expect(second.value).toBe("");
+      expect(host.querySelector('[data-role="candidate-count"]')?.textContent).toBe("共 27 个候选");
+      second.value = "com.other";
+      second.dispatchEvent(new Event("input", { bubbles: true }));
+      host.querySelectorAll<HTMLButtonElement>(".result-row")[0]!.click();
+      expect(host.querySelector<HTMLInputElement>('[data-role="candidate-bundle-filter"]')).toBe(first);
+      expect(first.value).toBe("com.keep");
+      expect(host.querySelector('[data-role="candidate-page"]')?.textContent).toBe("第 2 / 2 页");
+      host.querySelector<HTMLButtonElement>('[data-role="candidate-filter-clear"]')!.click();
+      expect(first.value).toBe("");
+      expect(document.activeElement).toBe(first);
+      expect(host.querySelector('[data-role="candidate-page"]')?.textContent).toBe("第 1 / 3 页");
+      expect(host.querySelector('[data-role="candidate-count"]')?.textContent).toBe("共 27 个候选");
+      expect(host.querySelectorAll(".candidate-card")).toHaveLength(10);
+      expect(host.querySelector(".candidate-card-rank")?.textContent).toBe("#01");
+      host.querySelectorAll<HTMLButtonElement>(".result-row")[1]!.click();
+      expect(host.querySelector<HTMLInputElement>('[data-role="candidate-bundle-filter"]')).toBe(second);
+      expect(second.value).toBe("com.other");
+      expect(host.querySelector('[data-role="candidate-count"]')?.textContent).toBe("筛选 10 / 27 个候选");
+      renderResults(host, [result]);
+      expect(host.querySelector<HTMLInputElement>('[data-role="candidate-bundle-filter"]')!.value).toBe("");
+    } finally {
+      renderResults(host, [], false);
+      host.remove();
+    }
+  });
+
+  it("keeps the input, inspector, focus and caret stable throughout typing and composition edits", () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    try {
+      renderResults(host, [{ ...identityResult, candidates: Array.from({ length: 23 }, (_, index) => ({
+        ...alternateApp, appleId: 100 + index, bundleId: `com.candidate.${index}`,
+      })) }]);
+      const inspector = host.querySelector(".inspector");
+      const input = host.querySelector<HTMLInputElement>('[data-role="candidate-bundle-filter"]')!;
+      input.focus();
+      for (const character of "com.candidate.12") {
+        input.setRangeText(character, input.selectionStart!, input.selectionEnd!, "end");
+        input.dispatchEvent(new InputEvent("input", { data: character, bubbles: true }));
+        expect(host.querySelector('[data-role="candidate-bundle-filter"]')).toBe(input);
+        expect(host.querySelector(".inspector")).toBe(inspector);
+        expect(document.activeElement).toBe(input);
+        expect(input.selectionStart).toBe(input.value.length);
+        expect(input.selectionEnd).toBe(input.value.length);
+      }
+      input.setSelectionRange(4, 13, "backward");
+      input.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true }));
+      input.setRangeText("CANDIDATE", 4, 13, "end");
+      input.dispatchEvent(new InputEvent("input", { data: "CANDIDATE", isComposing: true, bubbles: true }));
+      input.dispatchEvent(new CompositionEvent("compositionend", { data: "CANDIDATE", bubbles: true }));
+      expect(host.querySelector('[data-role="candidate-bundle-filter"]')).toBe(input);
+      expect(document.activeElement).toBe(input);
+      expect(input.selectionStart).toBe(13);
+      expect(input.value).toBe("com.CANDIDATE.12");
+      expect(host.querySelector(".candidate-card-rank")?.textContent).toBe("#13");
+    } finally {
+      renderResults(host, [], false);
+      host.remove();
+    }
+  });
+
+  it.each(["filter", "outside", "hidden filter"])("preserves filtering and %s focus when inspected detail finishes after returning", async (focus) => {
+    let finish!: (response: Response) => void;
+    const fetchDetails = vi.fn((_url: string) => new Promise<Response>((resolve) => { finish = resolve; }));
+    vi.stubGlobal("fetch", fetchDetails);
+    const host = document.createElement("div");
+    const outside = document.createElement("button");
+    document.body.append(host, outside);
+    const candidates = Array.from({ length: 23 }, (_, index) => ({
+      ...alternateApp, appleId: 100 + index, bundleId: `com.candidate.${index}`,
+    }));
+    try {
+      renderResults(host, [{ ...identityResult, candidates }], true, { country: "jp" });
+      const rowText = host.querySelector(".result-row")?.textContent;
+      const input = host.querySelector<HTMLInputElement>('[data-role="candidate-bundle-filter"]')!;
+      input.value = "com.candidate.";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      host.querySelector<HTMLButtonElement>('[data-role="candidates-next"]')!.click();
+      host.querySelector<HTMLButtonElement>('[data-role="candidate-inspect"]')!.click();
+      expect(fetchDetails.mock.calls[0]?.[0]).toBe("/api/app-details/110?country=jp");
+      host.querySelector<HTMLButtonElement>('[data-role="back-to-candidates"]')!.click();
+      expect(host.querySelector<HTMLInputElement>('[data-role="candidate-bundle-filter"]')).toBe(input);
+      expect(input.value).toBe("com.candidate.");
+      expect(host.querySelector('[data-role="candidate-page"]')?.textContent).toBe("第 2 / 3 页");
+      input.focus();
+      input.value = "com.candidate.1";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.setSelectionRange(4, 11, "backward");
+      if (focus === "outside") outside.focus();
+      if (focus === "hidden filter") host.querySelector<HTMLButtonElement>('[data-role="detail-tab"]')!.click();
+      finish(new Response(JSON.stringify({
+        country: "jp", app: { ...candidates[10]!, category: null, versionHistory: [], iapItems: [] }, iapHints: null,
+      })));
+      await vi.waitFor(() => expect(host.querySelector('[data-role="detail-panel"]')?.getAttribute("data-state")).toBe("ready"));
+      expect(host.querySelector<HTMLInputElement>('[data-role="candidate-bundle-filter"]')).toBe(input);
+      expect(input.value).toBe("com.candidate.1");
+      expect(input.selectionStart).toBe(4);
+      expect(input.selectionEnd).toBe(11);
+      expect(input.selectionDirection).toBe("backward");
+      expect(document.activeElement).toBe(focus === "filter" ? input : focus === "outside" ? outside : host.querySelector('[data-role="detail-tab"]'));
+      expect(document.activeElement?.closest("[hidden]")).toBeNull();
+      expect(host.querySelector<HTMLElement>('[data-role="detail-panel"]')!.hidden).toBe(focus !== "hidden filter");
+      expect(host.querySelector('[data-role="candidate-page"]')?.textContent).toBe("第 1 / 2 页");
+      expect(host.querySelector('[data-role="candidate-count"]')?.textContent).toBe("筛选 11 / 23 个候选");
+      expect(host.querySelector(".result-row")?.textContent).toBe(rowText);
+      expect(host.querySelector(".query-context .status-badge")?.textContent).toBe("待确认");
+      host.querySelector<HTMLButtonElement>('[data-role="candidates-tab"]')!.click();
+      input.value = "com.candidate.22";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      expect(host.querySelector(".candidate-card-rank")?.textContent).toBe("#23");
+      expect(host.querySelector('[data-role="candidate-count"]')?.textContent).toBe("筛选 1 / 23 个候选");
+      expect(fetchDetails).toHaveBeenCalledTimes(1);
+    } finally {
+      renderResults(host, [], false);
+      host.remove();
+      outside.remove();
+    }
+  });
+
   it.each(["candidate action", "candidates tab", "outside"])("returns to the originating page and retains %s focus while hidden detail finishes", async (focus) => {
     let finish!: (response: Response) => void;
     const fetchDetails = vi.fn(() => new Promise<Response>((resolve) => { finish = resolve; }));

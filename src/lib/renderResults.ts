@@ -616,6 +616,8 @@ function createCandidates(
   onPageChange: (page: number, control: string) => void,
   onInspect: (candidate: LookupCandidate) => void,
   inspection: CandidateInspection | null,
+  filter: HTMLInputElement,
+  onFilterChange: () => void,
 ) {
   const candidates = getCandidates(result);
   if (candidates.length === 0) return null;
@@ -633,54 +635,105 @@ function createCandidates(
   header.className = "alternate-list-header";
   const count = document.createElement("strong");
   count.dataset.role = "candidate-count";
-  count.textContent = `共 ${candidates.length} 个候选`;
-  header.append(count);
+  count.setAttribute("role", "status");
+  const filterControls = document.createElement("div");
+  filterControls.className = "candidate-bundle-filter";
+  const label = document.createElement("label");
+  label.textContent = "Bundle ID";
+  filter.type = "text";
+  filter.dataset.role = "candidate-bundle-filter";
+  filter.placeholder = "输入 Bundle ID 片段";
+  filter.autocomplete = "off";
+  filter.spellcheck = false;
+  filter.setAttribute("autocapitalize", "none");
+  label.append(filter);
+  const clear = document.createElement("button");
+  clear.type = "button";
+  clear.className = "secondary-button";
+  clear.dataset.role = "candidate-filter-clear";
+  clear.textContent = "清除";
+  clear.setAttribute("aria-label", "清除 Bundle ID 筛选");
+  filterControls.append(label, clear);
+  header.append(count, filterControls);
   list.append(header);
 
   const items = document.createElement("div");
   items.className = "alternate-list-items";
-  const visible = candidates.slice(page * 10, (page + 1) * 10);
-  const currentApp = inspection?.app ?? result.app;
-  for (const [index, candidate] of visible.entries()) {
-    const current = currentApp !== null && candidateKey(candidate) === candidateKey(currentApp);
-    items.append(createCandidateCard(
-      current ? currentApp! : candidate,
-      current ? inspection ? "当前查看" : "自动匹配应用" : "",
-      current, page * 10 + index + 1, country, () => onInspect(candidate),
-    ));
-  }
   list.append(items);
 
-  const pages = Math.ceil(candidates.length / 10);
-  for (const location of ["top", "bottom"]) {
+  const navigations = ["top", "bottom"].map((location) => {
     const navigation = document.createElement("nav");
     navigation.className = "candidate-pagination";
     navigation.setAttribute("aria-label", `候选结果分页（${location === "top" ? "顶部" : "底部"}）`);
-    const rolePrefix = location === "top" ? "candidates-top" : "candidates";
-    const previous = document.createElement("button");
-    previous.type = "button";
-    previous.className = "secondary-button";
-    previous.dataset.role = `${rolePrefix}-prev`;
-    previous.textContent = "上一页";
-    previous.setAttribute("aria-label", `${location === "top" ? "顶部" : "底部"}：上一页候选`);
-    previous.disabled = page === 0;
-    previous.addEventListener("click", () => onPageChange(page - 1, `${rolePrefix}-prev`));
-    const position = document.createElement("span");
-    position.dataset.role = location === "top" ? "candidate-page-top" : "candidate-page";
-    position.setAttribute("role", "status");
-    position.textContent = `第 ${page + 1} / ${pages} 页`;
-    const next = document.createElement("button");
-    next.type = "button";
-    next.className = "secondary-button";
-    next.dataset.role = `${rolePrefix}-next`;
-    next.textContent = "下一页";
-    next.setAttribute("aria-label", `${location === "top" ? "顶部" : "底部"}：下一页候选`);
-    next.disabled = page + 1 >= pages;
-    next.addEventListener("click", () => onPageChange(page + 1, `${rolePrefix}-next`));
-    navigation.append(previous, position, next);
     section.append(navigation);
     if (location === "top") section.append(list);
+    return navigation;
+  });
+
+  function renderPage(page: number) {
+    const query = filter.value.trim().toLowerCase();
+    const filtered = Array.from(candidates.entries())
+      .filter(([, candidate]) => !query || candidate.bundleId?.toLowerCase().includes(query));
+    count.textContent = query ? `筛选 ${filtered.length} / ${candidates.length} 个候选` : `共 ${candidates.length} 个候选`;
+    clear.disabled = filter.value.length === 0;
+    items.replaceChildren();
+    const currentApp = inspection?.app ?? result.app;
+    for (const [index, candidate] of filtered.slice(page * 10, (page + 1) * 10)) {
+      const current = currentApp !== null && candidateKey(candidate) === candidateKey(currentApp);
+      items.append(createCandidateCard(
+        current ? currentApp! : candidate,
+        current ? inspection ? "当前查看" : "自动匹配应用" : "",
+        current, index + 1, country, () => onInspect(candidate),
+      ));
+    }
+    if (filtered.length === 0) {
+      const empty = document.createElement("p");
+      empty.className = "empty-subtle";
+      empty.textContent = "本次返回的候选中没有匹配的 Bundle ID。";
+      items.append(empty);
+    }
+
+    const pages = Math.ceil(filtered.length / 10);
+    for (const [index, navigation] of navigations.entries()) {
+      navigation.replaceChildren();
+      navigation.hidden = pages === 0;
+      if (pages === 0) continue;
+      const top = index === 0;
+      const rolePrefix = top ? "candidates-top" : "candidates";
+      const previous = document.createElement("button");
+      previous.type = "button";
+      previous.className = "secondary-button";
+      previous.dataset.role = `${rolePrefix}-prev`;
+      previous.textContent = "上一页";
+      previous.setAttribute("aria-label", `${top ? "顶部" : "底部"}：上一页候选`);
+      previous.disabled = page === 0;
+      previous.addEventListener("click", () => onPageChange(page - 1, `${rolePrefix}-prev`));
+      const position = document.createElement("span");
+      position.dataset.role = top ? "candidate-page-top" : "candidate-page";
+      position.setAttribute("role", "status");
+      position.textContent = `第 ${page + 1} / ${pages} 页`;
+      const next = document.createElement("button");
+      next.type = "button";
+      next.className = "secondary-button";
+      next.dataset.role = `${rolePrefix}-next`;
+      next.textContent = "下一页";
+      next.setAttribute("aria-label", `${top ? "顶部" : "底部"}：下一页候选`);
+      next.disabled = page + 1 >= pages;
+      next.addEventListener("click", () => onPageChange(page + 1, `${rolePrefix}-next`));
+      navigation.append(previous, position, next);
+    }
   }
+  filter.oninput = () => {
+    onFilterChange();
+    renderPage(0);
+  };
+  clear.addEventListener("click", () => {
+    filter.value = "";
+    onFilterChange();
+    renderPage(0);
+    if (!filter.closest("[hidden]")) filter.focus({ preventScroll: true });
+  });
+  renderPage(page);
   return section;
 }
 
@@ -694,6 +747,8 @@ function createInspector(
   view: CanvasView,
   id: string,
   onViewChange: (view: CanvasView, candidate?: string) => void,
+  candidateFilter: HTMLInputElement,
+  onFilterChange: () => void,
 ) {
   const result = inspection
     ? { ...originalResult, app: inspection.app, iapHints: inspection.iapHints }
@@ -761,7 +816,7 @@ function createInspector(
   });
   inspector.append(tabs, panels.candidates, panels.detail);
   const detailPanel = panels.detail;
-  const candidates = createCandidates(originalResult, country, page, onPageChange, onInspect, inspection);
+  const candidates = createCandidates(originalResult, country, page, onPageChange, onInspect, inspection, candidateFilter, onFilterChange);
   if (candidates) {
     panels.candidates.append(candidates);
   } else {
@@ -1191,6 +1246,7 @@ export function renderResults(
   }
 
   const candidatePages = results.map(() => 0);
+  const candidateFilters = results.map(() => document.createElement("input"));
   let inspection: CandidateInspection | null = null;
   let selectionToken = 0;
   let view: CanvasView = "detail";
@@ -1252,8 +1308,10 @@ export function renderResults(
   function renderInspector() {
     const active = document.activeElement instanceof HTMLElement && inspectorBody.contains(document.activeElement)
       ? document.activeElement : null;
+    const focusedFilter = active instanceof HTMLInputElement && active === candidateFilters[selectedIndex] && !active.closest("[hidden]")
+      ? { control: active, start: active.selectionStart, end: active.selectionEnd, direction: active.selectionDirection } : null;
     const focused = active?.closest<HTMLButtonElement>('[data-role="candidate-inspect"]')?.dataset.candidateKey;
-    const focusedRole = active?.matches('[role="tab"], .candidate-pagination button, [data-role="detail-retry"], [data-role="back-to-candidates"]') ? active.dataset.role : null;
+    const focusedRole = active?.matches('[role="tab"], .candidate-pagination button, [data-role="detail-retry"], [data-role="back-to-candidates"], [data-role="candidate-filter-clear"]') ? active.dataset.role : null;
     const focusedControl = active?.matches(".identifier-copy, .screenshot-trigger") ? active : null;
     const section = focusedControl?.closest<HTMLElement>(".info-list, .candidate-card, .screenshots-section");
     const focusIdentity = section && focusedControl ? {
@@ -1278,7 +1336,12 @@ export function renderResults(
         (target?.disabled ? inspectorBody.querySelector<HTMLButtonElement>(`.candidate-pagination button:not(:disabled)`) : target)?.focus();
       },
       (candidate) => { void inspectCandidate(candidate); }, inspection, view, id, setView,
+      candidateFilters[selectedIndex]!, () => { candidatePages[selectedIndex] = 0; },
     ));
+    if (focusedFilter && !focusedFilter.control.closest("[hidden]")) {
+      focusedFilter.control.focus({ preventScroll: true });
+      focusedFilter.control.setSelectionRange(focusedFilter.start, focusedFilter.end, focusedFilter.direction ?? undefined);
+    }
     if (focused) focusCandidate(focused);
     if (focusedRole) {
       const control = inspectorBody.querySelector<HTMLButtonElement>(`[data-role="${focusedRole}"]`);
