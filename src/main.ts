@@ -20,6 +20,14 @@ app.innerHTML = `
     <section class="workspace-frame">
       <header class="workspace-header">
         <div class="workspace-title">
+          <img
+            class="workspace-logo"
+            src="${import.meta.env.BASE_URL}brand/workbench-logo.png"
+            alt=""
+            width="36"
+            height="36"
+            decoding="async"
+          />
           <h1>App搜索工作台</h1>
         </div>
         <div class="workspace-badges" aria-label="商店信息">
