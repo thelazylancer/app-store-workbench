@@ -108,13 +108,13 @@ summary:focus-visible {
 
 .app-shell {
   min-height: 100dvh;
-  padding: 0 40px;
   background: var(--air);
 }
 
 .workspace-frame {
-  width: min(1600px, 100%);
+  width: min(1440px, 100%);
   margin: 0 auto;
+  padding: 0 32px;
   display: grid;
   gap: 0;
 }
@@ -124,6 +124,7 @@ summary:focus-visible {
   align-items: center;
   gap: 36px;
   height: 54px;
+  padding: 0 32px;
   border-bottom: 1px solid var(--line);
 }
 
@@ -1913,7 +1914,8 @@ body.is-lightbox-open {
 }
 
 @media (max-width: 1180px) {
-  .app-shell {
+  .workspace-frame,
+  .wx-top {
     padding: 0 24px;
   }
 }
@@ -1978,7 +1980,8 @@ body.is-lightbox-open {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .app-shell {
+  .workspace-frame,
+  .wx-top {
     padding: 0 16px;
   }
 
