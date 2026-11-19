@@ -47,11 +47,13 @@ export function createCompetitorRouter(repo: CompetitorQueryRepo): express.Route
     if (!dateKind) return res.status(400).json({ message: "Unsupported date_kind" });
     if (!groupBy) return res.status(400).json({ message: "Unsupported group_by" });
     try {
+      const groups = await repo.getSummary(date, dateKind, groupBy);
       return res.json({
         date,
         dateKind,
         groupBy,
-        groups: await repo.getSummary(date, dateKind, groupBy),
+        pendingCount: groups.reduce((total, group) => total + group.pendingCount, 0),
+        groups,
       });
     } catch {
       return res.status(500).json({ message: "Competitor query failed" });

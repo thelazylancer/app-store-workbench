@@ -465,6 +465,7 @@ export function createCompetitorRepo(pool: Pool): CompetitorWriteRepo & Competit
         packageCount: number;
         hitCount: number;
         missCount: number;
+        pendingCount: number;
         competitors: Map<string, SummaryCompetitor>;
         missed: PackageBrief[];
       };
@@ -479,6 +480,7 @@ export function createCompetitorRepo(pool: Pool): CompetitorWriteRepo & Competit
             packageCount: 0,
             hitCount: 0,
             missCount: 0,
+            pendingCount: 0,
             competitors: new Map(),
             missed: [],
           };
@@ -492,7 +494,10 @@ export function createCompetitorRepo(pool: Pool): CompetitorWriteRepo & Competit
           group.missed.push(brief);
           continue;
         }
-        if (row.lookup_status !== "hit") continue;
+        if (row.lookup_status !== "hit") {
+          if (row.lookup_status === "pending") group.pendingCount += 1;
+          continue;
+        }
 
         group.hitCount += 1;
         const base = toPackageBase(row);
@@ -555,6 +560,7 @@ export function createCompetitorRepo(pool: Pool): CompetitorWriteRepo & Competit
             packageCount: group.packageCount,
             hitCount: group.hitCount,
             missCount: group.missCount,
+            pendingCount: group.pendingCount,
             competitorCount: competitors.length,
             competitors,
             missedPackages,

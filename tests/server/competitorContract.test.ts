@@ -86,6 +86,7 @@ const group: SummaryGroup = {
   packageCount: 1,
   hitCount: 1,
   missCount: 0,
+  pendingCount: 0,
   competitorCount: 1,
   competitors: [{
     appleId: 123,

@@ -172,6 +172,7 @@ describe("competitor query API", () => {
       packageCount: 2,
       hitCount: 1,
       missCount: 1,
+      pendingCount: 0,
       competitorCount: 1,
       competitors: [{
         appleId: 123,
@@ -197,7 +198,7 @@ describe("competitor query API", () => {
     const defaults = await request(app).get("/api/competitor/summary?date=2026-11-18");
     expect(defaults.status).toBe(200);
     expect(defaults.body).toMatchObject({
-      date: "2026-11-18", dateKind: "first_ad", groupBy: "team", groups: [group],
+      date: "2026-11-18", dateKind: "first_ad", groupBy: "team", pendingCount: 0, groups: [group],
     });
     expect(repo.getSummary).toHaveBeenNthCalledWith(1, "2026-11-18", "first_ad", "team");
 
@@ -206,6 +207,29 @@ describe("competitor query API", () => {
     expect(custom.status).toBe(200);
     expect(custom.body).toMatchObject({ dateKind: "listing", groupBy: "ios_version" });
     expect(repo.getSummary).toHaveBeenNthCalledWith(2, "2026-11-18", "listing", "ios_version");
+  });
+
+  it("sums pendingCount across summary groups", async () => {
+    const group = (groupKey: string, pendingCount: number) => ({
+      groupKey,
+      packageCount: pendingCount,
+      hitCount: 0,
+      missCount: 0,
+      pendingCount,
+      competitorCount: 0,
+      competitors: [],
+      missedPackages: [],
+      timeline: [],
+    });
+    const repo = emptyRepo();
+    repo.getSummary = vi.fn(async () => [group("Alpha", 1), group("Beta", 2)]);
+    const app = createApp({ ...baseDeps, competitorRepo: repo });
+
+    const response = await request(app).get("/api/competitor/summary?date=2026-11-18");
+
+    expect(response.status).toBe(200);
+    expect(response.body.pendingCount).toBe(3);
+    expect(response.body.groups).toHaveLength(2);
   });
 
   it("returns ordered snapshot rows for an existing range and empty rows for missing dates", async () => {

@@ -129,6 +129,7 @@ export type SummaryGroup = {
   packageCount: number;
   hitCount: number;
   missCount: number;
+  pendingCount: number;
   competitorCount: number;
   competitors: SummaryCompetitor[];
   missedPackages: PackageBrief[];
@@ -139,5 +140,6 @@ export type SummaryResponse = {
   date: string;
   dateKind: DateKind;
   groupBy: GroupBy;
+  pendingCount: number;
   groups: SummaryGroup[];
 };

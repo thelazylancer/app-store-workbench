@@ -113,6 +113,7 @@ function teamGroups(): SummaryGroup[] {
       packageCount: 3,
       hitCount: 2,
       missCount: 1,
+      pendingCount: 0,
       competitorCount: 2,
       competitors: [{
         appleId: 111,
@@ -137,6 +138,7 @@ function teamGroups(): SummaryGroup[] {
       packageCount: 1,
       hitCount: 1,
       missCount: 0,
+      pendingCount: 0,
       competitorCount: 1,
       competitors: [{
         appleId: 222,
@@ -162,6 +164,7 @@ function categoryGroups(): SummaryGroup[] {
     packageCount: 4,
     hitCount: 3,
     missCount: 1,
+    pendingCount: 0,
     competitorCount: 3,
     competitors: [
       {
@@ -191,6 +194,7 @@ function listingGroups(): SummaryGroup[] {
     packageCount: 2,
     hitCount: 2,
     missCount: 0,
+    pendingCount: 0,
     competitorCount: 2,
     competitors: [
       {

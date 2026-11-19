@@ -411,6 +411,34 @@ describeDb("competitor repository writes", () => {
     ]);
   });
 
+  it("counts pending packages and keeps hit, miss and pending summing to packageCount", async () => {
+    const repo = createCompetitorRepo(pool!);
+    const day = dateFor("03", 0);
+    const common = {
+      ...pkg, targetDate: day, firstAdDate: day, team: "Pending Team",
+      category: null, minimumOsVersion: null, appVersion: null,
+    };
+    const codeA = `test.competitor.${suffix}.pending-hit`;
+    const codeB = `test.competitor.${suffix}.pending-miss`;
+    const codeC = `test.competitor.${suffix}.pending-stuck`;
+
+    await repo.upsertPackage({
+      ...common, packageCode: codeA, lookupStatus: "hit",
+      appStoreJson: { appleId: 3003, name: "Pending Hit" },
+    });
+    await repo.upsertPackage({ ...common, packageCode: codeB, lookupStatus: "bundle_not_found" });
+    await repo.upsertPackage({ ...common, packageCode: codeC, lookupStatus: "pending" });
+
+    const groups = await repo.getSummary(day, "first_ad", "team");
+    expect(groups).toHaveLength(1);
+    expect(groups[0]).toMatchObject({
+      packageCount: 3, hitCount: 1, missCount: 1, pendingCount: 1,
+    });
+    for (const group of groups) {
+      expect(group.hitCount + group.missCount + group.pendingCount).toBe(group.packageCount);
+    }
+  });
+
   it("returns only existing snapshots for a package, ordered by date", async () => {
     const repo = createCompetitorRepo(pool!);
     const code = `test.competitor.${suffix}.history`;
