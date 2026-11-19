@@ -9,16 +9,19 @@
     "build": "vite build",
     "test": "vitest run",
     "build:ipatool": "bash scripts/build-ipatool.sh",
-    "fetch:app-store": "tsx scripts/fetch-app-store-details.ts"
+    "fetch:app-store": "tsx scripts/fetch-app-store-details.ts",
+    "sync:competitor": "tsx scripts/competitor-sync.ts"
   },
   "dependencies": {
     "express": "^5.2.1",
-    "gsap": "^3.15.0"
+    "gsap": "^3.15.0",
+    "pg": "^8.23.1"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/jsdom": "^30.0.0",
     "@types/node": "^26.1.1",
+    "@types/pg": "^8.23.1",
     "@types/supertest": "^7.2.1",
     "concurrently": "^10.0.3",
     "jsdom": "^29.1.1",

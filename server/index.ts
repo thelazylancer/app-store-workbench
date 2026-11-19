@@ -1,6 +1,8 @@
 import path from "node:path";
 import { createApp } from "./app";
 import { lookupAppById, lookupAppStore } from "./lib/appleLookup";
+import { createCompetitorRepo, type CompetitorQueryRepo } from "./lib/competitorRepo";
+import { createPool, runMigrations } from "./lib/db";
 import { buildIapHints } from "./lib/iapHints";
 import { createIpaDownloadManager } from "./lib/ipaDownload";
 import { fetchProductPageDetails as fetchProductPageDetailsUncached } from "./lib/productPage";
@@ -30,16 +32,41 @@ const cleanupTimer = setInterval(() => {
 }, 60 * 60 * 1000);
 cleanupTimer.unref();
 
-const app = createApp({
-  lookupAppById,
-  lookupAppStore,
-  fetchProductPageDetails,
-  buildIapHints,
-  ipaDownload,
-});
+async function competitorRepoFromEnv(): Promise<CompetitorQueryRepo | undefined> {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) return undefined;
+  const pool = createPool(databaseUrl);
+  try {
+    await runMigrations(pool);
+    return createCompetitorRepo(pool);
+  } catch (error) {
+    console.error(
+      `Competitor database unavailable: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    await pool.end().catch(() => {});
+    return undefined;
+  }
+}
 
-const port = 3001;
+async function main() {
+  const competitorRepo = await competitorRepoFromEnv();
+  const app = createApp({
+    lookupAppById,
+    lookupAppStore,
+    fetchProductPageDetails,
+    buildIapHints,
+    ipaDownload,
+    ...(competitorRepo ? { competitorRepo } : {}),
+  });
 
-app.listen(port, () => {
-  console.log(`Server listening on http://localhost:${port}`);
+  const port = 3001;
+
+  app.listen(port, () => {
+    console.log(`Server listening on http://localhost:${port}`);
+  });
+}
+
+void main().catch((error: unknown) => {
+  console.error(error instanceof Error ? error.message : error);
+  process.exitCode = 1;
 });

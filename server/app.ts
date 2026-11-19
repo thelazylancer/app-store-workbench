@@ -1,6 +1,8 @@
 import express from "express";
 import { stat } from "node:fs/promises";
 import { mapWithConcurrency } from "./lib/concurrency";
+import { createCompetitorRouter } from "./lib/competitorApi";
+import type { CompetitorQueryRepo } from "./lib/competitorRepo";
 import { classifyCandidates } from "./lib/matchResults";
 import type { IpaDownloadManager } from "./lib/ipaDownload";
 import { STORE_COUNTRIES } from "../shared/types";
@@ -22,6 +24,7 @@ type AppDependencies = {
   fetchProductPageDetails: (appStoreUrl: string) => Promise<ProductPageDetails>;
   buildIapHints: (items: ProductPageDetails["iapItems"] | null) => Promise<IapHints>;
   ipaDownload?: IpaDownloadManager;
+  competitorRepo?: CompetitorQueryRepo;
 };
 
 const BUNDLE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,254}$/;
@@ -54,6 +57,16 @@ export function createApp(deps: AppDependencies) {
   const app = express();
 
   app.use(express.json());
+
+  app.use("/api/competitor", (_req, res, next) => {
+    if (!deps.competitorRepo) {
+      return res.status(503).json({ message: "Competitor data is unavailable" });
+    }
+    return next();
+  });
+  if (deps.competitorRepo) {
+    app.use("/api/competitor", createCompetitorRouter(deps.competitorRepo));
+  }
 
   async function enrichApp(baseline: LookupCandidate, country: StoreCountry) {
     const app: MatchedApp = {
