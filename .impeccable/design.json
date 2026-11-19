@@ -1,0 +1,157 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-19T00:00:00Z",
+  "title": "Design System: App搜索工作台 · 竞品气象台",
+  "extensions": {
+    "colorMeta": {
+      "air": { "role": "neutral", "displayName": "空气底 Air", "canonical": "#e7edf2", "tonalRamp": ["#20272d", "#2f4557", "#44637d", "#5881a3", "#7d9eb9", "#a3bacd", "#c9d6e2", "#f0f2f4"] },
+      "ink": { "role": "neutral", "displayName": "墨 Ink", "canonical": "#1c2733", "tonalRamp": ["#20262c", "#304357", "#445f7d", "#597ca2", "#7e9ab8", "#a3b7cd", "#c9d5e1", "#f0f2f4"] },
+      "blue": { "role": "primary", "displayName": "风暴蓝 Storm Blue", "canonical": "#2e6fa3", "tonalRamp": ["#1a2832", "#1e4869", "#2a6797", "#3785c4", "#63a1d3", "#90bce0", "#bed8ed", "#eef3f6"] },
+      "blue-text": { "role": "primary", "displayName": "风暴蓝文字变体", "canonical": "#245a87", "contrastOnAir": "6.16:1", "tonalRamp": ["#1a2732", "#1c476a", "#296698", "#3584c6", "#61a0d5", "#8fbce1", "#bdd7ed", "#eef3f6"] },
+      "amber": { "role": "secondary", "displayName": "警戒琥珀 Amber", "canonical": "#c97f1e", "tonalRamp": ["#362817", "#754a12", "#a86a19", "#db8a21", "#e5a551", "#edbf83", "#f4d9b6", "#f7f3ed"] },
+      "amber-text": { "role": "secondary", "displayName": "警戒琥珀文字变体", "canonical": "#824d0e", "contrastOnAir": "5.9:1", "tonalRamp": ["#372815", "#7a480d", "#ae6713", "#e38618", "#eca24a", "#f1bd7f", "#f7d8b3", "#f8f3ed"] },
+      "dim": { "role": "neutral", "displayName": "暗灰 Dim", "canonical": "#5c6771", "contrastOnAir": "4.9:1", "tonalRamp": ["#242628", "#3c444a", "#57616a", "#717e8b", "#919ba5", "#b1b8bf", "#d1d5d9", "#f2f2f3"] },
+      "line": { "role": "neutral", "displayName": "规线", "canonical": "rgba(28, 39, 51, 0.16)" },
+      "line-strong": { "role": "neutral", "displayName": "强调规线", "canonical": "rgba(28, 39, 51, 0.3)" },
+      "faint": { "role": "neutral", "displayName": "淡墨虚线", "canonical": "rgba(28, 39, 51, 0.38)" },
+      "white": { "role": "neutral", "displayName": "蓝底徽章文字", "canonical": "#ffffff", "contrastOnBlue": "5.36:1" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "日期声部（唯一显示字族）", "purpose": "只用于日期：页首大日期 46px，主格星期 20px、月日 30px。恒开 tabular-nums。" },
+      "headline": { "displayName": "Headline", "purpose": "详情页竞品名。" },
+      "title": { "displayName": "Title", "purpose": "页首 h1 与空态/错误卡标题。" },
+      "body": { "displayName": "Body", "purpose": "中文正文基准，一切叙述文字。" },
+      "label": { "displayName": "Label", "purpose": "徽章与标签文字；11px 只允许出现在徽章/pill 内部。" },
+      "data": { "displayName": "数据声部", "purpose": "一切数字、包码、日期串、版本号、批次状态。等宽 + tabular-nums，纵向可对齐读。" }
+    },
+    "motion": [
+      { "name": "bar-grow", "value": "260ms cubic-bezier(0.22, 0.61, 0.36, 1)", "purpose": "预报柱入场：scaleY(0→1)，transform-origin: bottom。柱高本身来自数据（Math.round(count/max*112px)），不做缓动补偿。prefers-reduced-motion: reduce 下关闭。" },
+      { "name": "skeleton-pulse", "value": "1.2s ease-in-out infinite alternate", "purpose": "加载骨架与预报格骨架的透明度脉冲（0.55↔1）。reduced-motion 下静止。" },
+      { "name": "chevron-turn", "value": "120ms ease", "purpose": "分组折叠箭头旋转 -90deg。reduced-motion 下无过渡。" }
+    ],
+    "breakpoints": [
+      { "name": "compact", "value": "1180px", "purpose": "壳内边距 40px→24px，头部转纵排，条目收窄列、隐藏组名列。" },
+      { "name": "narrow", "value": "860px", "purpose": "条目塌成 46px+1fr+auto 三列，预报绘图区降至 110px，详情转单栏。" }
+    ],
+    "focusRing": { "value": "outline: 2px solid #2e6fa3; outline-offset: 2px", "purpose": "button / a / summary / input 的 focus-visible 唯一浮起时刻。" }
+  },
+  "components": [
+    {
+      "name": "预报格（签名组件）",
+      "kind": "custom",
+      "refersTo": "forecast-bar",
+      "description": "7 天预报栏的每日一格：日期 + 包数 + 底对齐的柱，柱高严格编码包数。",
+      "html": "<button type=\"button\" class=\"ds-day ds-day-main\"><span class=\"ds-day-date\">周四 · 11-18</span><span class=\"ds-day-plot\"><span class=\"ds-day-count\">36</span><span class=\"ds-bar ds-bar-main\"></span></span></button>",
+      "css": ".ds-day { display: flex; flex-direction: column; padding: 14px 8px 12px; border: 1px solid rgba(28,39,51,0.16); border-left: 0; background: transparent; color: #1c2733; text-align: center; cursor: pointer; } .ds-day:first-child { border-left: 1px solid rgba(28,39,51,0.16); } .ds-day:hover { background: rgba(28,39,51,0.035); } .ds-day:focus-visible { outline: 2px solid #2e6fa3; outline-offset: 2px; } .ds-day-main { background: rgba(28,39,51,0.05); } .ds-day-date { font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-size: 30px; font-weight: 600; font-variant-numeric: tabular-nums; } .ds-day-count { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; color: #245a87; margin-bottom: 8px; } .ds-day-plot { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; min-height: 150px; } .ds-bar { width: 26px; height: 84px; background: rgba(28,39,51,0.55); border-radius: 1px 1px 0 0; transform-origin: bottom; animation: ds-grow 260ms cubic-bezier(0.22,0.61,0.36,1) both; } .ds-bar-main { width: 46px; background: #2e6fa3; } @keyframes ds-grow { from { transform: scaleY(0); } to { transform: scaleY(1); } } @media (prefers-reduced-motion: reduce) { .ds-bar { animation: none; } }"
+    },
+    {
+      "name": "命中徽章",
+      "kind": "chip",
+      "refersTo": "badge-hit",
+      "description": "竞品命中 App Store 时的蓝底白字徽章。",
+      "html": "<span class=\"ds-badge-hit\">命中</span>",
+      "css": ".ds-badge-hit { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 2px; background: #2e6fa3; color: #ffffff; font-size: 12px; font-weight: 600; white-space: nowrap; }"
+    },
+    {
+      "name": "异常状态徽章",
+      "kind": "chip",
+      "refersTo": "badge-exception",
+      "description": "bundle_not_found 与待补全的琥珀描边徽章；琥珀只出现在线上。",
+      "html": "<span class=\"ds-badge-exception\">App Store 未命中</span>",
+      "css": ".ds-badge-exception { display: inline-flex; align-items: center; padding: 3px 9px; border: 1px solid #c97f1e; border-radius: 2px; background: transparent; color: #824d0e; font-size: 12px; font-weight: 600; white-space: nowrap; }"
+    },
+    {
+      "name": "分段控件",
+      "kind": "button",
+      "refersTo": "seg-button-active",
+      "description": "口径/分组/状态的标准控件；激活项墨底反白。",
+      "html": "<div class=\"ds-seg\" role=\"group\"><button type=\"button\" class=\"ds-seg-btn\">投放日期</button><button type=\"button\" class=\"ds-seg-btn ds-seg-active\" aria-pressed=\"true\">上架日期</button></div>",
+      "css": ".ds-seg { display: inline-flex; height: 30px; border: 1px solid rgba(28,39,51,0.3); border-radius: 3px; overflow: hidden; } .ds-seg-btn { height: 100%; padding: 0 12px; border: 0; border-left: 1px solid rgba(28,39,51,0.16); background: transparent; color: #5c6771; font-size: 12px; white-space: nowrap; cursor: pointer; } .ds-seg-btn:first-child { border-left: 0; } .ds-seg-btn:hover { background: rgba(28,39,51,0.06); color: #1c2733; } .ds-seg-btn:focus-visible { outline: 2px solid #2e6fa3; outline-offset: -2px; } .ds-seg-active { background: #1c2733; color: #e7edf2; font-weight: 600; }"
+    },
+    {
+      "name": "日期步进器",
+      "kind": "input",
+      "refersTo": "",
+      "description": "双箭头夹等宽日期输入的日期控件。",
+      "html": "<div class=\"ds-stepper\"><button type=\"button\" class=\"ds-step-btn\">‹</button><input type=\"date\" class=\"ds-step-input\" value=\"2026-11-18\" /><button type=\"button\" class=\"ds-step-btn\">›</button></div>",
+      "css": ".ds-stepper { display: inline-flex; align-items: center; height: 30px; border: 1px solid rgba(28,39,51,0.3); border-radius: 3px; overflow: hidden; } .ds-step-btn { display: flex; align-items: center; justify-content: center; width: 26px; height: 100%; border: 0; background: transparent; color: #1c2733; font-size: 16px; cursor: pointer; } .ds-step-btn:hover { background: rgba(28,39,51,0.06); } .ds-step-btn:disabled { color: #5c6771; cursor: default; } .ds-step-input { width: 128px; height: 100%; padding: 0 8px; border: 0; border-left: 1px solid rgba(28,39,51,0.16); border-right: 1px solid rgba(28,39,51,0.16); background: transparent; color: #1c2733; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; font-variant-numeric: tabular-nums; } .ds-step-input:focus-visible { outline: 2px solid #2e6fa3; outline-offset: -2px; }"
+    },
+    {
+      "name": "文字操作链接",
+      "kind": "button",
+      "refersTo": "text-action",
+      "description": "清除筛选、回到单日、返回详情列表的低强调操作。",
+      "html": "<button type=\"button\" class=\"ds-text-action\">回到单日</button>",
+      "css": ".ds-text-action { padding: 2px 0; border: 0; background: none; color: #245a87; font-size: 12px; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; white-space: nowrap; cursor: pointer; } .ds-text-action:hover { color: #1c2733; } .ds-text-action:focus-visible { outline: 2px solid #2e6fa3; outline-offset: 2px; }"
+    },
+    {
+      "name": "幽灵按钮",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "重试与空态动作的描边按钮。",
+      "html": "<button type=\"button\" class=\"ds-ghost\">重试</button>",
+      "css": ".ds-ghost { display: inline-flex; align-items: center; gap: 7px; padding: 7px 14px; border: 1px solid rgba(28,39,51,0.3); border-radius: 2px; background: transparent; color: #1c2733; font-size: 12px; cursor: pointer; } .ds-ghost:hover { border-color: #1c2733; } .ds-ghost:focus-visible { outline: 2px solid #2e6fa3; outline-offset: 2px; }"
+    },
+    {
+      "name": "包切换 chip",
+      "kind": "chip",
+      "refersTo": "chip-active",
+      "description": "详情页多包竞品的包码切换片。",
+      "html": "<button type=\"button\" class=\"ds-chip ds-chip-active\"><span class=\"ds-chip-code\">com.example.app</span></button>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; gap: 7px; padding: 4px 9px; border: 1px solid rgba(28,39,51,0.16); border-radius: 2px; background: transparent; color: #5c6771; font-size: 12px; cursor: pointer; } .ds-chip:hover { border-color: rgba(28,39,51,0.3); color: #1c2733; } .ds-chip:focus-visible { outline: 2px solid #2e6fa3; outline-offset: 2px; } .ds-chip-active { border-color: #1c2733; color: #1c2733; font-weight: 600; } .ds-chip-code { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "竞品条目行",
+      "kind": "custom",
+      "refersTo": "",
+      "description": "分组纵列里的单条竞品：图标 + 名称 + 等宽包码 + 元信息 + 命中徽章，1px 规线分隔。",
+      "html": "<a class=\"ds-row\" href=\"#\"><span class=\"ds-row-icon ds-row-icon-fallback\">例</span><span class=\"ds-row-name\">示例竞品应用</span><span class=\"ds-row-code\">com.example.app</span><span class=\"ds-row-meta\">工具 · v2.4.0</span><span class=\"ds-row-side\"><span class=\"ds-badge-hit\">命中</span></span></a>",
+      "css": ".ds-row { display: grid; grid-template-columns: 46px minmax(180px,1.45fr) minmax(180px,1.2fr) minmax(150px,1fr) auto; align-items: center; gap: 16px; min-height: 64px; padding: 8px 4px; border-top: 1px solid rgba(28,39,51,0.16); color: #1c2733; text-decoration: none; } .ds-row:hover { background: rgba(46,111,163,0.06); } .ds-row:focus-visible { outline: 2px solid #2e6fa3; outline-offset: 2px; } .ds-row-icon { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: 1px dashed rgba(28,39,51,0.38); border-radius: 8px; background: transparent; color: #5c6771; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 14px; } .ds-row-name { font-size: 15px; font-weight: 600; } .ds-row-code { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; font-variant-numeric: tabular-nums; color: #5c6771; } .ds-row-meta { font-size: 12px; color: #5c6771; } .ds-row-side { display: flex; justify-content: flex-end; } .ds-badge-hit { display: inline-flex; padding: 3px 9px; border-radius: 2px; background: #2e6fa3; color: #ffffff; font-size: 12px; font-weight: 600; white-space: nowrap; }"
+    },
+    {
+      "name": "批次告警横幅",
+      "kind": "custom",
+      "refersTo": "",
+      "description": "批次过期/失败/范围不完整时出现在预报栏下的琥珀告警；正常时不渲染。",
+      "html": "<p class=\"ds-banner\">本日源数据可能缺少部分包，计数仅供参考；该批次已被标记为过期。</p>",
+      "css": ".ds-banner { margin: 12px 0 0; padding: 8px 12px; border-left: 1px solid #c97f1e; color: #824d0e; font-size: 12px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "竞品气象台",
+    "overview": "竞品上架像天气一样可预报。整个界面是一片平涂的空气色底（#E7EDF2），没有浮卡、没有灰上灰：所有分区靠一像素细规线分隔，所有深度靠墨色透明度薄涂表达，阴影和渐度为零。数据是这间气象台里唯一的主角——每一个数字、包码、日期都以 IBM Plex Mono 的 tabular-nums 等宽数字呈现，形成可纵向对齐读的「仪表读数层」；中文正文用 Noto Sans SC 安静铺底；Barlow Condensed 是唯一被放大的显示声部，只用于日期。页面的脊柱是横贯全宽的 7 天预报栏：每日一格，柱高严格编码包数（Math.round(count / max × 112px)），昨日格放大成主格（flex 1.9），支持单日点击与两点式范围选中，选中区间整体染上蓝色薄涂。异常（未命中与待补全）统一归入页面底部的异常区，只在非空时渲染；警戒琥珀只在这类时刻出现。平时一眼望去，全是平静的空气色。本系统只覆盖竞品报告页（competitor.html + src/competitor/competitor.css）；App 搜索页（index.html + src/styles.css）是更早的旧样式，不在本系统内，也不应被新表面继承。",
+    "keyCharacteristics": [
+      "平涂空气底（#E7EDF2）承托一切内容；无卡片容器、无灰上灰、无阴影、无渐变",
+      "一像素规线（rgba(28,39,51,0.16)，强调 0.3）是唯一的分区语言",
+      "风暴蓝（#2E6FA3）只给命中与交互状态；警戒琥珀（#C97F1E）只给异常，且从不承载文字",
+      "等宽数字层（IBM Plex Mono · tabular-nums）承载全部数据；正文下限 12px",
+      "柱高即数量：预报柱高度严格由包数推导，不做装饰性起伏",
+      "动效只有三种：柱入场 scaleY 260ms、骨架脉冲 1.2s、折叠箭头 120ms；prefers-reduced-motion 下全部关闭"
+    ],
+    "rules": [
+      { "name": "The Split-Voice Rule", "body": "线色与文字色永不互换：#2e6fa3 与 #c97f1e 只出现在线、块、点上；文字必须用加深变体 #245a87 / #824d0e。任何新文字色都先算对比度（正文 ≥4.5:1）。", "section": "colors" },
+      { "name": "The Calm Air Rule", "body": "琥珀只在有事时点亮：异常区仅在非空时渲染，批次告警横幅仅在批次异常（过期/失败/范围不完整）时出现。平静的日子整个页面没有一点琥珀。", "section": "colors" },
+      { "name": "The Data-Mono Rule", "body": "一切数字、包码、日期串、版本号都必须走 IBM Plex Mono + tabular-nums。sans 声部从不渲染数据，数据声部从不渲染中文叙述。", "section": "typography" },
+      { "name": "The One Display Voice Rule", "body": "Barlow Condensed 是唯一的显示声部，且只用于日期。不要再发明第二个被放大的字族；放大即日期，日期即放大。", "section": "typography" },
+      { "name": "The Flat-Ground Rule", "body": "任何表面都不许用 box-shadow 或渐变制造高度。全库唯一的 box-shadow 是 Tab 当前项的下划线（inset 0 -2px 0 #1c2733）——那是用阴影语法画的一条规线，不是海拔。", "section": "elevation" },
+      { "name": "The One-Pixel Rule", "body": "分隔永远是一根 1px 规线，绝不是卡片边缘、阴影或额外背景块。要分组，先画线。", "section": "shapes" }
+    ],
+    "dos": [
+      "Do 一切数字、包码、日期串走 IBM Plex Mono + tabular-nums（The Data-Mono Rule）。",
+      "Do 蓝色与琥珀色的文字一律用加深变体 #245a87 / #824d0e（对比度 6.16:1 / 5.9:1）。",
+      "Do 用 1px 规线分隔一切区块；悬停用墨色 0.06（或蓝 0.06）薄涂表达。",
+      "Do 保持柱高严格由 Math.round(count / max × 112px) 推导，主格 1.9 倍宽、蓝柱。",
+      "Do 异常区与批次告警只在非空/异常时渲染（The Calm Air Rule）。",
+      "Do 动效只用三种已录节奏：柱入场 260ms、骨架脉冲 1.2s、箭头 120ms，并在 prefers-reduced-motion 下全部关闭。"
+    ],
+    "donts": [
+      "Don't 使用阴影、渐变、卡片容器或灰上灰——深度只来自墨色透明度薄涂（The Flat-Ground Rule）。",
+      "Don't 让 #2e6fa3 或 #c97f1e 出现在文字颜色里；也永远不要用琥珀作大面积填充。",
+      "Don't 让正文或元信息小于 12px；11px 只活在徽章/pill 内部。",
+      "Don't 在预报栏之外再发明第二个显示声部，或用 Barlow Condensed 渲染非日期内容。",
+      "Don't 在预报栏上方加统计卡行：预报脊柱本身就是趋势概览（本页已删除统计条，属确认否决）。",
+      "Don't 圆角超出已录阶梯（2/3/8/16px）；不要引入胶囊（999px）或大圆角。",
+      "Don't 在本表面引入 src/styles.css 的旧世界 token（Outfit 字体、#2563eb accent、--shadow-control、radius-pill）——那是 App 搜索页的既存样式，不是本系统的一部分。"
+    ]
+  }
+}
