@@ -8,8 +8,9 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# ipatool v2.8.1 with the local --auth-code patch (deploy/ipatool-authcode.patch),
-# built with CGO on linux/amd64; keep a glibc base image.
+# ipatool v2.8.1 with the local patch (deploy/ipatool-authcode.patch):
+# --auth-code on download, `auth refresh`, and a built-in storefront map.
+# Built with CGO on linux/amd64; keep a glibc base image.
 # Rebuild (inside a linux/amd64 golang:1.26-bookworm container):
 #   apply deploy/ipatool-authcode.patch to the v2.8.1 source, then
 #   CGO_ENABLED=1 go build -trimpath -ldflags "-s -w" \

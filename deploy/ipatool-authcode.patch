@@ -1,6 +1,73 @@
+diff --git a/cmd/auth.go b/cmd/auth.go
+index 7099ab0..0f6034f 100644
+--- a/cmd/auth.go
++++ b/cmd/auth.go
+@@ -17,6 +17,7 @@ func authCmd() *cobra.Command {
+ 	}
+ 
+ 	cmd.AddCommand(loginCmd())
++	cmd.AddCommand(refreshCmd())
+ 	cmd.AddCommand(infoCmd())
+ 	cmd.AddCommand(revokeCmd())
+ 
+@@ -118,6 +119,52 @@ func loginCmd() *cobra.Command {
+ 	return cmd
+ }
+ 
++// refreshCmd refreshes the stored password token with a 2FA code. The App
++// Store login flow persists the refreshed account in the keychain, so a single
++// successful refresh covers every later download in the same session.
++//
++//nolint:wrapcheck
++func refreshCmd() *cobra.Command {
++	var authCode string
++
++	cmd := &cobra.Command{
++		Use:   "refresh",
++		Short: "Refresh the stored App Store session using a 2FA code",
++		RunE: func(cmd *cobra.Command, args []string) error {
++			infoResult, err := dependencies.AppStore.AccountInfo()
++			if err != nil {
++				return err
++			}
++
++			acc := infoResult.Account
++			if acc.Password == "" {
++				return errors.New("the stored account has no password; run `ipatool auth login` first")
++			}
++
++			loginResult, err := dependencies.AppStore.Login(appstore.LoginInput{
++				Email:    acc.Email,
++				Password: acc.Password,
++				AuthCode: authCode,
++			})
++			if err != nil {
++				return err
++			}
++
++			dependencies.Logger.Log().
++				Str("name", loginResult.Account.Name).
++				Str("email", loginResult.Account.Email).
++				Bool("success", true).
++				Send()
++
++			return nil
++		},
++	}
++
++	cmd.Flags().StringVar(&authCode, "auth-code", "", "6-digit 2FA code for the Apple ID")
++
++	return cmd
++}
++
+ // nolint:wrapcheck
+ func infoCmd() *cobra.Command {
+ 	return &cobra.Command{
+diff --git a/cmd/download.go b/cmd/download.go
+index cc2a185..83225b0 100644
 --- a/cmd/download.go
 +++ b/cmd/download.go
-@@ -25,6 +25,7 @@
+@@ -25,6 +25,7 @@ func downloadCmdWithAppStore(appStore func() appstore.AppStore) *cobra.Command {
  		bundleID          string
  		externalVersionID string
  		platformValue     string
@@ -8,7 +75,7 @@
  	)
  
  	cmd := &cobra.Command{
-@@ -47,6 +48,23 @@
+@@ -47,6 +48,23 @@ func downloadCmdWithAppStore(appStore func() appstore.AppStore) *cobra.Command {
  			}
  
  			acc := infoResult.Account
@@ -32,7 +99,7 @@
  			var lastErr error
  			purchaseRequired := false
  			purchased := false
-@@ -173,6 +191,7 @@
+@@ -173,6 +191,7 @@ func downloadCmdWithAppStore(appStore func() appstore.AppStore) *cobra.Command {
  	cmd.Flags().StringVar(&externalVersionID, "external-version-id", "", "External version identifier of the target app (defaults to latest version when not specified)")
  	cmd.Flags().StringVar(&platformValue, "platform", "", "Platform to download for: iphone (iOS), ipad (iPadOS), appletv (tvOS), watchos, visionos, or macos")
  	cmd.Flags().BoolVar(&acquireLicense, "purchase", false, "Obtain a license for the app if needed")
@@ -40,3 +107,153 @@
  
  	return cmd
  }
+diff --git a/pkg/appstore/storefront.go b/pkg/appstore/storefront.go
+index 8509321..d60ed88 100644
+--- a/pkg/appstore/storefront.go
++++ b/pkg/appstore/storefront.go
+@@ -18,6 +18,128 @@ const (
+ 	maxStorefrontIDRange    = 1000
+ )
+ 
++// builtinStorefrontCountryCodes caches the stable storefront identifier to
++// country-code mapping. Apple's availableStoreFronts endpoint intermittently
++// returns an empty body or 404; using the built-in mapping for common
++// storefronts keeps download and search working during those outages.
++var builtinStorefrontCountryCodes = map[string]string{
++	"143441": "US",
++	"143442": "FR",
++	"143443": "DE",
++	"143444": "GB",
++	"143445": "AT",
++	"143446": "BE",
++	"143447": "FI",
++	"143448": "GR",
++	"143449": "IE",
++	"143450": "IT",
++	"143451": "LU",
++	"143452": "NL",
++	"143453": "PT",
++	"143454": "ES",
++	"143455": "CA",
++	"143456": "SE",
++	"143457": "NO",
++	"143458": "DK",
++	"143459": "CH",
++	"143460": "AU",
++	"143461": "NZ",
++	"143462": "JP",
++	"143463": "HK",
++	"143464": "SG",
++	"143465": "CN",
++	"143466": "KR",
++	"143467": "IN",
++	"143468": "MX",
++	"143469": "RU",
++	"143470": "TW",
++	"143471": "VN",
++	"143472": "ZA",
++	"143473": "MY",
++	"143474": "PH",
++	"143475": "TH",
++	"143476": "ID",
++	"143477": "PK",
++	"143478": "PL",
++	"143479": "SA",
++	"143480": "TR",
++	"143481": "AE",
++	"143482": "HU",
++	"143483": "CL",
++	"143484": "NP",
++	"143485": "PA",
++	"143486": "LK",
++	"143487": "RO",
++	"143489": "CZ",
++	"143491": "IL",
++	"143492": "UA",
++	"143493": "KW",
++	"143494": "HR",
++	"143495": "CR",
++	"143496": "SK",
++	"143497": "LB",
++	"143498": "QA",
++	"143499": "SI",
++	"143501": "CO",
++	"143502": "VE",
++	"143503": "BR",
++	"143504": "GT",
++	"143505": "AR",
++	"143506": "SV",
++	"143507": "PE",
++	"143509": "EC",
++	"143510": "HN",
++	"143511": "JM",
++	"143512": "NI",
++	"143513": "PY",
++	"143514": "UY",
++	"143515": "MO",
++	"143516": "EG",
++	"143518": "EE",
++	"143519": "LV",
++	"143520": "LT",
++	"143521": "MT",
++	"143524": "AM",
++	"143525": "BW",
++	"143526": "BG",
++	"143528": "JO",
++	"143529": "KE",
++	"143530": "MK",
++	"143531": "MG",
++	"143532": "ML",
++	"143533": "MU",
++	"143534": "NE",
++	"143535": "SN",
++	"143536": "TN",
++	"143537": "UG",
++	"143538": "AI",
++	"143541": "BB",
++	"143542": "BM",
++	"143543": "VG",
++	"143544": "KY",
++	"143545": "DM",
++	"143546": "GD",
++	"143547": "MS",
++	"143553": "GY",
++	"143554": "SR",
++	"143555": "BZ",
++	"143556": "BO",
++	"143557": "CY",
++	"143558": "IS",
++	"143559": "BH",
++	"143560": "BN",
++	"143561": "NG",
++	"143562": "OM",
++	"143563": "DZ",
++	"143564": "AO",
++	"143565": "BY",
++	"143566": "UZ",
++	"143568": "AZ",
++	"143571": "YE",
++	"143572": "TZ",
++	"143573": "GH",
++}
++
+ type availableStorefrontsResult struct {
+ 	Storefronts []availableStorefront `plist:"storefronts"`
+ }
+@@ -39,11 +161,15 @@ type storefrontGenrePage struct {
+ }
+ 
+ func (t *appstore) countryCodeFromStoreFront(storeFront string) (string, error) {
++	identifier := storefrontIdentifier(storeFront)
++	if countryCode := builtinStorefrontCountryCodes[identifier]; countryCode != "" {
++		return countryCode, nil
++	}
++
+ 	if err := t.discoverAvailableStorefronts(); err != nil {
+ 		return "", err
+ 	}
+ 
+-	identifier := storefrontIdentifier(storeFront)
+ 	if countryCode := t.cachedStorefrontCountryCode(identifier); countryCode != "" {
+ 		return countryCode, nil
+ 	}

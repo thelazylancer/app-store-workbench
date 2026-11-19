@@ -186,7 +186,7 @@ export function createApp(deps: AppDependencies) {
     return res.json(job);
   });
 
-  app.post("/api/ipa-download/:id/auth-code", (req, res) => {
+  app.post("/api/ipa-download/:id/auth-code", async (req, res) => {
     if (!deps.ipaDownload) {
       return res.status(503).json({ message: "IPA download is unavailable" });
     }
@@ -201,7 +201,7 @@ export function createApp(deps: AppDependencies) {
     if (job.status !== "awaiting_auth_code") {
       return res.status(409).json({ message: "This IPA download is not waiting for a verification code" });
     }
-    const updated = deps.ipaDownload.submitAuthCode(req.params.id, code);
+    const updated = await deps.ipaDownload.submitAuthCode(req.params.id, code);
     if (!updated) {
       return res.status(409).json({ message: "This IPA download is not waiting for a verification code" });
     }

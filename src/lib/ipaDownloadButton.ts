@@ -13,11 +13,12 @@ const states = new Map<string, IpaButtonState>();
 const starting = new Set<string>();
 const submitting = new Set<string>();
 const POLL_INTERVAL_MS = 2000;
+const AWAITING_POLL_INTERVAL_MS = 5000;
 const MAX_POLL_FAILURES = 5;
 
 const ERROR_MESSAGES: Record<IpaDownloadErrorCode, string> = {
   terms_required: "服务器登录的 Apple ID 有待接受的 App Store 条款：请在 iPhone/iPad 的 App Store 中登录该账号（不是手机上日常使用的账号），按提示同意条款或获取一次该应用后重试",
-  purchase_auth_required: "未拥有的应用需要验证码完成购买，请输入 Apple 设备上显示的 6 位验证码",
+  purchase_auth_required: "未拥有的应用需要验证码完成购买；只需输入一次，验证通过后同一批次中排队的任务会共用刷新后的会话",
   auth_code_invalid: "验证码无效或已过期，请重新输入",
   not_authenticated: "服务器尚未登录 Apple ID",
   storefront_unavailable: "App Store 商店服务暂不可用，请重试",
@@ -280,13 +281,16 @@ async function begin(bundleId: string, button: HTMLButtonElement, render: () => 
 function poll(bundleId: string, button: HTMLButtonElement, render: () => void, failures = 0) {
   const state = states.get(bundleId);
   if (!state?.jobId) return;
+  const interval = state.status === "awaiting_auth_code" ? AWAITING_POLL_INTERVAL_MS : POLL_INTERVAL_MS;
   setTimeout(async () => {
     if (!button.isConnected || states.get(bundleId)?.jobId !== state.jobId) return;
     try {
       const job = await getIpaDownload(state.jobId);
       applyJob(bundleId, job);
       render();
-      if (job.status === "queued" || job.status === "running") {
+      // Keep polling while waiting for a code as well: a code submitted for
+      // another app in the same batch refreshes the session for all of them.
+      if (job.status === "queued" || job.status === "running" || job.status === "awaiting_auth_code") {
         poll(bundleId, button, render);
       }
     } catch {
@@ -297,7 +301,7 @@ function poll(bundleId: string, button: HTMLButtonElement, render: () => void, f
         render();
       }
     }
-  }, POLL_INTERVAL_MS);
+  }, interval);
 }
 
 export function resetIpaDownloadState() {

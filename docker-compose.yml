@@ -17,6 +17,10 @@ services:
       PRODUCT_PAGE_CACHE_MAX_ENTRIES: ${PRODUCT_PAGE_CACHE_MAX_ENTRIES:-200}
       IPATOOL_KEYCHAIN_PASSPHRASE: ${IPATOOL_KEYCHAIN_PASSPHRASE:-}
       IPATOOL_PROXY: ${IPATOOL_PROXY:-}
+      # Keep the emulator runtime/SAP asset cache on the persisted volume.
+      # Without this the container re-downloads the multi-GB macOS restore
+      # image on every ipatool invocation and appears to hang.
+      XDG_CACHE_HOME: /home/app/.ipatool/cache
     volumes:
       - ${IPA_DATA_DIR:-/srv/data/app-store-workbench}/ipatool:/home/app/.ipatool
       - ${IPA_DATA_DIR:-/srv/data/app-store-workbench}/ipa:/app/downloads

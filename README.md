@@ -53,7 +53,7 @@ npm run dev
 | `npm test` | Vitest 全量测试 |
 | `npx tsc --noEmit` | 类型检查 |
 | `npm run build` | 构建前端到 `dist/` |
-| `npm run build:ipatool` | 构建带 `--auth-code` 补丁的 ipatool 二进制 |
+| `npm run build:ipatool` | 构建带 `--auth-code` 与 `auth refresh` 补丁的 ipatool 二进制 |
 | `npm run fetch:app-store -- --input apps.csv` | 运行批量导出 CLI |
 
 ## Docker 部署
@@ -87,6 +87,23 @@ npm run build:ipatool
 
 脚本会把 `HTTP(S)_PROXY`、`NO_PROXY`、`GOPROXY` 等变量传入构建容器，并对 clone 做 3 次重试。
 
+### 运行缓存（必须持久化）
+
+ipatool 的原生 Store 模拟器会从 Apple 下载 macOS 恢复镜像内的运行库，并缓存到 `$XDG_CACHE_HOME/ipatool/{unicorn,sap}`（约 265 MB）。`docker-compose.yml` 已把 `XDG_CACHE_HOME` 指向持久卷：
+
+```yaml
+XDG_CACHE_HOME: /home/app/.ipatool/cache
+```
+
+缓存缺失时，每次 `ipatool search/download` 都会先尝试下载数 GB 的 `UniversalMac_*_Restore.ipsw`，表现为长时间无输出甚至“卡死”。可从已有缓存的宿主机播种：
+
+```bash
+mkdir -p /srv/data/app-store-workbench/ipatool/cache
+cp -a ~/.cache/ipatool /srv/data/app-store-workbench/ipatool/cache/
+```
+
+目录属主需与容器用户一致（compose 中为 `1000:1000`）。
+
 ### 配置
 
 ```bash
@@ -115,7 +132,7 @@ docker exec -it app-store-workbench-app-1 ipatool auth info
 docker exec -it app-store-workbench-app-1 ipatool auth login
 ```
 
-登录后账号态会持久化到宿主机数据目录。需要下载未拥有的应用时，前端会提示输入 6 位 2FA 验证码。
+登录后账号态会持久化到宿主机数据目录。下载已拥有的应用会自动跳过购买步骤，无需验证码；未拥有的应用会在任务中提示输入 6 位 2FA 验证码。验证码只用于刷新一次会话，刷新后的 password token 会写回 keychain，因此同一批次（以及后续会话）中排队的其他未拥有应用不需要再次输入。
 
 ## 环境变量
 
@@ -126,7 +143,7 @@ docker exec -it app-store-workbench-app-1 ipatool auth login
 | `IPA_RETENTION_DAYS` | `7` | IPA 与任务记录的保留天数 |
 | `IPA_DOWNLOAD_TIMEOUT_MINUTES` | `60` | 单次下载超时 |
 | `IPATOOL_KEYCHAIN_PASSPHRASE` | 空 | 文件 keychain 密码；headless 部署必填 |
-| `IPATOOL_PROXY` | 空 | ipatool 使用的 HTTP(S) 代理 |
+| `IPATOOL_PROXY` | 空 | ipatool 使用的 HTTP(S) 代理；已接入外部代理网络时可填 `http://network-proxy:7890` |
 | `IPATOOL_PROXY_NETWORK` | `network-proxy_default` | Compose 外部网络名 |
 | `SEARCH_CONCURRENCY` | `3` | 批量查询的并发上限 |
 | `PRODUCT_PAGE_CACHE_TTL_SECONDS` | `600` | 商品页解析结果缓存时间 |
@@ -140,7 +157,7 @@ docker exec -it app-store-workbench-app-1 ipatool auth login
 | `GET` | `/api/app-details/:appleId?country=us` | 按 Apple ID 获取详情 |
 | `POST` | `/api/ipa-download` | `{ bundleId }`，创建下载任务 |
 | `GET` | `/api/ipa-download/:id` | 轮询任务状态 |
-| `POST` | `/api/ipa-download/:id/auth-code` | 提交 6 位 2FA 验证码 |
+| `POST` | `/api/ipa-download/:id/auth-code` | 提交 6 位 2FA 验证码；刷新成功后同一批所有等待中的任务自动重新入队 |
 | `DELETE` | `/api/ipa-download/:id` | 取消排队或运行中的任务 |
 | `GET` | `/api/ipa-download/:id/file` | 下载已完成的 IPA |
 
@@ -148,7 +165,9 @@ docker exec -it app-store-workbench-app-1 ipatool auth login
 
 - 单并发队列；同一时间只运行一个 `ipatool` 进程。
 - 成功条件：退出码为 0、输出不含 `success=false`、目标文件存在且非空。
-- 需要购买未拥有应用时，任务进入 `awaiting_auth_code`，不会直接失败；提交新验证码后重新入队。
+- 每次下载前用 `list-purchases`（5 分钟缓存，10 秒超时）判断是否已拥有：已拥有则不传 `--purchase`；判断失败或超时（2 分钟内不再重试）时保留 `--purchase` 兜底。
+- ipatool 补丁内置常用 storefront ID → 国家代码映射；Apple 的 `availableStoreFronts` 接口偶发 404/空响应时，下载和查询仍可继续。
+- 需要购买未拥有应用时，任务进入 `awaiting_auth_code`，不会直接失败；提交的验证码先执行 `ipatool auth refresh` 刷新会话，成功后所有等待中的任务共用新会话重新入队。刷新失败时退回“仅当前任务带 `--auth-code` 重试”的旧行为。
 - 取消会中止子进程并删除未完成的临时文件。
 - 任务记录默认持久化在 `<IPA_DATA_DIR>/ipa/.jobs.json`；重启时已完成任务保留，运行中任务会标记为失败。
 - 完成任务的内存记录最多保留 200 条，并按 `IPA_RETENTION_DAYS` 清理。

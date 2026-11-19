@@ -2,7 +2,12 @@ import { mkdtemp, readdir, rename, rm, utimes, writeFile } from "node:fs/promise
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createIpaDownloadManager, type DownloadRunner } from "../../server/lib/ipaDownload";
+import {
+  createIpaDownloadManager,
+  parseOwnedAppsOutput,
+  type AuthRefresher,
+  type DownloadRunner,
+} from "../../server/lib/ipaDownload";
 
 const dirs: string[] = [];
 
@@ -89,7 +94,7 @@ describe("IPA download manager", () => {
     expect(manager.getJob(job.id)?.errorCode).toBe("purchase_auth_required");
     expect(manager.getFilePath(job.id)).toBeNull();
 
-    const resumed = manager.submitAuthCode(job.id, "123456");
+    const resumed = await manager.submitAuthCode(job.id, "123456");
     expect(resumed?.status).toBe("queued");
 
     await vi.waitFor(() => expect(manager.getJob(job.id)?.status).toBe("done"));
@@ -112,11 +117,11 @@ describe("IPA download manager", () => {
     const job = manager.createJob("com.example.unowned");
     await vi.waitFor(() => expect(manager.getJob(job.id)?.status).toBe("awaiting_auth_code"));
 
-    manager.submitAuthCode(job.id, "000000");
+    await manager.submitAuthCode(job.id, "000000");
     await vi.waitFor(() => expect(manager.getJob(job.id)?.status).toBe("awaiting_auth_code"));
     expect(manager.getJob(job.id)?.errorCode).toBe("auth_code_invalid");
 
-    manager.submitAuthCode(job.id, "654321");
+    await manager.submitAuthCode(job.id, "654321");
     await vi.waitFor(() => expect(manager.getJob(job.id)?.status).toBe("done"));
   });
 
@@ -124,11 +129,11 @@ describe("IPA download manager", () => {
     const dir = await tempDir();
     const manager = createIpaDownloadManager({ ipatoolBin: "ipatool", downloadsDir: dir, runner: successRunner });
 
-    expect(manager.submitAuthCode("missing", "123456")).toBeNull();
+    await expect(manager.submitAuthCode("missing", "123456")).resolves.toBeNull();
     const job = manager.createJob("com.example.app");
-    expect(manager.submitAuthCode(job.id, "123456")).toBeNull();
+    await expect(manager.submitAuthCode(job.id, "123456")).resolves.toBeNull();
     await vi.waitFor(() => expect(manager.getJob(job.id)?.status).toBe("done"));
-    expect(manager.submitAuthCode(job.id, "123456")).toBeNull();
+    await expect(manager.submitAuthCode(job.id, "123456")).resolves.toBeNull();
   });
 
   it("reports how many bytes have been written while the download runs", async () => {
@@ -187,7 +192,7 @@ describe("IPA download manager", () => {
     const job = manager.createJob("com.example.unowned");
     await vi.waitFor(() => expect(manager.getJob(job.id)?.status).toBe("awaiting_auth_code"));
 
-    manager.submitAuthCode(job.id, "123456");
+    await manager.submitAuthCode(job.id, "123456");
     await vi.waitFor(() => expect(manager.getJob(job.id)?.status).toBe("done"));
     expect(seenCodes).toEqual([undefined, "123456", "123456"]);
   });
@@ -359,5 +364,72 @@ describe("IPA download manager", () => {
 
     expect((await manager.cleanupExpired()).sort()).toEqual(["old.ipa", "stale.ipa.tmp"]);
     expect((await readdir(dir)).sort()).toEqual(["fresh.ipa", "notes.txt"]);
+  });
+
+  it("parses owned bundle IDs from ipatool JSON log lines", () => {
+    const parsed = parseOwnedAppsOutput([
+      '{"level":"info","count":2,"totalCount":3,"apps":[{"bundleId":"com.example.a"},{"bundleID":"com.example.b"}]}',
+      "not json",
+      '{"apps":[{"bundleId":"com.example.a"}]}',
+    ].join("\n"));
+    expect(parsed.bundleIds).toEqual(["com.example.a", "com.example.b", "com.example.a"]);
+    expect(parsed.totalCount).toBe(3);
+  });
+
+  it("refreshes the session once so the retried batch needs no second code", async () => {
+    const dir = await tempDir();
+    const seenCodes: Array<string | undefined> = [];
+    let refreshCalls = 0;
+    const runner: DownloadRunner = async (_bundleId, outPath, _onOutput, _signal, authCode) => {
+      seenCodes.push(authCode);
+      if (refreshCalls === 0) {
+        return { exitCode: 0, output: 'ERR error="auth code is required" success=false' };
+      }
+      await writeFile(outPath, "refreshed-ipa");
+      return { exitCode: 0, output: "success=true" };
+    };
+    const authRefresher: AuthRefresher = async (code) => {
+      expect(code).toBe("123456");
+      refreshCalls += 1;
+      return { exitCode: 0, output: '{"success":true}' };
+    };
+    const manager = createIpaDownloadManager({
+      ipatoolBin: "ipatool", downloadsDir: dir, runner, authRefresher,
+    });
+
+    const job = manager.createJob("com.example.unowned");
+    await vi.waitFor(() => expect(manager.getJob(job.id)?.status).toBe("awaiting_auth_code"));
+
+    const resumed = await manager.submitAuthCode(job.id, "123456");
+    expect(resumed?.status).toBe("queued");
+    await vi.waitFor(() => expect(manager.getJob(job.id)?.status).toBe("done"));
+
+    expect(refreshCalls).toBe(1);
+    expect(seenCodes).toEqual([undefined, undefined]);
+  });
+
+  it("falls back to the per-job auth code when session refresh fails", async () => {
+    const dir = await tempDir();
+    const seenCodes: Array<string | undefined> = [];
+    const runner: DownloadRunner = async (_bundleId, outPath, _onOutput, _signal, authCode) => {
+      seenCodes.push(authCode);
+      if (!authCode) return { exitCode: 0, output: 'ERR error="auth code is required" success=false' };
+      await writeFile(outPath, "fallback-ipa");
+      return { exitCode: 0, output: "success=true" };
+    };
+    const authRefresher: AuthRefresher = async () => ({
+      exitCode: 1,
+      output: 'ERR error="2FA code must contain exactly six digits" success=false',
+    });
+    const manager = createIpaDownloadManager({
+      ipatoolBin: "ipatool", downloadsDir: dir, runner, authRefresher,
+    });
+
+    const job = manager.createJob("com.example.unowned");
+    await vi.waitFor(() => expect(manager.getJob(job.id)?.status).toBe("awaiting_auth_code"));
+
+    await manager.submitAuthCode(job.id, "123456");
+    await vi.waitFor(() => expect(manager.getJob(job.id)?.status).toBe("done"));
+    expect(seenCodes).toEqual([undefined, "123456"]);
   });
 });

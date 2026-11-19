@@ -12,6 +12,15 @@ const STOREFRONT_RETRY_LIMIT = 1;
 const HOUR_MS = 60 * 60 * 1000;
 const PROGRESS_POLL_MS = 1000;
 const PERSISTED_JOBS_FILE = ".jobs.json";
+const AUTH_REFRESH_TIMEOUT_MS = 2 * 60 * 1000;
+const OWNERSHIP_TIMEOUT_MS = 10 * 1000;
+const OWNERSHIP_TOTAL_TIMEOUT_MS = 30 * 1000;
+const OWNERSHIP_CACHE_TTL_MS = 5 * 60 * 1000;
+const OWNERSHIP_FAILURE_TTL_MS = 2 * 60 * 1000;
+const OWNED_APPS_PAGE_SIZE = 100;
+const OWNED_APPS_MAX_PAGES = 50;
+
+export type CommandResult = { exitCode: number; output: string };
 
 export type DownloadRunner = (
   bundleId: string,
@@ -19,13 +28,23 @@ export type DownloadRunner = (
   onOutput: (chunk: string) => void,
   signal: AbortSignal,
   authCode?: string,
-) => Promise<{ exitCode: number; output: string }>;
+) => Promise<CommandResult>;
+
+export type AuthRefresher = (code: string, signal: AbortSignal) => Promise<CommandResult>;
+
+/**
+ * Returns true when the signed-in account owns the app, false when it does
+ * not, and null when ownership could not be determined (network/session
+ * failure). The runner treats null as "use --purchase" to preserve the old
+ * behaviour.
+ */
+export type OwnershipResolver = (bundleId: string) => Promise<boolean | null>;
 
 export type IpaDownloadManager = {
   createJob(bundleId: string): IpaDownloadJob;
   getJob(id: string): IpaDownloadJob | null;
   getFilePath(id: string): string | null;
-  submitAuthCode(id: string, code: string): IpaDownloadJob | null;
+  submitAuthCode(id: string, code: string): Promise<IpaDownloadJob | null>;
   cancelJob(id: string): IpaDownloadJob | null;
   cleanupExpired(referenceTime?: number): Promise<string[]>;
 };
@@ -37,6 +56,8 @@ export type IpaDownloadManagerOptions = {
   timeoutMs?: number;
   proxyUrl?: string;
   runner?: DownloadRunner;
+  authRefresher?: AuthRefresher | null;
+  ownershipResolver?: OwnershipResolver | null;
   now?: () => number;
   persistJobs?: boolean;
   maxJobs?: number;
@@ -77,31 +98,182 @@ function isPersistedJob(value: unknown): value is PersistedJob {
     && typeof job.updatedAt === "number" && Number.isFinite(job.updatedAt);
 }
 
-function createDefaultRunner(ipatoolBin: string, proxyUrl?: string): DownloadRunner {
+function proxyEnv(proxyUrl?: string): NodeJS.ProcessEnv {
   const proxy = proxyUrl?.trim();
-  const env = proxy ? { ...process.env, HTTP_PROXY: proxy, HTTPS_PROXY: proxy } : process.env;
-  return (bundleId, outPath, onOutput, signal, authCode) =>
-    new Promise((resolve, reject) => {
-      // Interactive mode is kept on purpose: it makes ipatool render its
-      // download progress bar (bytes and percent) instead of running silently.
-      const args = ["download", "-b", bundleId, "--purchase", "-o", outPath];
-      if (authCode) args.push("--auth-code", authCode);
-      const child = spawn(ipatoolBin, args, {
-        signal,
-        stdio: ["ignore", "pipe", "pipe"],
-        env,
-      });
-      let output = "";
-      const handle = (chunk: Buffer) => {
-        const text = chunk.toString();
-        output += text;
-        onOutput(text);
-      };
-      child.stdout.on("data", handle);
-      child.stderr.on("data", handle);
-      child.on("error", reject);
-      child.on("close", (code) => resolve({ exitCode: code ?? 1, output }));
+  return proxy ? { ...process.env, HTTP_PROXY: proxy, HTTPS_PROXY: proxy } : process.env;
+}
+
+function runCommand(
+  command: string,
+  args: string[],
+  env: NodeJS.ProcessEnv,
+  signal: AbortSignal,
+  onOutput?: (chunk: string) => void,
+): Promise<CommandResult> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      signal,
+      killSignal: "SIGKILL",
+      stdio: ["ignore", "pipe", "pipe"],
+      env,
     });
+    let output = "";
+    const handle = (chunk: Buffer) => {
+      const text = chunk.toString();
+      output += text;
+      onOutput?.(text);
+    };
+    child.stdout.on("data", handle);
+    child.stderr.on("data", handle);
+    child.on("error", reject);
+    child.on("close", (code) => resolve({ exitCode: code ?? 1, output }));
+  });
+}
+
+/** Parses the JSON log lines printed by `ipatool list-purchases --format json`. */
+export function parseOwnedAppsOutput(text: string): { bundleIds: string[]; totalCount: number | null } {
+  const bundleIds: string[] = [];
+  let totalCount: number | null = null;
+  for (const line of text.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("{")) continue;
+    try {
+      const value = JSON.parse(trimmed) as Record<string, unknown>;
+      if (typeof value.totalCount === "number" && Number.isFinite(value.totalCount)) {
+        totalCount = value.totalCount;
+      }
+      const apps = Array.isArray(value.apps) ? value.apps : [];
+      for (const app of apps) {
+        if (typeof app !== "object" || app === null) continue;
+        const record = app as Record<string, unknown>;
+        const bundleId = record.bundleId ?? record.bundleID;
+        if (typeof bundleId === "string" && bundleId.trim()) bundleIds.push(bundleId.trim());
+      }
+    } catch {
+      // Ignore non-JSON log lines and malformed records.
+    }
+  }
+  return { bundleIds, totalCount };
+}
+
+function createDefaultOwnershipResolver(
+  ipatoolBin: string,
+  proxyUrl?: string,
+  now: () => number = Date.now,
+): OwnershipResolver {
+  const env = proxyEnv(proxyUrl);
+  let cached: { bundleIds: Set<string>; expiresAt: number } | null = null;
+  let cachedFailureUntil = 0;
+  let inFlight: Promise<Set<string> | null> | null = null;
+
+  async function loadOwnedBundleIds(): Promise<Set<string> | null> {
+    const owned = new Set<string>();
+    let totalCount: number | null = null;
+    const deadline = now() + OWNERSHIP_TOTAL_TIMEOUT_MS;
+    try {
+      for (let page = 1; page <= OWNED_APPS_MAX_PAGES; page++) {
+        if (now() >= deadline) break;
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), OWNERSHIP_TIMEOUT_MS);
+        let result: CommandResult;
+        try {
+          result = await runCommand(
+            ipatoolBin,
+            [
+              "list-purchases",
+              "--format",
+              "json",
+              "--non-interactive",
+              "--page",
+              String(page),
+              "--max-results",
+              String(OWNED_APPS_PAGE_SIZE),
+            ],
+            env,
+            controller.signal,
+          );
+        } finally {
+          clearTimeout(timer);
+        }
+        const parsed = parseOwnedAppsOutput(result.output);
+        if (parsed.bundleIds.length === 0 && result.exitCode !== 0) return null;
+        for (const bundleId of parsed.bundleIds) owned.add(bundleId);
+        if (parsed.totalCount !== null) totalCount = parsed.totalCount;
+        if (parsed.bundleIds.length < OWNED_APPS_PAGE_SIZE) break;
+        if (totalCount !== null && owned.size >= totalCount) break;
+      }
+      return owned;
+    } catch {
+      return null;
+    }
+  }
+
+  return async (bundleId: string) => {
+    if (cached && cached.expiresAt > now()) return cached.bundleIds.has(bundleId);
+    // Apple's storefront endpoint can be slow or briefly unavailable. Failure
+    // is cached too, so a broken preflight does not add a delay to every job.
+    if (cachedFailureUntil > now()) return null;
+    if (!inFlight) {
+      inFlight = loadOwnedBundleIds().finally(() => {
+        inFlight = null;
+      });
+    }
+    const bundleIds = await inFlight;
+    if (!bundleIds) {
+      cachedFailureUntil = now() + OWNERSHIP_FAILURE_TTL_MS;
+      return null;
+    }
+    cached = { bundleIds, expiresAt: now() + OWNERSHIP_CACHE_TTL_MS };
+    return bundleIds.has(bundleId);
+  };
+}
+
+function createDefaultRunner(
+  ipatoolBin: string,
+  proxyUrl?: string,
+  resolveOwned?: OwnershipResolver,
+): DownloadRunner {
+  const env = proxyEnv(proxyUrl);
+  return async (bundleId, outPath, onOutput, signal, authCode) => {
+    // Owned apps need no license acquisition at all. When ownership is
+    // unknown, keep the old --purchase behaviour so the download still works.
+    const owned = resolveOwned ? await resolveOwned(bundleId).catch(() => null) : null;
+    const run = (purchase: boolean, code?: string) => {
+      const args = ["download", "-b", bundleId, "-o", outPath];
+      if (purchase) args.push("--purchase");
+      if (code) args.push("--auth-code", code);
+      return runCommand(ipatoolBin, args, env, signal, onOutput);
+    };
+
+    let result = await run(owned !== true, authCode);
+    if (owned === true && /license is required/i.test(result.output)) {
+      // The ownership cache can be stale (revoked license, new device, ...).
+      // The first process already refreshed the keychain session if a code
+      // was supplied, so the retry does not need to replay the 2FA code.
+      result = await run(true, undefined);
+    }
+    if (isTransientStoreFailure(result)) {
+      // Apple's commerce endpoints occasionally drop the connection (EOF /
+      // reset) instead of answering. Retry once; a supplied 2FA code was
+      // already consumed by the first process, so do not replay it.
+      result = await run(owned !== true, undefined);
+    }
+    return result;
+  };
+}
+
+function isTransientStoreFailure(result: CommandResult): boolean {
+  return (
+    result.exitCode !== 0
+    && /failed to send http request|connection reset by peer|unexpected EOF|i\/o timeout|: EOF\b/i.test(result.output)
+    && !/auth code is required|did not complete verification/i.test(result.output)
+  );
+}
+
+function createDefaultAuthRefresher(ipatoolBin: string, proxyUrl?: string): AuthRefresher {
+  const env = proxyEnv(proxyUrl);
+  return (code, signal) =>
+    runCommand(ipatoolBin, ["auth", "refresh", "--auth-code", code, "--non-interactive"], env, signal);
 }
 
 function parseProgress(output: string): number | null {
@@ -159,7 +331,18 @@ export function createIpaDownloadManager(options: IpaDownloadManagerOptions): Ip
   const maxJobs = options.maxJobs ?? DEFAULT_MAX_JOBS;
   const persistJobs = options.persistJobs ?? false;
   const persistPath = path.join(downloadsDir, PERSISTED_JOBS_FILE);
-  const runner = options.runner ?? createDefaultRunner(options.ipatoolBin, options.proxyUrl);
+  // Injected runners are used by tests and alternate backends. Do not create
+  // real subprocess side effects for them unless the caller opts in.
+  const ownershipResolver = options.ownershipResolver === null
+    ? null
+    : options.ownershipResolver
+      ?? (options.runner ? null : createDefaultOwnershipResolver(options.ipatoolBin, options.proxyUrl, options.now));
+  const runner = options.runner
+    ?? createDefaultRunner(options.ipatoolBin, options.proxyUrl, ownershipResolver ?? undefined);
+  const authRefresher = options.authRefresher === null
+    ? null
+    : options.authRefresher
+      ?? (options.runner ? null : createDefaultAuthRefresher(options.ipatoolBin, options.proxyUrl));
   const now = options.now ?? Date.now;
 
   const jobs = new Map<string, JobRecord>();
@@ -442,16 +625,53 @@ export function createIpaDownloadManager(options: IpaDownloadManagerOptions): Ip
       return record && record.status === "done" ? path.join(downloadsDir, record.fileName) : null;
     },
 
-    submitAuthCode(id: string, code: string) {
+    async submitAuthCode(id: string, code: string) {
       const record = jobs.get(id);
       if (!record || record.status !== "awaiting_auth_code") return null;
-      record.authCode = code;
-      record.status = "queued";
-      record.errorCode = null;
-      record.error = null;
-      record.cancelRequested = false;
-      record.updatedAt = now();
-      queue.unshift(id);
+
+      // A successful `auth refresh` persists a new password token in the
+      // keychain. Every waiting job can then run without its own 2FA code, so
+      // one human-entered code covers the whole batch. If the refresh command
+      // is unavailable or the refresh fails, fall back to the previous
+      // per-job `--auth-code` behaviour.
+      let refreshed = false;
+      if (authRefresher) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), AUTH_REFRESH_TIMEOUT_MS);
+        try {
+          const result = await authRefresher(code, controller.signal);
+          refreshed = result.exitCode === 0
+            && !/success=false/i.test(result.output)
+            && !/2FA code must contain|did not complete verification|unknown command|unknown flag/i.test(result.output);
+        } catch {
+          refreshed = false;
+        } finally {
+          clearTimeout(timer);
+        }
+      }
+
+      // The job may have been cancelled while the refresh request was in flight.
+      if (record.status !== "awaiting_auth_code") return null;
+
+      const waiting = [...jobs.values()]
+        .filter((job) => job.status === "awaiting_auth_code")
+        .sort((left, right) => left.createdAt - right.createdAt);
+      const targets = refreshed ? waiting : [record];
+      if (targets.length === 0) return null;
+
+      const requeued: string[] = [];
+      for (const job of targets) {
+        job.authCode = refreshed ? null : code;
+        job.status = "queued";
+        job.errorCode = null;
+        job.error = null;
+        job.cancelRequested = false;
+        job.updatedAt = now();
+        const queuedIndex = queue.indexOf(job.id);
+        if (queuedIndex >= 0) queue.splice(queuedIndex, 1);
+        requeued.push(job.id);
+      }
+      queue.unshift(...requeued);
       persistJobsToDisk();
       queueMicrotask(pump);
       return toView(record);
