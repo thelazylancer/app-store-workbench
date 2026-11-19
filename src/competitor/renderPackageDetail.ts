@@ -54,6 +54,7 @@ function assetStatusLabel(status: AssetStatus): string {
     case "partial": return "图片部分缺失";
     case "failed": return "图片缺失";
     case "pending": return "待下载";
+    case "skipped": return "无需下载";
     default: return "未知";
   }
 }

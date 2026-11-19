@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { renderPackageDetail } from "../../src/competitor/renderPackageDetail";
 import type {
   DayDetail,
+  LookupStatus,
   PackageDetail,
   SnapshotEntry,
   SummaryGroup,
@@ -113,7 +115,7 @@ function teamGroups(): SummaryGroup[] {
       packageCount: 3,
       hitCount: 2,
       missCount: 1,
-      pendingCount: 0,
+      pendingCount: 2,
       competitorCount: 2,
       competitors: [{
         appleId: 111,
@@ -164,7 +166,7 @@ function categoryGroups(): SummaryGroup[] {
     packageCount: 4,
     hitCount: 3,
     missCount: 1,
-    pendingCount: 0,
+    pendingCount: 2,
     competitorCount: 3,
     competitors: [
       {
@@ -331,6 +333,8 @@ describe("competitor report page", () => {
     expect(document.querySelector('[data-role="batch-summary"]')?.textContent).toContain("批次正常");
     expect(document.querySelectorAll(".timeline-cell")).toHaveLength(14);
     expect(document.querySelectorAll(".timeline-cell.is-current")).toHaveLength(2);
+    expect(document.querySelector('[data-role="pending-count"]')?.textContent).toBe("待补全 2");
+    expect(groups[0]?.querySelector('[data-role="group-pending"]')?.textContent).toBe("待补全 2");
 
     const requested = fetchMock.mock.calls.map(([input]) => String(input));
     expect(requested.some((url) => url.includes("/api/competitor/summary?") && url.includes("date_kind=first_ad") && url.includes("group_by=team"))).toBe(true);
@@ -420,6 +424,48 @@ describe("competitor report page", () => {
     expect(detail?.querySelector(".competitor-screenshot-grid")).toBeNull();
     expect(detail?.querySelector(".identity-icon-missed")).not.toBeNull();
     expect(detail?.querySelector<HTMLAnchorElement>('a[href*="index.html?bundle=com.beta.s"]')).not.toBeNull();
+  });
+
+  it("renders skipped assets as a normal state instead of a failure", () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    renderPackageDetail(host, {
+      competitor: {
+        appleId: 111,
+        name: "Alpha App",
+        packageCount: 1,
+        packages: [{
+          packageCode: "com.alpha.ios",
+          displayName: "Alpha Source",
+          team: "团队 A",
+          appVersion: "1.0.0",
+          iconLocalPath: alpha.iconLocalPath,
+        }],
+      },
+      packageCode: "com.alpha.ios",
+      packageDetail: {
+        ...alpha,
+        assetStatus: "skipped",
+        screenshotLocalPaths: [],
+        versions: [],
+      },
+      date: DATE,
+      dateKind: "first_ad",
+      groupName: "团队 A",
+      loading: false,
+      error: null,
+      history: [],
+      historyError: null,
+      historyDates: [DATE],
+      packageStatus: new Map<string, LookupStatus>([["com.alpha.ios", "hit"]]),
+      onSelectPackage: () => undefined,
+      onRetry: () => undefined,
+      onBack: () => undefined,
+    });
+
+    const text = host.textContent ?? "";
+    expect(text).toContain("无需下载");
+    expect(text).not.toContain("图片缺失");
   });
 
   it("shows a specific empty state when the API reports no snapshot for the date", async () => {

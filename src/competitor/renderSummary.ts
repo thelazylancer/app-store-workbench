@@ -313,6 +313,13 @@ function createGroup(
   const secondary = document.createElement("span");
   secondary.className = "group-competitors";
   secondary.textContent = `${counts.competitorCount} 个竞品`;
+  if (group.pendingCount > 0) {
+    const pending = document.createElement("span");
+    pending.className = "pending-pill group-pending-pill";
+    pending.dataset.role = "group-pending";
+    pending.textContent = `待补全 ${group.pendingCount}`;
+    secondary.append(" ", pending);
+  }
   headCopy.append(secondary);
   head.append(headCopy);
   if (group.timeline && group.timeline.length > 0) {

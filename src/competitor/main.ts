@@ -274,6 +274,7 @@ function renderCards(): void {
       0,
     )
     : counts.total;
+  const pendingCount = result.summary?.reduce((sum, group) => sum + group.pendingCount, 0) ?? 0;
   const pct = (value: number) => counts.total > 0 ? `${((value / counts.total) * 100).toFixed(1)}%` : "—";
 
   const card = (value: string | number, label: string, variant: string, extra?: HTMLElement | string) => {
@@ -306,8 +307,15 @@ function renderCards(): void {
     return pill;
   };
 
+  const pending = pendingCount > 0 ? document.createElement("span") : null;
+  if (pending) {
+    pending.className = "pending-pill";
+    pending.dataset.role = "pending-count";
+    pending.textContent = `待补全 ${pendingCount}`;
+  }
+
   cardsHost.append(
-    card(counts.total, "包总数", "card-total"),
+    card(counts.total, "包总数", "card-total", pending ?? undefined),
     card(competitors, "竞品数", "card-total", "含未命中包"),
     card(counts.hit, "命中", "card-hit", ratio(pct(counts.hit), "ratio-hit")),
     card(counts.miss, "未命中", "card-miss", ratio(pct(counts.miss), "ratio-miss")),
