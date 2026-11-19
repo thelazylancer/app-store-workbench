@@ -20,6 +20,7 @@ const dateFor = (month: string, offset: number) => `${RUN_YEAR}-${month}-${Strin
 const targetDate = dateFor("06", 0);
 const hitsDate = dateFor("12", 0);
 const syncDate = dateFor("11", 2);
+const fullSyncDate = dateFor("05", 1);
 const kindDayA = dateFor("07", 0);
 const kindDayB = dateFor("08", 2);
 const historyDayA = dateFor("09", 0);
@@ -68,7 +69,10 @@ describeDb("competitor repository writes", () => {
     await pool!.query("DELETE FROM competitor_versions WHERE package_code LIKE $1", [pattern]);
     await pool!.query("DELETE FROM competitor_snapshots WHERE package_code LIKE $1", [pattern]);
     await pool!.query("DELETE FROM competitor_packages WHERE package_code LIKE $1", [pattern]);
-    await pool!.query("DELETE FROM competitor_batches WHERE target_date = ANY($1::date[])", [[targetDate, hitsDate, syncDate]]);
+    await pool!.query(
+      "DELETE FROM competitor_batches WHERE target_date = ANY($1::date[])",
+      [[targetDate, hitsDate, syncDate, fullSyncDate]],
+    );
     await pool!.end();
   });
 
@@ -254,6 +258,80 @@ describeDb("competitor repository writes", () => {
       [code, day],
     );
     expect(counts.rows[0]).toEqual({ batches: 1, packages: 1, snapshots: 1 });
+  });
+
+  it("keeps country hits, assets and versions stable when a hit package is synced twice", async () => {
+    const repo = createCompetitorRepo(pool!);
+    const code = `test.competitor.${suffix}.full-sync`;
+    const day = fullSyncDate;
+    const source: SourceBatch = {
+      syncId: "sync-full",
+      snapshotId: "snap-full",
+      dataUpdatedAt: "2026-11-18T00:47:00.000Z",
+      publishedAt: "2026-11-18T01:00:00.000Z",
+      rangeComplete: true,
+      stale: false,
+      rows: [{
+        packageCode: code, displayName: "iOS-Full", team: "Full Team",
+        firstAdDate: day, listingDate: null, first100Date: null, offlineDate: null,
+      }],
+    };
+    const candidate = {
+      name: "Real Full App",
+      developer: "Dev",
+      appleId: 9001,
+      bundleId: code,
+      appStoreUrl: "https://apps.apple.com/us/app/id9001",
+      iconUrl: "https://cdn.example/icon.png",
+      description: "Description",
+      screenshotUrls: [],
+      category: "Utilities",
+      minimumOsVersion: "16.0",
+      versionHistory: [{ version: "1.0", releasedAt: null, notes: "" }],
+    };
+    const deps = {
+      fetchSourcePackages: async () => source,
+      lookupAppByBundleId: async (bundleId: string) => bundleId === code ? candidate : null,
+      fetchProductPageDetails: async () => ({
+        screenshotUrls: ["https://cdn.example/page-shot.jpg"],
+        iapItems: [],
+        versionHistory: [{ version: "2.0", releasedAt: "2026-11-01T00:00:00.000Z", notes: "Notes" }],
+      }),
+      downloadAssets: async () => ({
+        assets: [
+          { type: "icon" as const, sourceUrl: "https://cdn.example/icon.png", localPath: `${day}/${code}/icon.png` },
+          { type: "screenshot" as const, sourceUrl: "https://cdn.example/page-shot.jpg", localPath: `${day}/${code}/shot.jpg` },
+        ],
+        status: "ok" as const,
+      }),
+      repo,
+    };
+
+    await syncCompetitorDay(day, deps);
+    await syncCompetitorDay(day, deps);
+
+    const counts = await pool!.query(
+      `SELECT
+         (SELECT count(*)::int FROM competitor_batches WHERE target_date = $2::date) AS batches,
+         (SELECT count(*)::int FROM competitor_packages WHERE package_code = $1) AS packages,
+         (SELECT count(*)::int FROM competitor_snapshots WHERE package_code = $1) AS snapshots,
+         (SELECT count(*)::int FROM competitor_country_hits WHERE package_code = $1) AS country_hits,
+         (SELECT count(*)::int FROM competitor_assets WHERE package_code = $1) AS assets,
+         (SELECT count(*)::int FROM competitor_versions WHERE package_code = $1) AS versions`,
+      [code, day],
+    );
+    expect(counts.rows[0]).toEqual({
+      batches: 1, packages: 1, snapshots: 1, country_hits: 8, assets: 2, versions: 1,
+    });
+
+    const stored = await repo.getPackage(code);
+    expect(stored).toMatchObject({
+      lookupStatus: "hit",
+      appleId: 9001,
+      iconLocalPath: `${day}/${code}/icon.png`,
+      screenshotLocalPaths: [`${day}/${code}/shot.jpg`],
+    });
+    expect(stored?.versions.map((entry) => entry.version)).toEqual(["2.0"]);
   });
 
   it("aggregates summary groups by package while competitors collapse by appleId", async () => {

@@ -220,11 +220,12 @@ function createTimeline(points: TimelinePoint[], selectedDate: string): HTMLElem
   const max = Math.max(1, ...ordered.map((point) => point.packageCount));
 
   for (const point of ordered) {
-    const hasBatch = point.batchStatus !== null;
+    // Listing-date timelines can have packages on days without a batch row.
+    const hasData = point.batchStatus !== null || point.packageCount > 0;
     const current = point.date === selectedDate;
-    const description = `${formatShortDate(point.date)} · ${hasBatch ? `${point.packageCount} 包` : "无快照"}${current ? " · 当前日期" : ""}`;
+    const description = `${formatShortDate(point.date)} · ${hasData ? `${point.packageCount} 包` : "无快照"}${current ? " · 当前日期" : ""}`;
     let cell: HTMLElement;
-    if (hasBatch) {
+    if (hasData) {
       const button = document.createElement("button");
       button.type = "button";
       button.dataset.role = "timeline-date";
@@ -235,11 +236,11 @@ function createTimeline(points: TimelinePoint[], selectedDate: string): HTMLElem
       cell = document.createElement("span");
       cell.setAttribute("aria-label", description);
     }
-    cell.className = `timeline-cell${hasBatch ? "" : " is-empty"}${current ? " is-current" : ""}`;
+    cell.className = `timeline-cell${hasData ? "" : " is-empty"}${current ? " is-current" : ""}`;
     cell.title = description;
     const bar = document.createElement("span");
     bar.className = "timeline-bar";
-    if (hasBatch) {
+    if (hasData) {
       bar.style.height = `${4 + 20 * Math.sqrt(point.packageCount / max)}px`;
     }
     cell.append(bar);

@@ -435,6 +435,60 @@ describe("competitor report page", () => {
     expect(document.querySelector(".report-card")).toBeNull();
   });
 
+  it("keeps listing-kind timeline points with packages clickable when no batch exists for that date", async () => {
+    const groups = listingGroups().map((group) => ({
+      ...group,
+      timeline: group.timeline.map((point) => ({ ...point, batchStatus: null })),
+    }));
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(String(input), "http://localhost");
+      if (url.pathname === "/api/competitor/summary") return json(groups);
+      if (url.pathname.startsWith("/api/competitor/day/")) {
+        return json({ ...day, dateKind: "listing" });
+      }
+      return json({ days: [] });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    await mountPage(`?date=${DATE}&date_kind=listing&group_by=team`);
+    await waitForRows();
+
+    const cells = Array.from(document.querySelectorAll<HTMLElement>(".timeline-cell"));
+    expect(cells.length).toBeGreaterThan(0);
+    const withData = cells.filter((cell) => {
+      const title = cell.getAttribute("title") ?? "";
+      return /\d+ 包/.test(title);
+    });
+    expect(withData.length).toBeGreaterThan(0);
+    expect(withData.every((cell) => cell.tagName === "BUTTON")).toBe(true);
+
+    const target = withData[0]!;
+    target.click();
+    await vi.waitFor(() => {
+      const urls = fetchMock.mock.calls.map(([input]) => String(input));
+      expect(urls.some((url) => url.includes("/api/competitor/day/") && url.includes("date_kind=listing"))).toBe(true);
+    });
+  });
+
+  it("filters the rendered groups locally by hit or miss status without refetching", async () => {
+    const fetchMock = createFetchMock();
+    vi.stubGlobal("fetch", fetchMock);
+    await mountPage();
+    await waitForRows();
+    const callsBefore = fetchMock.mock.calls.length;
+
+    document.querySelector<HTMLButtonElement>('[data-role="status"][data-value="miss"]')!.click();
+    expect(document.querySelector('[data-competitor="apple:111"]')).toBeNull();
+    expect(document.querySelector('[data-role="missed-row"]')).not.toBeNull();
+    expect(document.querySelector(".group-head")?.textContent).toContain("1 包 · 0 命中 · 1 未命中");
+    expect(window.location.search).toContain("status=miss");
+    expect(fetchMock).toHaveBeenCalledTimes(callsBefore);
+
+    document.querySelector<HTMLButtonElement>('[data-role="status"][data-value="hit"]')!.click();
+    expect(document.querySelector('[data-role="missed-row"]')).toBeNull();
+    expect(document.querySelector('[data-competitor="apple:111"]')).not.toBeNull();
+    expect(window.location.search).toContain("status=hit");
+  });
+
   it("surfaces a 503 database error with a retry action", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => json({ message: "unavailable" }, 503)));
     await mountPage();

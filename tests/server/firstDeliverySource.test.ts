@@ -132,4 +132,56 @@ describe("fetchFirstDeliveryPackages", () => {
     expect((error as Error).message).toBe("First-delivery request failed with 401");
     expect((error as Error).message).not.toContain("secret-value");
   });
+
+  it("fails fast on a 4xx without retrying", async () => {
+    const fetchSource = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response("unauthorized", { status: 401 }));
+
+    await expect(fetchFirstDeliveryPackages("2026-11-18"))
+      .rejects.toThrow("First-delivery request failed with 401");
+    expect(fetchSource).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries 5xx responses and transient network errors before succeeding", async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchSource = vi.spyOn(globalThis, "fetch")
+        .mockRejectedValueOnce(new TypeError("fetch failed"))
+        .mockResolvedValueOnce(new Response("upstream down", { status: 503 }))
+        .mockResolvedValueOnce(pageBody([
+          { package_code: "com.a", display_name: "iOS A", team: "Alpha", first_ad_date: "2026-11-18" },
+        ]));
+
+      const pending = fetchFirstDeliveryPackages("2026-11-18");
+      for (let index = 0; index < 4; index += 1) {
+        await vi.advanceTimersByTimeAsync(2_000);
+      }
+
+      await expect(pending).resolves.toMatchObject({
+        rows: [{ packageCode: "com.a" }],
+      });
+      expect(fetchSource).toHaveBeenCalledTimes(3);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("gives up after three 5xx attempts", async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchSource = vi.spyOn(globalThis, "fetch")
+        .mockResolvedValue(new Response("upstream down", { status: 500 }));
+
+      const outcome = fetchFirstDeliveryPackages("2026-11-18")
+        .then(() => null, (error: Error) => error);
+      for (let index = 0; index < 4; index += 1) {
+        await vi.advanceTimersByTimeAsync(2_000);
+      }
+
+      expect((await outcome)?.message).toBe("First-delivery request failed with 500");
+      expect(fetchSource).toHaveBeenCalledTimes(3);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
