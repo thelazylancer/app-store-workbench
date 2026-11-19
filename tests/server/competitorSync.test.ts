@@ -64,6 +64,7 @@ describe("computeTargetDate", () => {
 describe("syncCompetitorDay", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
+    vi.restoreAllMocks();
   });
 
   it("looks up all eight storefronts in order and writes hits plus enriched packages", async () => {
@@ -129,6 +130,7 @@ describe("syncCompetitorDay", () => {
 
   it("isolates a single package lookup failure and reports partial completion", async () => {
     const repo = fakeRepo();
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
     const lookup = vi.fn(async (bundleId: string) => {
       if (bundleId === "com.b") throw new Error("Apple unavailable");
       return candidate(bundleId);
@@ -145,6 +147,8 @@ describe("syncCompetitorDay", () => {
     expect(report).toMatchObject({ total: 3, hit: 2, missed: 0, failed: 1, status: "partial" });
     expect(repo.upsertCountryHits).toHaveBeenCalledTimes(2);
     expect(repo.upsertBatch).toHaveBeenCalledWith(expect.objectContaining({ status: "partial" }));
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("com.b"));
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("Apple unavailable"));
   });
 
   it("propagates source failures without writing a batch", async () => {

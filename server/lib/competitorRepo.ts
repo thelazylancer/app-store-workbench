@@ -287,7 +287,7 @@ export function createCompetitorRepo(pool: Pool): CompetitorWriteRepo & Competit
                    $9, $10, $11,
                    $12, $13, $14, $15::jsonb, $16::timestamptz)
            ON CONFLICT (package_code) DO UPDATE SET
-             target_date = EXCLUDED.target_date,
+             target_date = GREATEST(competitor_packages.target_date, EXCLUDED.target_date),
              display_name = EXCLUDED.display_name,
              team = EXCLUDED.team,
              first_ad_date = EXCLUDED.first_ad_date,

@@ -55,6 +55,17 @@ describe("downloadAppAssets", () => {
     expect(result.assets).toHaveLength(2);
   });
 
+  it("reports skipped when the app has no image urls", async () => {
+    const dir = await tempDir();
+    vi.stubEnv("COMPETITOR_DATA_DIR", dir);
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+
+    const result = await downloadAppAssets("2026-11-18", "com.example.app", "", []);
+
+    expect(result).toEqual({ assets: [], status: "skipped" });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
   it("reports failed when no image can be downloaded", async () => {
     const dir = await tempDir();
     vi.stubEnv("COMPETITOR_DATA_DIR", dir);

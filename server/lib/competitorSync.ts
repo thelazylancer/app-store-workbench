@@ -145,8 +145,11 @@ export async function syncCompetitorDay(
           appStoreJson,
         });
         return firstHit ? "hit" : "miss";
-      } catch {
+      } catch (error) {
         // One bad package must not stop the rest of the day's batch.
+        console.error(
+          `Competitor sync failed for ${row.packageCode}: ${error instanceof Error ? error.message : String(error)}`,
+        );
         return "failed";
       }
     },

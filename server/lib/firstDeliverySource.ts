@@ -23,6 +23,13 @@ const REQUEST_TIMEOUT_MS = 30_000;
 const EXCLUDED_TEAM = "灵蜂";
 const PAGE_SIZE = 200;
 
+export class FirstDeliveryHttpError extends Error {
+  constructor(readonly status: number) {
+    super(`First-delivery request failed with ${status}`);
+    this.name = "FirstDeliveryHttpError";
+  }
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -117,13 +124,11 @@ async function fetchPage(
       if (response.ok) {
         return unwrap(await response.json());
       }
-      const error = new Error(`First-delivery request failed with ${response.status}`);
+      const error = new FirstDeliveryHttpError(response.status);
       if (response.status < 500) throw error;
       lastError = error;
     } catch (error) {
-      if (error instanceof Error && error.message.startsWith("First-delivery request failed with 4")) {
-        throw error;
-      }
+      if (error instanceof FirstDeliveryHttpError && error.status < 500) throw error;
       lastError = error;
     }
     if (attempt < 2) {

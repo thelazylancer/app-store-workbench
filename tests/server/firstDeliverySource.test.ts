@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fetchFirstDeliveryPackages } from "../../server/lib/firstDeliverySource";
+import { FirstDeliveryHttpError, fetchFirstDeliveryPackages } from "../../server/lib/firstDeliverySource";
 
 function pageBody(rows: unknown[], meta: Record<string, unknown> = {}) {
   return new Response(JSON.stringify({
@@ -128,7 +128,8 @@ describe("fetchFirstDeliveryPackages", () => {
     vi.stubEnv("FIRST_DELIVERY_API_KEY", "secret-value");
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("nope", { status: 401 }));
     const error = await fetchFirstDeliveryPackages("2026-11-18").catch((reason: Error) => reason);
-    expect(error).toBeInstanceOf(Error);
+    expect(error).toBeInstanceOf(FirstDeliveryHttpError);
+    expect((error as FirstDeliveryHttpError).status).toBe(401);
     expect((error as Error).message).toBe("First-delivery request failed with 401");
     expect((error as Error).message).not.toContain("secret-value");
   });

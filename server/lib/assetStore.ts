@@ -9,7 +9,7 @@ export type DownloadedAsset = {
 
 export type AssetDownloadResult = {
   assets: DownloadedAsset[];
-  status: "ok" | "partial" | "failed";
+  status: "ok" | "partial" | "failed" | "skipped";
 };
 
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -80,8 +80,8 @@ export async function downloadAppAssets(
     });
   }
 
-  const status = sources.length > 0 && assets.length === sources.length
-    ? "ok"
-    : assets.length > 0 ? "partial" : "failed";
+  const status = sources.length === 0
+    ? "skipped"
+    : assets.length === sources.length ? "ok" : assets.length > 0 ? "partial" : "failed";
   return { assets, status };
 }

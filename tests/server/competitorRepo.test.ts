@@ -117,6 +117,21 @@ describeDb("competitor repository writes", () => {
     expect(await repo.getBatch(targetDate)).toEqual(batch);
   });
 
+  it("keeps the newest target_date when an older day is backfilled", async () => {
+    const repo = createCompetitorRepo(pool!);
+    const code = `test.competitor.${suffix}.backfill`;
+    const older = dateFor("01", 0);
+    const newer = dateFor("02", 0);
+
+    await repo.upsertPackage({ ...pkg, packageCode: code, targetDate: newer, firstAdDate: newer });
+    await repo.upsertPackage({ ...pkg, packageCode: code, targetDate: older, firstAdDate: older });
+
+    expect((await repo.getPackage(code))?.targetDate).toBe(newer);
+    expect(await repo.listDays(older, newer)).toEqual([
+      { date: newer, packageCount: 1, hitCount: 0, missCount: 0, batchStatus: null },
+    ]);
+  });
+
   it("keeps one country hit per country across reruns", async () => {
     const repo = createCompetitorRepo(pool!);
     const code = `test.competitor.${suffix}.hits`;
