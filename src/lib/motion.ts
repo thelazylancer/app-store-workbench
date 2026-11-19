@@ -1,6 +1,6 @@
 import gsap from "gsap";
 
-export function initMotion(root: ParentNode, mode: "boot" | "empty" | "results" = "results") {
+export function initMotion(root: ParentNode, mode: "empty" | "results" = "results") {
   if (typeof window === "undefined" || !("matchMedia" in window)) {
     return;
   }
@@ -9,31 +9,12 @@ export function initMotion(root: ParentNode, mode: "boot" | "empty" | "results" 
     return;
   }
 
-  const header = root.querySelector(".wx-top");
-  const rail = root.querySelector(".search-rail");
   const filterBar = root.querySelector(".filter-bar");
   const emptyState = root.querySelector(".empty-state");
   const resultsSummary = root.querySelector(".results-summary");
   const rows = root.querySelectorAll(".result-row");
   const inspector = root.querySelector(".inspector");
   const screenshots = root.querySelectorAll(".screenshot");
-
-  if (mode === "boot" && root instanceof HTMLElement && !root.dataset.motionBooted) {
-    const shellTargets = [header, rail].filter(Boolean);
-    gsap.fromTo(
-      shellTargets,
-      { opacity: 0, y: 14 },
-      {
-        opacity: 1,
-        y: 0,
-        duration: 0.5,
-        stagger: 0.06,
-        ease: "power2.out",
-        overwrite: "auto",
-      },
-    );
-    root.dataset.motionBooted = "true";
-  }
 
   if (filterBar && mode === "results") {
     gsap.fromTo(filterBar, { y: 3 }, { y: 0, duration: 0.14, ease: "power1.out", overwrite: "auto" });

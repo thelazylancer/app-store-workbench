@@ -336,7 +336,7 @@ function getStatusCounts(items: SearchResult[]) {
   };
 }
 
-async function refreshMotion(mode: "boot" | "empty" | "results") {
+async function refreshMotion(mode: "empty" | "results") {
   try {
     const { initMotion } = await import("./lib/motion");
     initMotion(app, mode);
@@ -550,4 +550,3 @@ results.before(filterBar);
 syncFilterUi();
 bindFilterEvents();
 updateResultsView();
-void refreshMotion("boot");
