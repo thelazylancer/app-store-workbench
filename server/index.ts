@@ -1,4 +1,11 @@
 import path from "node:path";
+
+try {
+  process.loadEnvFile();
+} catch {
+  // .env is optional when the process already received environment variables.
+}
+
 import { createApp } from "./app";
 import { lookupAppById, lookupAppByBundleId, lookupAppStore } from "./lib/appleLookup";
 import { downloadAppAssets } from "./lib/assetStore";
@@ -74,7 +81,7 @@ async function main() {
     competitorAssetsDir: process.env.COMPETITOR_DATA_DIR ?? path.resolve("data/competitor"),
   });
 
-  const port = 3001;
+  const port = Number(process.env.PORT) || 3001;
 
   app.listen(port, () => {
     console.log(`Server listening on http://localhost:${port}`);
