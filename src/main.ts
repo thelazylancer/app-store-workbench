@@ -44,7 +44,7 @@ app.innerHTML = `
             <div class="composer-bar">
               <label class="field storefront-field">
                 <span class="visually-hidden">App Store 区域</span>
-                <select aria-label="App Store 区域" data-role="country">
+                <select name="country" autocomplete="off" aria-label="App Store 区域" data-role="country">
                   <option value="us">美国 · US</option>
                   <option value="cn">中国大陆 · CN</option>
                   <option value="hk">中国香港 · HK</option>
@@ -160,11 +160,11 @@ function createQueryRow() {
   row.innerHTML = `
     <label class="field query-field query-name-field">
       <span class="visually-hidden" data-role="name-label"></span>
-      <input type="text" data-role="query-name" placeholder="输入应用名称" aria-required="true" autocomplete="off" spellcheck="false" />
+      <input type="text" name="query-name" data-role="query-name" placeholder="输入应用名称" aria-required="true" autocomplete="off" spellcheck="false" />
     </label>
     <label class="field query-field query-bundle-field">
       <span class="visually-hidden" data-role="bundle-label"></span>
-      <input type="text" data-role="query-bundle" placeholder="Bundle ID（可选）" autocomplete="off" autocapitalize="none" spellcheck="false" />
+      <input type="text" name="query-bundle" data-role="query-bundle" placeholder="Bundle ID（可选）" autocomplete="off" autocapitalize="none" spellcheck="false" />
     </label>
     <button type="button" class="secondary-button query-remove" data-role="remove-query" hidden>
       <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M5 5L15 15M15 5L5 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>

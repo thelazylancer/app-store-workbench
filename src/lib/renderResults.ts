@@ -645,6 +645,7 @@ function createCandidates(
   const label = document.createElement("label");
   label.textContent = "Bundle ID";
   filter.type = "text";
+  filter.name = "candidate-bundle-filter";
   filter.dataset.role = "candidate-bundle-filter";
   filter.placeholder = "输入 Bundle ID 片段";
   filter.autocomplete = "off";
