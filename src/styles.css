@@ -124,7 +124,9 @@ summary:focus-visible {
   align-items: center;
   gap: 36px;
   height: 54px;
-  padding: 0 32px;
+  /* 底线通栏，内容对齐 1440 内容列：窄屏退回基础内边距 */
+  padding-left: max(32px, calc((100% - 1440px) / 2 + 32px));
+  padding-right: max(32px, calc((100% - 1440px) / 2 + 32px));
   border-bottom: 1px solid var(--line);
 }
 
@@ -1914,9 +1916,13 @@ body.is-lightbox-open {
 }
 
 @media (max-width: 1180px) {
-  .workspace-frame,
-  .wx-top {
+  .workspace-frame {
     padding: 0 24px;
+  }
+
+  .wx-top {
+    padding-left: max(24px, calc((100% - 1440px) / 2 + 24px));
+    padding-right: max(24px, calc((100% - 1440px) / 2 + 24px));
   }
 }
 
