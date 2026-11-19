@@ -14,6 +14,16 @@ import {
   formatDateTime,
 } from "./format";
 
+function svgIcon(paths: string, size = 14): SVGSVGElement {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 16 16");
+  svg.setAttribute("width", String(size));
+  svg.setAttribute("height", String(size));
+  svg.setAttribute("aria-hidden", "true");
+  svg.innerHTML = paths;
+  return svg;
+}
+
 function createBadge(kind: "hit" | "miss" | "neutral" | "warn", text: string): HTMLSpanElement {
   const badge = document.createElement("span");
   const className = kind === "hit"
@@ -99,7 +109,6 @@ function createIdentity(
     const placeholder = document.createElement("span");
     placeholder.className = "identity-icon identity-icon-missed";
     placeholder.setAttribute("aria-hidden", "true");
-    placeholder.textContent = "?";
     surface.append(placeholder);
   } else {
     const src = competitorAssetUrl(packageDetail.iconLocalPath);
@@ -146,11 +155,11 @@ function createIdentity(
 
   if (!isMissed && appStoreUrl) {
     const link = document.createElement("a");
-    link.className = "secondary-button identity-link";
+    link.className = "wx-button identity-link";
     link.href = appStoreUrl;
     link.target = "_blank";
     link.rel = "noreferrer";
-    link.textContent = "在 App Store 查看 ↗";
+    link.append("在 App Store 查看", svgIcon('<path d="M5 11L11 5M6 5h5v5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/>'));
     copy.append(link);
   }
 
@@ -172,21 +181,24 @@ function createPackageSwitcher(
   wrapper.append(label);
 
   const group = document.createElement("div");
-  group.className = "filter-segment package-switcher-segment";
+  group.className = "package-switcher-segment";
   group.setAttribute("role", "group");
   group.setAttribute("aria-label", "切换包");
 
   for (const brief of competitor.packages) {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = `filter-chip package-chip${brief.packageCode === selected ? " is-active" : ""}`;
+    button.className = `package-chip${brief.packageCode === selected ? " is-active" : ""}`;
     button.dataset.role = "package-switch";
     button.dataset.package = brief.packageCode;
     button.setAttribute("aria-pressed", String(brief.packageCode === selected));
     button.title = brief.packageCode;
 
     const dot = document.createElement("span");
-    dot.className = `status-dot ${packageStatus.get(brief.packageCode) === "bundle_not_found" ? "status-dot-miss" : "status-dot-hit"}`;
+    const status = packageStatus.get(brief.packageCode);
+    dot.className = `status-dot ${
+      status === "bundle_not_found" ? "status-dot-miss" : status === "pending" ? "status-dot-pending" : "status-dot-hit"
+    }`;
     dot.setAttribute("aria-hidden", "true");
     const text = document.createElement("span");
     text.className = "package-chip-code";
@@ -394,7 +406,7 @@ function createMetadata(packageDetail: PackageDetail): HTMLElement {
     link.href = storeUrl;
     link.target = "_blank";
     link.rel = "noreferrer";
-    link.textContent = "apps.apple.com ↗";
+    link.append("apps.apple.com", svgIcon('<path d="M5 11L11 5M6 5h5v5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/>', 12));
     storeRows.push(["App Store", link]);
   }
   const store = createInfoList(storeRows);
@@ -410,6 +422,7 @@ export type DetailRenderOptions = {
   packageDetail: PackageDetail | null;
   date: string;
   dateKind: DateKind;
+  rangeFrom?: string | null;
   groupName: string;
   loading: boolean;
   error: string | null;
@@ -443,6 +456,13 @@ export function renderPackageDetail(host: HTMLElement, options: DetailRenderOpti
     onSelectPackage,
   } = options;
 
+  const contextTitleText = options.rangeFrom
+    ? `区间 ${options.rangeFrom} — ${date} · ${DATE_KIND_LABEL[dateKind]}口径`
+    : `快照 ${date} · ${DATE_KIND_LABEL[dateKind]}口径`;
+  const contextReasonText = options.rangeFrom
+    ? `因在${DATE_KIND_LABEL[dateKind]} ${options.rangeFrom} — ${date} 区间出现。`
+    : `因${DATE_KIND_LABEL[dateKind]} = ${date} 出现在当日列表。`;
+
   const wrapper = document.createElement("div");
   wrapper.className = "detail-view";
 
@@ -452,7 +472,7 @@ export function renderPackageDetail(host: HTMLElement, options: DetailRenderOpti
   back.type = "button";
   back.className = "detail-back";
   back.dataset.role = "detail-back";
-  back.textContent = "← 返回竞品日报";
+  back.append(svgIcon('<path d="M9 4L5 8l4 4M5 8h7" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/>'), "返回竞品日报");
   back.addEventListener("click", options.onBack);
   top.append(back);
 
@@ -486,7 +506,7 @@ export function renderPackageDetail(host: HTMLElement, options: DetailRenderOpti
     reason.textContent = `${packageCode} 在 ${date} 的快照请求失败：${error}`;
     const retry = document.createElement("button");
     retry.type = "button";
-    retry.className = "secondary-button";
+    retry.className = "wx-button";
     retry.dataset.role = "detail-retry";
     retry.textContent = "重试";
     retry.addEventListener("click", options.onRetry);
@@ -503,7 +523,7 @@ export function renderPackageDetail(host: HTMLElement, options: DetailRenderOpti
     const placeholder = document.createElement("span");
     placeholder.className = `identity-icon${missedStatus ? " identity-icon-missed" : " identity-icon-fallback"}`;
     placeholder.setAttribute("aria-hidden", "true");
-    placeholder.textContent = missedStatus ? "?" : (competitor.name || "?").slice(0, 1).toUpperCase();
+    placeholder.textContent = missedStatus ? "" : (competitor.name || "?").slice(0, 1).toUpperCase();
     surface.append(placeholder);
 
     const copy = document.createElement("div");
@@ -524,10 +544,10 @@ export function renderPackageDetail(host: HTMLElement, options: DetailRenderOpti
     context.className = "context-strip";
     const contextTitle = document.createElement("p");
     contextTitle.className = "context-title";
-    contextTitle.textContent = `快照 ${date} · ${DATE_KIND_LABEL[dateKind]}口径`;
+    contextTitle.textContent = contextTitleText;
     const contextReason = document.createElement("p");
     contextReason.className = "context-reason";
-    contextReason.textContent = `因${DATE_KIND_LABEL[dateKind]} = ${date} 出现在当日列表。`;
+    contextReason.textContent = contextReasonText;
     const contextPackage = document.createElement("p");
     contextPackage.className = "context-package";
     contextPackage.textContent = `包：${packageCode}`;
@@ -541,10 +561,10 @@ export function renderPackageDetail(host: HTMLElement, options: DetailRenderOpti
     skeleton.className = "detail-skeleton";
     skeleton.dataset.role = "detail-loading";
     const loadingLabel = document.createElement("p");
-    loadingLabel.className = "skeleton-label";
+    loadingLabel.className = "wx-skeleton-label";
     loadingLabel.textContent = `正在加载 ${packageCode}…`;
     const loadingBlock = document.createElement("div");
-    loadingBlock.className = "skeleton-block skeleton-body";
+    loadingBlock.className = "wx-skeleton-row detail-skeleton-block";
     skeleton.append(loadingLabel, loadingBlock);
     wrapper.append(skeleton);
     host.append(wrapper);
@@ -613,7 +633,7 @@ export function renderPackageDetail(host: HTMLElement, options: DetailRenderOpti
     const noDetailsText = document.createElement("p");
     noDetailsText.textContent = "未命中，无 App Store 详情可展示。";
     const searchLink = document.createElement("a");
-    searchLink.className = "secondary-button";
+    searchLink.className = "wx-button";
     searchLink.href = `${import.meta.env.BASE_URL}index.html?bundle=${encodeURIComponent(packageDetail.packageCode)}`;
     searchLink.textContent = "到 App Store 搜索中查询此 Bundle ID";
     noDetails.append(noDetailsText, searchLink);

@@ -52,6 +52,20 @@ export async function getCompetitorSummary(
   return Array.isArray(data) ? data : data.groups ?? [];
 }
 
+/** Range summary: groups cover every package that appeared in [from, to]. */
+export async function getCompetitorSummaryRange(
+  from: string,
+  to: string,
+  dateKind: DateKind,
+  groupBy: GroupBy,
+): Promise<SummaryGroup[]> {
+  const params = new URLSearchParams({ from, to, date_kind: dateKind, group_by: groupBy });
+  const data = await request<SummaryGroup[] | SummaryResponse>(
+    `/api/competitor/summary?${params.toString()}`,
+  );
+  return Array.isArray(data) ? data : data.groups ?? [];
+}
+
 export function getCompetitorDay(date: string, dateKind: DateKind): Promise<DayDetail> {
   const params = new URLSearchParams({ date_kind: dateKind });
   return request<DayDetail>(`/api/competitor/day/${encodeURIComponent(date)}?${params.toString()}`);

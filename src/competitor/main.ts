@@ -7,12 +7,15 @@ import {
   getCompetitorPackage,
   getCompetitorPackageHistory,
   getCompetitorSummary,
+  getCompetitorSummaryRange,
 } from "../lib/competitorApi";
 import type {
   DateKind,
   DayDetail,
   DaySummary,
   GroupBy,
+  LookupStatus,
+  PackageBrief,
   PackageDetail,
   SnapshotEntry,
   SummaryCompetitor,
@@ -21,17 +24,26 @@ import type {
 import {
   DATE_KIND_LABEL,
   addDays,
+  daySpan,
   formatDateTime,
-  statusFilterLabel,
-  yesterdayUtc,
+  formatMonthDay,
   isDateString,
+  statusFilterLabel,
+  weekdayLabel,
+  yesterdayUtc,
   type StatusFilter,
 } from "./format";
-import { competitorKey, renderSummary } from "./renderSummary";
+import {
+  competitorKey,
+  packageCompetitorKey,
+  renderSummary,
+  type ExceptionEntry,
+} from "./renderSummary";
 import { renderPackageDetail } from "./renderPackageDetail";
 
 type PageState = {
   date: string;
+  rangeFrom: string | null;
   dateKind: DateKind;
   groupBy: GroupBy;
   status: StatusFilter;
@@ -49,10 +61,18 @@ type LoadResult = {
   days: DaySummary[];
 };
 
+const MAX_RANGE_DAYS = 31;
+
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("Missing #app root");
 
 const yesterday = yesterdayUtc();
+
+function parseStatus(value: string | null): StatusFilter {
+  if (value === "hit") return "hit";
+  if (value === "exception" || value === "miss") return "exception";
+  return "all";
+}
 
 function parseState(): PageState {
   const params = new URLSearchParams(window.location.search);
@@ -61,12 +81,18 @@ function parseState(): PageState {
   const date = requestedDate > yesterday ? yesterday : requestedDate;
   const rawKind = params.get("date_kind");
   const rawGroup = params.get("group_by");
-  const rawStatus = params.get("status");
+  const rawFrom = params.get("from");
+  const rangeFrom = isDateString(rawFrom)
+    && rawFrom <= date
+    && daySpan(rawFrom, date) <= MAX_RANGE_DAYS
+    ? rawFrom
+    : null;
   return {
     date,
+    rangeFrom,
     dateKind: rawKind === "listing" ? "listing" : "first_ad",
     groupBy: rawGroup === "category" || rawGroup === "ios_version" ? rawGroup : "team",
-    status: rawStatus === "hit" || rawStatus === "miss" ? rawStatus : "all",
+    status: parseStatus(params.get("status")),
     view: params.get("view") === "detail" ? "detail" : "list",
     competitor: params.get("competitor"),
     packageCode: params.get("package"),
@@ -91,86 +117,87 @@ let detailPackage: PackageDetail | null = null;
 let detailHistory: SnapshotEntry[] | null = null;
 let detailHistoryError: string | null = null;
 let recentNote: string | null = null;
+let rangeNote: string | null = null;
 const collapsedGroups = new Set<string>();
 
 app.innerHTML = `
-  <main class="app-shell app-shell-root">
-    <section class="workspace-frame">
-      <header class="workspace-header">
-        <div class="workspace-title">
-          <img class="workspace-logo" src="${import.meta.env.BASE_URL}brand/workbench-logo.png" alt="" width="36" height="36" decoding="async" />
-          <span class="workspace-brand">App搜索工作台</span>
-        </div>
-        <nav class="workspace-tabs" aria-label="主导航">
-          <a href="${import.meta.env.BASE_URL}index.html">App Store 搜索</a>
-          <a href="${import.meta.env.BASE_URL}competitor.html" aria-current="page">竞品</a>
-        </nav>
-        <div class="workspace-badges">
-          <span class="region-note">8 个区域自动抓取 · 不可筛选</span>
-        </div>
-      </header>
+  <main class="wx-shell">
+    <header class="wx-top">
+      <div class="wx-brand">
+        <img src="${import.meta.env.BASE_URL}brand/workbench-logo.png" alt="" width="28" height="28" decoding="async" />
+        <span>App搜索工作台</span>
+      </div>
+      <nav class="wx-tabs" aria-label="主导航">
+        <a href="${import.meta.env.BASE_URL}index.html">App Store 搜索</a>
+        <a href="${import.meta.env.BASE_URL}competitor.html" aria-current="page">竞品</a>
+      </nav>
+      <span class="wx-region">8 个区域自动抓取 · 不可筛选</span>
+    </header>
 
-      <section class="report-surface" data-role="list-view">
-        <div class="report-head">
-          <div class="report-title-block">
-            <h1>竞品日报</h1>
-            <p class="report-date-line" data-role="date-line"></p>
-          </div>
-          <p class="batch-summary" data-role="batch-summary"></p>
+    <section class="wx-report" data-role="list-view">
+      <div class="wx-head">
+        <div class="wx-title">
+          <h1>竞品日报</h1>
+          <span class="wx-date" data-role="date-big">${state.date}</span>
+          <span class="wx-tag" data-role="date-tag">昨日</span>
         </div>
-        <div data-role="batch-banner"></div>
-
-        <section class="report-controls">
-          <div class="control-row">
-            <div class="control-cluster">
-              <span class="control-label">日期</span>
-              <div class="date-control">
-                <button type="button" class="date-step" data-role="prev-date" aria-label="前一天">‹</button>
-                <input type="date" class="date-input" data-role="date-input" aria-label="快照日期" />
-                <button type="button" class="date-step" data-role="next-date" aria-label="后一天">›</button>
-              </div>
-              <button type="button" class="text-action" data-role="back-yesterday" hidden>回到昨天</button>
+        <div class="wx-controls">
+          <div class="wx-control">
+            <span class="wx-label">日期</span>
+            <div class="wx-stepper">
+              <button type="button" data-role="prev-date" aria-label="前一天">
+                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M10 4L6 8l4 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/></svg>
+              </button>
+              <input type="date" data-role="date-input" aria-label="快照日期" />
+              <button type="button" data-role="next-date" aria-label="后一天">
+                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/></svg>
+              </button>
             </div>
-            <div class="control-cluster">
-              <span class="control-label">口径</span>
-              <div class="filter-segment" role="group" aria-label="日期口径">
-                <button type="button" class="filter-chip" data-role="date-kind" data-value="first_ad">投放日期</button>
-                <button type="button" class="filter-chip" data-role="date-kind" data-value="listing">上架日期</button>
-              </div>
+            <button type="button" class="wx-text-action" data-role="back-yesterday" hidden>回到昨天</button>
+          </div>
+          <div class="wx-control">
+            <span class="wx-label">口径</span>
+            <div class="wx-seg" role="group" aria-label="日期口径">
+              <button type="button" data-role="date-kind" data-value="first_ad">投放日期</button>
+              <button type="button" data-role="date-kind" data-value="listing">上架日期</button>
             </div>
           </div>
-          <div class="control-row">
-            <div class="control-cluster">
-              <span class="control-label">分组</span>
-              <div class="filter-segment" role="group" aria-label="分组维度">
-                <button type="button" class="filter-chip" data-role="group-by" data-value="team">团队</button>
-                <button type="button" class="filter-chip" data-role="group-by" data-value="category">类目</button>
-                <button type="button" class="filter-chip" data-role="group-by" data-value="ios_version">iOS 版本</button>
-              </div>
-            </div>
-            <div class="control-cluster">
-              <span class="control-label">状态</span>
-              <div class="filter-segment" role="group" aria-label="命中状态">
-                <button type="button" class="filter-chip" data-role="status" data-value="all">全部</button>
-                <button type="button" class="filter-chip" data-role="status" data-value="hit">命中</button>
-                <button type="button" class="filter-chip" data-role="status" data-value="miss">未命中</button>
-              </div>
+          <div class="wx-control">
+            <span class="wx-label">分组</span>
+            <div class="wx-seg" role="group" aria-label="分组维度">
+              <button type="button" data-role="group-by" data-value="team">团队</button>
+              <button type="button" data-role="group-by" data-value="category">类目</button>
+              <button type="button" data-role="group-by" data-value="ios_version">iOS 版本</button>
             </div>
           </div>
-        </section>
+          <div class="wx-control">
+            <span class="wx-label">状态</span>
+            <div class="wx-seg" role="group" aria-label="命中状态">
+              <button type="button" data-role="status" data-value="all">全部</button>
+              <button type="button" data-role="status" data-value="hit">命中</button>
+              <button type="button" data-role="status" data-value="exception">异常</button>
+            </div>
+          </div>
+        </div>
+      </div>
 
-        <div class="report-cards" data-role="cards"></div>
-        <p class="filter-note" data-role="filter-note" hidden></p>
-        <div class="report-body" data-role="report-body" aria-live="polite"></div>
+      <p class="wx-subline" data-role="date-line"></p>
+      <div data-role="batch-banner"></div>
 
-        <footer class="report-footer">
-          <p data-role="footer-kind">数据来源：内部首投包接口 + App Store 精确 Bundle ID 匹配；仅含 iOS 包，已排除灵蜂。</p>
-          <p>版本历史为当日商品页可见快照，不是 App Store 全量历史。页面不提供国家筛选。</p>
-        </footer>
-      </section>
+      <section class="wx-forecast" data-role="forecast" aria-label="近 7 天预报"></section>
+      <p class="wx-range-note" data-role="range-note" aria-live="polite" hidden></p>
+      <p class="wx-filter-note" data-role="filter-note" hidden></p>
 
-      <section class="report-surface detail-surface" data-role="detail-view" hidden></section>
+      <div class="wx-body" data-role="report-body" aria-live="polite"></div>
+
+      <footer class="wx-foot">
+        <p data-role="batch-summary"></p>
+        <p data-role="footer-kind">数据来源：内部首投包接口 + App Store 精确 Bundle ID 匹配；仅含 iOS 包，已排除灵蜂。</p>
+        <p>版本历史为当日商品页可见快照，不是 App Store 全量历史。页面不提供国家筛选。</p>
+      </footer>
     </section>
+
+    <section class="wx-detail" data-role="detail-view" hidden></section>
   </main>
 `;
 
@@ -182,24 +209,33 @@ function requireElement<T extends Element>(selector: string): T {
 
 const listView = requireElement<HTMLElement>('[data-role="list-view"]');
 const detailView = requireElement<HTMLElement>('[data-role="detail-view"]');
+const dateBig = requireElement<HTMLElement>('[data-role="date-big"]');
+const dateTag = requireElement<HTMLElement>('[data-role="date-tag"]');
 const dateLine = requireElement<HTMLElement>('[data-role="date-line"]');
 const batchSummary = requireElement<HTMLElement>('[data-role="batch-summary"]');
 const batchBanner = requireElement<HTMLElement>('[data-role="batch-banner"]');
 const dateInput = requireElement<HTMLInputElement>('[data-role="date-input"]');
 const nextDate = requireElement<HTMLButtonElement>('[data-role="next-date"]');
 const backYesterday = requireElement<HTMLButtonElement>('[data-role="back-yesterday"]');
-const cardsHost = requireElement<HTMLElement>('[data-role="cards"]');
+const forecastHost = requireElement<HTMLElement>('[data-role="forecast"]');
+const rangeNoteHost = requireElement<HTMLElement>('[data-role="range-note"]');
 const filterNote = requireElement<HTMLElement>('[data-role="filter-note"]');
 const reportBody = requireElement<HTMLElement>('[data-role="report-body"]');
 const footerKind = requireElement<HTMLElement>('[data-role="footer-kind"]');
 const detailHost = detailView;
 
-function stateToUrl(): string {
+function urlStateParams(): URLSearchParams {
   const params = new URLSearchParams();
   params.set("date", state.date);
+  if (state.rangeFrom) params.set("from", state.rangeFrom);
   params.set("date_kind", state.dateKind);
   params.set("group_by", state.groupBy);
   params.set("status", state.status);
+  return params;
+}
+
+function stateToUrl(): string {
+  const params = urlStateParams();
   if (state.view === "detail") {
     params.set("view", "detail");
     if (state.competitor) params.set("competitor", state.competitor);
@@ -212,23 +248,45 @@ function commit(mode: "push" | "replace"): void {
   window.history[mode === "push" ? "pushState" : "replaceState"]({}, "", stateToUrl());
 }
 
-function countStatuses(): { total: number; hit: number; miss: number } {
+function pendingPackagesOf(group: SummaryGroup): PackageBrief[] {
+  // Backend may still be rolling out the range contract.
+  return group.pendingPackages ?? [];
+}
+
+function totals(): { total: number; hit: number; pending: number; exception: number } {
+  if (result.summary) {
+    return result.summary.reduce(
+      (sum, group) => ({
+        total: sum.total + group.packageCount,
+        hit: sum.hit + group.hitCount,
+        pending: sum.pending + group.pendingCount,
+        exception: sum.exception + group.missCount + group.pendingCount,
+      }),
+      { total: 0, hit: 0, pending: 0, exception: 0 },
+    );
+  }
   const packages = result.day?.packages ?? [];
-  return {
-    total: packages.length,
-    hit: packages.filter((pkg) => pkg.lookupStatus === "hit").length,
-    miss: packages.filter((pkg) => pkg.lookupStatus === "bundle_not_found").length,
-  };
+  const hit = packages.filter((pkg) => pkg.lookupStatus === "hit").length;
+  const pending = packages.filter((pkg) => pkg.lookupStatus === "pending").length;
+  const miss = packages.filter((pkg) => pkg.lookupStatus === "bundle_not_found").length;
+  return { total: packages.length, hit, pending, exception: miss + pending };
 }
 
 function syncControls(): void {
-  const counts = countStatuses();
-  const hasData = !loading && Boolean(result.day);
+  const counts = totals();
+  const hasData = !loading && Boolean(result.summary || result.day);
+  const rangeDays = state.rangeFrom ? daySpan(state.rangeFrom, state.date) : 1;
+  dateBig.textContent = state.date;
+  dateTag.textContent = state.rangeFrom
+    ? `区间 ${rangeDays} 天`
+    : state.date === yesterday ? "昨日" : "历史快照";
   dateInput.value = state.date;
   dateInput.max = yesterday;
   nextDate.disabled = state.date >= yesterday;
-  backYesterday.hidden = state.date === yesterday;
-  dateLine.textContent = `${state.date}${state.date === yesterday ? "（昨日）" : ""} · UTC 目标日期 · ${DATE_KIND_LABEL[state.dateKind]}口径`;
+  backYesterday.hidden = state.date === yesterday && !state.rangeFrom;
+  dateLine.textContent = state.rangeFrom
+    ? `${state.rangeFrom} — ${state.date} · 区间 ${rangeDays} 天 · UTC 目标日期 · ${DATE_KIND_LABEL[state.dateKind]}口径`
+    : `${state.date}${state.date === yesterday ? "（昨日）" : ""} · UTC 目标日期 · ${DATE_KIND_LABEL[state.dateKind]}口径`;
   footerKind.textContent = `数据来源：内部首投包接口 + App Store 精确 Bundle ID 匹配；仅含 iOS 包，已排除灵蜂。当前口径：${DATE_KIND_LABEL[state.dateKind]}。`;
 
   app!.querySelectorAll<HTMLButtonElement>('[data-role="date-kind"]').forEach((button) => {
@@ -247,91 +305,152 @@ function syncControls(): void {
     button.classList.toggle("is-active", active);
     button.setAttribute("aria-pressed", String(active));
     const label = statusFilterLabel(value);
-    const count = value === "all" ? counts.total : value === "hit" ? counts.hit : counts.miss;
+    const count = value === "all" ? counts.total : value === "hit" ? counts.hit : counts.exception;
     button.textContent = hasData ? `${label} ${count}` : label;
   });
+
   filterNote.hidden = state.status === "all" || !hasData;
+  filterNote.replaceChildren();
   if (!filterNote.hidden) {
-    filterNote.textContent = `当前为筛选结果 · 仅看${statusFilterLabel(state.status)} · ${
-      state.status === "hit" ? counts.hit : counts.miss
-    } 包 / 当日共 ${counts.total} 包`;
+    const count = state.status === "hit" ? counts.hit : counts.exception;
+    filterNote.append(`当前为筛选结果 · 仅看${statusFilterLabel(state.status)} · ${count} 包 / 共 ${counts.total} 包`);
     const clear = document.createElement("button");
     clear.type = "button";
-    clear.className = "text-action";
+    clear.className = "wx-text-action";
     clear.dataset.role = "empty-clear-filter";
     clear.textContent = "清除筛选";
     filterNote.append(clear);
   }
+
+  renderRangeNote();
 }
 
-function renderCards(): void {
-  cardsHost.replaceChildren();
-  cardsHost.hidden = false;
-  const counts = countStatuses();
-  const competitors = result.summary
-    ? result.summary.reduce(
-      (sum, group) => sum + group.competitors.length + group.missedPackages.length,
-      0,
-    )
-    : counts.total;
-  const pendingCount = result.summary?.reduce((sum, group) => sum + group.pendingCount, 0) ?? 0;
-  const pct = (value: number) => counts.total > 0 ? `${((value / counts.total) * 100).toFixed(1)}%` : "—";
-
-  const card = (value: string | number, label: string, variant: string, extra?: HTMLElement | string) => {
-    const article = document.createElement("article");
-    article.className = `report-card ${variant}`;
-    const strong = document.createElement("strong");
-    strong.className = "report-card-value";
-    strong.textContent = String(value);
-    const caption = document.createElement("span");
-    caption.className = "report-card-label";
-    caption.textContent = label;
-    article.append(strong, caption);
-    if (extra) {
-      if (typeof extra === "string") {
-        const note = document.createElement("span");
-        note.className = "report-card-note";
-        note.textContent = extra;
-        article.append(note);
-      } else {
-        article.append(extra);
-      }
-    }
-    return article;
-  };
-
-  const ratio = (text: string, variant: string) => {
-    const pill = document.createElement("span");
-    pill.className = `ratio-pill ${variant}`;
-    pill.textContent = text;
-    return pill;
-  };
-
-  const pending = pendingCount > 0 ? document.createElement("span") : null;
-  if (pending) {
-    pending.className = "pending-pill";
-    pending.dataset.role = "pending-count";
-    pending.textContent = `待补全 ${pendingCount}`;
+function renderRangeNote(): void {
+  rangeNoteHost.replaceChildren();
+  if (state.rangeFrom) {
+    rangeNoteHost.hidden = false;
+    rangeNoteHost.classList.remove("is-warn");
+    rangeNoteHost.append(
+      `已选 ${daySpan(state.rangeFrom, state.date)} 天：${state.rangeFrom} — ${state.date} · 再次点击区间内任意一天回到单日`,
+    );
+    const clear = document.createElement("button");
+    clear.type = "button";
+    clear.className = "wx-text-action";
+    clear.dataset.role = "clear-range";
+    clear.textContent = "回到单日";
+    rangeNoteHost.append(clear);
+    return;
   }
+  if (rangeNote) {
+    rangeNoteHost.hidden = false;
+    rangeNoteHost.classList.add("is-warn");
+    rangeNoteHost.textContent = rangeNote;
+    return;
+  }
+  rangeNoteHost.hidden = true;
+}
 
-  cardsHost.append(
-    card(counts.total, "包总数", "card-total", pending ?? undefined),
-    card(competitors, "竞品数", "card-total", "含未命中包"),
-    card(counts.hit, "命中", "card-hit", ratio(pct(counts.hit), "ratio-hit")),
-    card(counts.miss, "未命中", "card-miss", ratio(pct(counts.miss), "ratio-miss")),
-  );
+function forecastDays(): DaySummary[] {
+  const start = addDays(state.date, -6);
+  const byDate = new Map(result.days.map((day) => [day.date, day]));
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = addDays(start, index);
+    return byDate.get(date) ?? {
+      date,
+      packageCount: 0,
+      hitCount: 0,
+      missCount: 0,
+      batchStatus: null,
+    };
+  });
+}
+
+function renderForecast(): void {
+  forecastHost.replaceChildren();
+  if (loading && result.days.length === 0) {
+    forecastHost.classList.add("is-loading");
+    for (let index = 0; index < 7; index += 1) {
+      const cell = document.createElement("div");
+      cell.className = "wx-day wx-day-skeleton";
+      forecastHost.append(cell);
+    }
+    return;
+  }
+  forecastHost.classList.remove("is-loading");
+
+  const days = forecastDays();
+  const max = Math.max(1, ...days.map((day) => day.packageCount));
+  const barMax = 112;
+
+  for (const day of days) {
+    const isMain = day.date === state.date;
+    const inRange = Boolean(state.rangeFrom && day.date >= state.rangeFrom && day.date <= state.date);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `wx-day${isMain ? " is-main" : ""}${inRange ? " is-in-range" : ""}`;
+    button.dataset.role = "forecast-day";
+    button.dataset.date = day.date;
+    button.setAttribute("aria-pressed", String(inRange));
+    if (isMain) button.setAttribute("aria-current", "date");
+    button.setAttribute(
+      "aria-label",
+      `${day.date} ${weekdayLabel(day.date)} · ${day.packageCount} 包${isMain ? " · 当前日期" : ""}${inRange ? " · 已选区间" : ""}`,
+    );
+    button.title = `${day.date} · ${day.packageCount} 包`;
+
+    const dateLabel = document.createElement("span");
+    dateLabel.className = "wx-day-date";
+    if (isMain) {
+      const weekday = document.createElement("span");
+      weekday.className = "wx-day-weekday";
+      weekday.textContent = weekdayLabel(day.date);
+      const monthDay = document.createElement("span");
+      monthDay.className = "wx-day-md";
+      monthDay.textContent = formatMonthDay(day.date);
+      dateLabel.append(weekday, monthDay);
+      if (state.date === yesterday) {
+        const tag = document.createElement("em");
+        tag.className = "wx-day-tag";
+        tag.textContent = "昨日";
+        dateLabel.append(tag);
+      }
+    } else {
+      dateLabel.textContent = formatMonthDay(day.date);
+    }
+
+    const count = document.createElement("span");
+    count.className = "wx-day-count";
+    count.textContent = String(day.packageCount);
+
+    const plot = document.createElement("span");
+    plot.className = "wx-day-plot";
+    const bar = document.createElement("span");
+    bar.className = "wx-bar";
+    bar.style.height = day.packageCount === 0
+      ? "0"
+      : `${Math.max(1, Math.round((day.packageCount / max) * barMax))}px`;
+    plot.append(count, bar);
+
+    button.append(dateLabel, plot);
+    forecastHost.append(button);
+  }
 }
 
 function renderBatch(): void {
   batchSummary.replaceChildren();
   batchBanner.replaceChildren();
   const batch = result.day?.batch;
-  if (!batch) return;
+  if (!batch) {
+    if (state.rangeFrom) {
+      batchSummary.textContent = `范围 ${state.rangeFrom} — ${state.date} · 区间统计来自汇总接口`;
+    }
+    return;
+  }
 
   const abnormal = !batch.rangeComplete || batch.stale || batch.status !== "ok";
   if (!abnormal) {
     const dot = document.createElement("span");
-    dot.className = "batch-dot";
+    dot.className = "wx-batch-dot";
     dot.setAttribute("aria-hidden", "true");
     batchSummary.append(dot, `批次正常 · 更新于 ${formatDateTime(batch.fetchedAt)} · 范围完整`);
     return;
@@ -343,7 +462,7 @@ function renderBatch(): void {
   if (batch.status === "failed") messages.push("批次同步失败，数据可能不完整。");
 
   const banner = document.createElement("p");
-  banner.className = `batch-banner${batch.status === "failed" ? " is-danger" : ""}`;
+  banner.className = "wx-banner";
   banner.dataset.role = "batch-banner";
   banner.textContent = messages.join("；") || "该批次数据可能不完整。";
   batchBanner.append(banner);
@@ -357,13 +476,8 @@ function createEmptyCard(options: {
   actions?: Array<{ label: string; role: string }>;
 }): HTMLElement {
   const card = document.createElement("section");
-  card.className = options.inline ? "empty-card is-inline" : "empty-card";
+  card.className = options.inline ? "wx-empty is-inline" : "wx-empty";
   card.dataset.role = options.role;
-  if (!options.inline) {
-    const mark = document.createElement("div");
-    mark.className = "empty-state-mark";
-    card.append(mark);
-  }
   const heading = document.createElement("h2");
   heading.textContent = options.title;
   card.append(heading);
@@ -374,11 +488,11 @@ function createEmptyCard(options: {
   }
   if (options.actions?.length) {
     const actions = document.createElement("div");
-    actions.className = "empty-card-actions";
+    actions.className = "wx-empty-actions";
     for (const action of options.actions) {
       const button = document.createElement("button");
       button.type = "button";
-      button.className = "secondary-button";
+      button.className = "wx-button";
       button.dataset.role = action.role;
       button.textContent = action.label;
       actions.append(button);
@@ -390,62 +504,101 @@ function createEmptyCard(options: {
 
 function renderError(title: string, message: string, role = "error"): HTMLElement {
   const card = document.createElement("section");
-  card.className = "report-error";
+  card.className = "wx-error";
   card.dataset.role = role;
   const heading = document.createElement("h2");
   heading.textContent = title;
   const reason = document.createElement("p");
-  reason.textContent = `无法获取 ${state.date} 的竞品快照`;
+  reason.textContent = state.rangeFrom
+    ? `无法获取 ${state.rangeFrom} — ${state.date} 的竞品数据`
+    : `无法获取 ${state.date} 的竞品快照`;
   const detail = document.createElement("p");
-  detail.className = "report-error-reason";
+  detail.className = "wx-error-reason";
   detail.textContent = message;
   const retry = document.createElement("button");
   retry.type = "button";
-  retry.className = "secondary-button";
+  retry.className = "wx-button";
   retry.dataset.role = "retry-load";
   retry.textContent = "重试";
-  card.append(heading, reason, detail, retry);
+  const actions = document.createElement("div");
+  actions.className = "wx-empty-actions";
+  actions.append(retry);
   if (state.date !== yesterday) {
     const back = document.createElement("button");
     back.type = "button";
-    back.className = "secondary-button";
+    back.className = "wx-button";
     back.dataset.role = "empty-back-yesterday";
     back.textContent = "回到昨天";
-    card.append(back);
+    actions.append(back);
   }
+  card.append(heading, reason, detail, actions);
   return card;
 }
 
 function renderSkeleton(): void {
-  cardsHost.hidden = false;
-  cardsHost.replaceChildren();
-  for (let index = 0; index < 4; index += 1) {
-    const card = document.createElement("div");
-    card.className = "report-card skeleton-card";
-    cardsHost.append(card);
-  }
   reportBody.replaceChildren();
   const wrapper = document.createElement("div");
-  wrapper.className = "report-skeleton";
+  wrapper.className = "wx-skeleton";
   wrapper.dataset.role = "loading";
   const label = document.createElement("p");
-  label.className = "skeleton-label";
-  label.textContent = `正在加载 ${state.date}…`;
+  label.className = "wx-skeleton-label";
+  label.textContent = `正在加载 ${state.rangeFrom ? `${state.rangeFrom} — ${state.date}` : state.date}…`;
   wrapper.append(label);
-  for (let index = 0; index < 3; index += 1) {
-    const head = document.createElement("div");
-    head.className = "skeleton-block skeleton-group-head";
+  for (let index = 0; index < 4; index += 1) {
     const row = document.createElement("div");
-    row.className = "skeleton-block skeleton-group-row";
-    wrapper.append(head, row, row.cloneNode(true), row.cloneNode(true));
+    row.className = "wx-skeleton-row";
+    wrapper.append(row);
   }
   reportBody.append(wrapper);
+}
+
+function exceptionEntries(): ExceptionEntry[] {
+  const entries = new Map<string, ExceptionEntry>();
+  for (const group of result.summary ?? []) {
+    for (const missed of group.missedPackages) {
+      entries.set(missed.packageCode, { ...missed, reason: "miss", groupKey: group.groupKey });
+    }
+    for (const pending of pendingPackagesOf(group)) {
+      if (!entries.has(pending.packageCode)) {
+        entries.set(pending.packageCode, { ...pending, reason: "pending", groupKey: group.groupKey });
+      }
+    }
+  }
+  if (!state.rangeFrom) {
+    for (const pkg of result.day?.packages ?? []) {
+      if (pkg.lookupStatus === "pending" && !entries.has(pkg.packageCode)) {
+        entries.set(pkg.packageCode, {
+          packageCode: pkg.packageCode,
+          displayName: pkg.displayName,
+          team: pkg.team,
+          appVersion: pkg.appVersion,
+          iconLocalPath: pkg.iconLocalPath,
+          reason: "pending",
+          groupKey: state.groupBy === "team"
+            ? pkg.team
+            : state.groupBy === "category"
+              ? pkg.category ?? "未知"
+              : pkg.minimumOsVersion ?? pkg.appVersion ?? "未知",
+        });
+      }
+    }
+  }
+  return [...entries.values()].sort((a, b) => a.packageCode.localeCompare(b.packageCode));
+}
+
+function buildDetailHref(key: string, packageCode: string): string {
+  const params = urlStateParams();
+  params.set("view", "detail");
+  params.set("competitor", key);
+  params.set("package", packageCode);
+  return `${window.location.pathname}?${params.toString()}`;
 }
 
 function renderListContent(): void {
   syncControls();
   listView.hidden = state.view === "detail";
   detailView.hidden = state.view !== "detail";
+  renderForecast();
 
   if (loading) {
     batchSummary.replaceChildren("正在加载…");
@@ -455,8 +608,6 @@ function renderListContent(): void {
   }
 
   if (result.dayMissing) {
-    cardsHost.replaceChildren();
-    cardsHost.hidden = true;
     batchSummary.replaceChildren();
     batchBanner.replaceChildren();
     reportBody.replaceChildren(createEmptyCard({
@@ -476,29 +627,36 @@ function renderListContent(): void {
   }
 
   if (result.dayError) {
-    cardsHost.replaceChildren();
-    cardsHost.hidden = true;
     batchSummary.replaceChildren();
     batchBanner.replaceChildren();
     reportBody.replaceChildren(renderError("报告加载失败", result.dayError));
     return;
   }
 
-  if (!result.day) return;
-  renderCards();
-  renderBatch();
-
   if (result.summaryError) {
-    reportBody.replaceChildren(renderError("分组数据加载失败", result.summaryError, "summary-error"));
+    batchSummary.replaceChildren();
+    batchBanner.replaceChildren();
+    reportBody.replaceChildren(renderError("报告加载失败", result.summaryError));
     return;
   }
 
-  if (!result.summary || result.summary.length === 0 || result.day.packages.length === 0) {
+  if (!result.summary || (!state.rangeFrom && !result.day)) return;
+  renderBatch();
+
+  const exceptions = exceptionEntries();
+  const counts = totals();
+  const emptySummary = result.summary.length === 0
+    || counts.total === 0
+    || (!state.rangeFrom && (result.day?.packages.length ?? 0) === 0);
+
+  if (emptySummary) {
     reportBody.replaceChildren(createEmptyCard({
       role: "empty-packages",
-      title: "当天没有符合条件的 iOS 竞品包",
+      title: state.rangeFrom
+        ? "该区间没有符合条件的 iOS 竞品包"
+        : "当天没有符合条件的 iOS 竞品包",
       lines: [
-        `已按当前口径（${DATE_KIND_LABEL[state.dateKind]} = ${state.date}）查询，并应用：`,
+        `已按当前口径（${DATE_KIND_LABEL[state.dateKind]} = ${state.rangeFrom ? `${state.rangeFrom} — ${state.date}` : state.date}）查询，并应用：`,
         "· 仅保留 display_name 包含 ios 的记录",
         "· 已排除 team = 灵蜂",
       ],
@@ -513,48 +671,37 @@ function renderListContent(): void {
     return;
   }
 
-  const counts = countStatuses();
-  const filtered = state.status === "all"
-    ? counts.total
-    : state.status === "hit"
-      ? counts.hit
-      : counts.miss;
-  if (filtered === 0) {
-    reportBody.replaceChildren(createEmptyCard({
-      role: "empty-filter",
-      title: "当前筛选下没有包",
-      lines: [
-        state.status === "miss"
-          ? `当日 ${counts.total} 个包全部命中了 App Store。`
-          : `当日 ${counts.total} 个包均未命中 App Store。`,
-      ],
-      inline: true,
-      actions: [{ label: "清除筛选", role: "empty-clear-filter" }],
-    }));
-    return;
+  if (state.status !== "all") {
+    const visible = state.status === "hit" ? counts.hit : exceptions.length;
+    if (visible === 0) {
+      const title = state.status === "hit"
+        ? state.rangeFrom ? "该区间没有命中包" : "当天没有命中包"
+        : state.rangeFrom ? "该区间没有异常包" : "当天没有异常包";
+      reportBody.replaceChildren(createEmptyCard({
+        role: "empty-filter",
+        title,
+        lines: [
+          state.status === "hit"
+            ? "全部包都在异常区，或当前口径下没有命中记录。"
+            : "未命中与待补全均为空，页面保持平静。",
+        ],
+        inline: true,
+        actions: [{ label: "清除筛选", role: "empty-clear-filter" }],
+      }));
+      return;
+    }
   }
 
-  reportBody.classList.remove("is-loading");
   renderSummary(reportBody, {
     groups: result.summary,
-    packages: new Map(result.day.packages.map((pkg) => [pkg.packageCode, pkg])),
-    date: state.date,
+    packages: new Map((result.day?.packages ?? []).map((pkg) => [pkg.packageCode, pkg])),
     dateKind: state.dateKind,
     groupBy: state.groupBy,
     status: state.status,
+    rangeDays: state.rangeFrom ? daySpan(state.rangeFrom, state.date) : 1,
     collapsedGroups,
-    buildDetailHref: (key, packageCode) => {
-      const params = new URLSearchParams({
-        date: state.date,
-        date_kind: state.dateKind,
-        group_by: state.groupBy,
-        status: state.status,
-        view: "detail",
-        competitor: key,
-        package: packageCode,
-      });
-      return `${window.location.pathname}?${params.toString()}`;
-    },
+    exceptions,
+    buildDetailHref,
   });
 }
 
@@ -567,7 +714,8 @@ function findDetailContext(key: string): {
     if (match) return { competitor: match, groupName: group.groupKey };
     if (key.startsWith("pkg:")) {
       const code = key.slice(4);
-      const missed = group.missedPackages.find((item) => item.packageCode === code);
+      const missed = group.missedPackages.find((item) => item.packageCode === code)
+        ?? pendingPackagesOf(group).find((item) => item.packageCode === code);
       if (missed) {
         return {
           groupName: group.groupKey,
@@ -584,11 +732,30 @@ function findDetailContext(key: string): {
   return null;
 }
 
+function packageStatusMap(): Map<string, LookupStatus> {
+  const statuses = new Map<string, LookupStatus>();
+  if (result.day) {
+    for (const pkg of result.day.packages) statuses.set(pkg.packageCode, pkg.lookupStatus);
+  }
+  for (const group of result.summary ?? []) {
+    for (const competitor of group.competitors) {
+      for (const brief of competitor.packages) {
+        if (!statuses.has(brief.packageCode)) statuses.set(brief.packageCode, "hit");
+      }
+    }
+    for (const missed of group.missedPackages) statuses.set(missed.packageCode, "bundle_not_found");
+    for (const pending of pendingPackagesOf(group)) {
+      if (!statuses.has(pending.packageCode)) statuses.set(pending.packageCode, "pending");
+    }
+  }
+  return statuses;
+}
+
 function pickPackageCode(competitor: SummaryCompetitor): string {
   if (state.packageCode && competitor.packages.some((pkg) => pkg.packageCode === state.packageCode)) {
     return state.packageCode;
   }
-  const statuses = new Map((result.day?.packages ?? []).map((pkg) => [pkg.packageCode, pkg.lookupStatus]));
+  const statuses = packageStatusMap();
   return competitor.packages.find((pkg) => statuses.get(pkg.packageCode) === "hit")?.packageCode
     ?? competitor.packages[0]?.packageCode
     ?? "";
@@ -616,6 +783,7 @@ function renderDetailView(): void {
       packageDetail: null,
       date: state.date,
       dateKind: state.dateKind,
+      rangeFrom: state.rangeFrom,
       groupName: "",
       loading: waitingForList,
       error: waitingForList ? null : result.dayMissing ? "该日期没有快照" : "未找到该竞品在当前分组中的数据",
@@ -631,20 +799,20 @@ function renderDetailView(): void {
   }
 
   const packageCode = state.packageCode ?? pickPackageCode(context.competitor);
-  const packageStatus = new Map((result.day?.packages ?? []).map((pkg) => [pkg.packageCode, pkg.lookupStatus]));
   renderPackageDetail(detailHost, {
     competitor: context.competitor,
     packageCode,
     packageDetail: detailPackage,
     date: state.date,
     dateKind: state.dateKind,
+    rangeFrom: state.rangeFrom,
     groupName: context.groupName,
     loading: detailLoading,
     error: detailError,
     history: detailHistory,
     historyError: detailHistoryError,
     historyDates: historyDates(),
-    packageStatus,
+    packageStatus: packageStatusMap(),
     onSelectPackage: selectPackage,
     onRetry: () => { void loadDetail(packageCode); },
     onBack: backToList,
@@ -712,14 +880,14 @@ function backToList(): void {
   commit("push");
   renderListContent();
   renderDetailView();
-  const heading = listView.querySelector("h1");
-  heading?.focus?.();
+  listView.querySelector("h1")?.focus?.();
 }
 
 async function load(): Promise<void> {
   const token = ++requestToken;
   loading = true;
   recentNote = null;
+  rangeNote = null;
   detailPackage = null;
   detailHistory = null;
   detailHistoryError = null;
@@ -735,9 +903,16 @@ async function load(): Promise<void> {
   renderListContent();
   renderDetailView();
 
+  const dayPromise: Promise<DayDetail | null> = state.rangeFrom
+    ? Promise.resolve(null)
+    : getCompetitorDay(state.date, state.dateKind);
+  const summaryPromise = state.rangeFrom
+    ? getCompetitorSummaryRange(state.rangeFrom, state.date, state.dateKind, state.groupBy)
+    : getCompetitorSummary(state.date, state.dateKind, state.groupBy);
+
   const [dayResult, summaryResult, daysResult] = await Promise.allSettled([
-    getCompetitorDay(state.date, state.dateKind),
-    getCompetitorSummary(state.date, state.dateKind, state.groupBy),
+    dayPromise,
+    summaryPromise,
     getCompetitorDays(addDays(state.date, -6), state.date),
   ]);
   if (token !== requestToken) return;
@@ -781,9 +956,78 @@ async function load(): Promise<void> {
 function setDate(date: string): void {
   if (date > yesterday || !isDateString(date)) return;
   state.date = date;
+  state.rangeFrom = null;
   state.view = "list";
   state.competitor = null;
   state.packageCode = null;
+  rangeNote = null;
+  commit("replace");
+  void load();
+}
+
+function shiftDate(delta: number): void {
+  if (state.rangeFrom) {
+    const span = daySpan(state.rangeFrom, state.date);
+    let to = addDays(state.date, delta);
+    if (to > yesterday) to = yesterday;
+    state.date = to;
+    state.rangeFrom = addDays(to, -(span - 1));
+    rangeNote = null;
+    commit("replace");
+    void load();
+    return;
+  }
+  const next = addDays(state.date, delta);
+  if (next > yesterday) return;
+  setDate(next);
+}
+
+function selectForecastDay(date: string): void {
+  if (state.view === "detail") {
+    state.view = "list";
+    state.competitor = null;
+    state.packageCode = null;
+  }
+
+  if (state.rangeFrom) {
+    if (date >= state.rangeFrom && date <= state.date) {
+      state.date = date;
+      state.rangeFrom = null;
+      rangeNote = null;
+      commit("replace");
+      void load();
+      return;
+    }
+    state.date = date;
+    state.rangeFrom = null;
+    rangeNote = null;
+    renderListContent();
+    commit("replace");
+    void load();
+    return;
+  }
+
+  if (date === state.date) return;
+
+  const from = date < state.date ? date : state.date;
+  const to = date < state.date ? state.date : date;
+  if (daySpan(from, to) > MAX_RANGE_DAYS) {
+    rangeNote = `日期范围最多 ${MAX_RANGE_DAYS} 天，请缩短选择。`;
+    renderRangeNote();
+    return;
+  }
+
+  state.date = to;
+  state.rangeFrom = from;
+  rangeNote = null;
+  renderListContent();
+  commit("replace");
+  void load();
+}
+
+function clearRange(): void {
+  state.rangeFrom = null;
+  rangeNote = null;
   commit("replace");
   void load();
 }
@@ -834,10 +1078,10 @@ app.addEventListener("click", (event) => {
 
   switch (control.dataset.role) {
     case "prev-date":
-      setDate(addDays(state.date, -1));
+      shiftDate(-1);
       break;
     case "next-date":
-      if (state.date < yesterday) setDate(addDays(state.date, 1));
+      if (state.date < yesterday) shiftDate(1);
       break;
     case "back-yesterday":
       setDate(yesterday);
@@ -851,8 +1095,11 @@ app.addEventListener("click", (event) => {
     case "status":
       setStatus(control.dataset.value as StatusFilter);
       break;
-    case "timeline-date":
-      if (control.dataset.date) setDate(control.dataset.date);
+    case "forecast-day":
+      if (control.dataset.date) selectForecastDay(control.dataset.date);
+      break;
+    case "clear-range":
+      clearRange();
       break;
     case "group-toggle": {
       event.preventDefault();
@@ -874,7 +1121,7 @@ app.addEventListener("click", (event) => {
       renderListContent();
       break;
     case "competitor-row":
-    case "missed-row":
+    case "exception-row":
       event.preventDefault();
       openDetail(control.dataset.competitor ?? "", control.dataset.package ?? "");
       break;
@@ -913,6 +1160,7 @@ dateInput.addEventListener("change", () => {
 window.addEventListener("popstate", () => {
   const next = parseState();
   const needsLoad = next.date !== state.date
+    || next.rangeFrom !== state.rangeFrom
     || next.dateKind !== state.dateKind
     || next.groupBy !== state.groupBy;
   state = next;

@@ -133,6 +133,7 @@ function teamGroups(): SummaryGroup[] {
         appVersion: null,
         iconLocalPath: null,
       }],
+      pendingPackages: [],
       timeline: timeline(),
     },
     {
@@ -155,6 +156,7 @@ function teamGroups(): SummaryGroup[] {
         }],
       }],
       missedPackages: [],
+      pendingPackages: [],
       timeline: timeline([2, 2, 2, 1, 2, 2, 1]),
     },
   ];
@@ -186,6 +188,7 @@ function categoryGroups(): SummaryGroup[] {
       },
     ],
     missedPackages: [{ packageCode: "com.beta.s", displayName: "Beta Source", team: "团队 A", appVersion: null, iconLocalPath: null }],
+    pendingPackages: [],
     timeline: timeline(),
   }];
 }
@@ -213,6 +216,7 @@ function listingGroups(): SummaryGroup[] {
       },
     ],
     missedPackages: [],
+    pendingPackages: [],
     timeline: timeline([1, 2, 2, 2, 1, 2, 2]),
   }];
 }
@@ -314,38 +318,41 @@ describe("competitor report page", () => {
     expect(alphaRow.querySelector('[data-role="package-count"]')?.textContent).toBe("2 个包");
     expect(document.querySelectorAll('[data-package="com.alpha.ios"]')).toHaveLength(1);
 
-    const groups = Array.from(document.querySelectorAll(".group-head"));
+    const groups = Array.from(document.querySelectorAll(".wx-group-head"));
     expect(groups[0]?.textContent).toContain("团队 A");
-    expect(groups[0]?.textContent).toContain("3 包 · 2 命中 · 1 未命中");
+    expect(groups[0]?.textContent).toContain("3 包");
+    expect(groups[0]?.textContent).toContain("2 命中");
+    expect(groups[0]?.textContent).toContain("3 异常");
     expect(groups[0]?.textContent).toContain("2 个竞品");
 
-    const missedRow = document.querySelector<HTMLAnchorElement>('[data-role="missed-row"]')!;
+    const missedRow = document.querySelector<HTMLAnchorElement>('[data-role="exception-row"][data-reason="miss"]')!;
     expect(missedRow.textContent).toContain("Beta Source");
     expect(missedRow.textContent).toContain("com.beta.s");
-    expect(missedRow.textContent).toContain("App Store 未命中");
-    expect(missedRow.classList.contains("competitor-row-missed")).toBe(true);
+    expect(missedRow.textContent).toContain("未命中 App Store");
 
-    const icon = alphaRow.querySelector<HTMLImageElement>(".competitor-row-icon")!;
+    const icon = alphaRow.querySelector<HTMLImageElement>(".wx-row-icon")!;
     expect(icon.src).toContain(`/competitor-assets/${DATE}/com.alpha.ios/icon.png`);
 
-    expect(document.querySelectorAll(".report-card")).toHaveLength(4);
+    expect(document.querySelector(".wx-day.is-main .wx-day-count")?.textContent).toBe("4");
+    expect(document.querySelector('[data-role="status"][data-value="hit"]')?.textContent).toBe("命中 3");
     expect(document.querySelector('[data-role="date-line"]')?.textContent).toContain(DATE);
     expect(document.querySelector('[data-role="batch-summary"]')?.textContent).toContain("批次正常");
-    expect(document.querySelectorAll(".timeline-cell")).toHaveLength(14);
-    expect(document.querySelectorAll(".timeline-cell.is-current")).toHaveLength(2);
-    expect(document.querySelector('[data-role="pending-count"]')?.textContent).toBe("待补全 2");
-    expect(groups[0]?.querySelector('[data-role="group-pending"]')?.textContent).toBe("待补全 2");
+    expect(document.querySelectorAll(".wx-day")).toHaveLength(7);
+    expect(document.querySelectorAll(".wx-day.is-main")).toHaveLength(1);
+    expect(document.querySelector('[data-role="exceptions"]')).not.toBeNull();
 
     const requested = fetchMock.mock.calls.map(([input]) => String(input));
     expect(requested.some((url) => url.includes("/api/competitor/summary?") && url.includes("date_kind=first_ad") && url.includes("group_by=team"))).toBe(true);
     expect(requested.some((url) => url.includes(`/api/competitor/day/${DATE}?date_kind=first_ad`))).toBe(true);
 
     const previousDate = addDays(DATE, -1);
-    document.querySelector<HTMLButtonElement>(`[data-role="timeline-date"][data-date="${previousDate}"]`)!.click();
+    document.querySelector<HTMLButtonElement>(`[data-role="forecast-day"][data-date="${previousDate}"]`)!.click();
     await vi.waitFor(() => {
       const urls = fetchMock.mock.calls.map(([input]) => String(input));
-      expect(urls.some((url) => url.includes(`/api/competitor/day/${previousDate}?date_kind=first_ad`))).toBe(true);
+      expect(urls.some((url) => url.includes("from=") && url.includes("to="))).toBe(true);
     });
+    expect(window.location.search).toContain(`from=${previousDate}`);
+    expect(document.querySelectorAll(".wx-day.is-in-range")).toHaveLength(2);
   });
 
   it("switches date kind and grouping and sends matching query parameters", async () => {
@@ -413,7 +420,7 @@ describe("competitor report page", () => {
     await mountPage();
     await waitForRows();
 
-    document.querySelector<HTMLAnchorElement>('[data-role="missed-row"]')!.click();
+    document.querySelector<HTMLAnchorElement>('[data-role="exception-row"][data-reason="miss"]')!.click();
     await vi.waitFor(() => {
       expect(document.querySelector('[data-role="detail-view"]')?.textContent).toContain("为什么未命中");
     });
@@ -482,61 +489,118 @@ describe("competitor report page", () => {
       expect(document.querySelector('[data-role="empty-day"]')).not.toBeNull();
     });
     expect(document.body.textContent).toContain("这一天还没有快照");
-    expect(document.querySelector(".report-card")).toBeNull();
+    expect(document.querySelectorAll('[data-role="competitor-row"]')).toHaveLength(0);
   });
 
-  it("keeps listing-kind timeline points with packages clickable when no batch exists for that date", async () => {
-    const groups = listingGroups().map((group) => ({
-      ...group,
-      timeline: group.timeline.map((point) => ({ ...point, batchStatus: null })),
-    }));
+  it("renders seven proportional forecast bars and turns a second click into a range", async () => {
+    const counts = [0, 1, 2, 4, 3, 2, 7];
+    const groups = listingGroups();
     const fetchMock = vi.fn(async (input: string | URL | Request) => {
       const url = new URL(String(input), "http://localhost");
       if (url.pathname === "/api/competitor/summary") return json(groups);
       if (url.pathname.startsWith("/api/competitor/day/")) {
         return json({ ...day, dateKind: "listing" });
       }
-      return json({ days: [] });
+      return json({
+        days: counts.map((packageCount, index) => ({
+          date: addDays(DATE, index - 6),
+          packageCount,
+          hitCount: packageCount,
+          missCount: 0,
+          batchStatus: null,
+        })),
+      });
     });
     vi.stubGlobal("fetch", fetchMock);
     await mountPage(`?date=${DATE}&date_kind=listing&group_by=team`);
     await waitForRows();
 
-    const cells = Array.from(document.querySelectorAll<HTMLElement>(".timeline-cell"));
-    expect(cells.length).toBeGreaterThan(0);
-    const withData = cells.filter((cell) => {
-      const title = cell.getAttribute("title") ?? "";
-      return /\d+ 包/.test(title);
-    });
-    expect(withData.length).toBeGreaterThan(0);
-    expect(withData.every((cell) => cell.tagName === "BUTTON")).toBe(true);
+    const cells = Array.from(document.querySelectorAll<HTMLButtonElement>(".wx-day"));
+    expect(cells).toHaveLength(7);
+    expect(cells[0]?.querySelector<HTMLElement>(".wx-bar")?.style.height).toBe("0px");
+    expect(cells[3]?.querySelector<HTMLElement>(".wx-bar")?.style.height).toBe("64px");
+    expect(cells[6]?.querySelector<HTMLElement>(".wx-bar")?.style.height).toBe("112px");
+    expect(cells[6]?.classList.contains("is-main")).toBe(true);
 
-    const target = withData[0]!;
-    target.click();
+    cells[5]!.click();
     await vi.waitFor(() => {
       const urls = fetchMock.mock.calls.map(([input]) => String(input));
-      expect(urls.some((url) => url.includes("/api/competitor/day/") && url.includes("date_kind=listing"))).toBe(true);
+      expect(urls.some((url) => url.includes("from=") && url.includes("to="))).toBe(true);
     });
+    expect(document.querySelectorAll(".wx-day.is-in-range")).toHaveLength(2);
+    expect(window.location.search).toContain(`from=${addDays(DATE, -1)}`);
   });
 
-  it("filters the rendered groups locally by hit or miss status without refetching", async () => {
+  it("filters locally by hit or exception and maps legacy status=miss to exception", async () => {
     const fetchMock = createFetchMock();
     vi.stubGlobal("fetch", fetchMock);
     await mountPage();
     await waitForRows();
     const callsBefore = fetchMock.mock.calls.length;
 
-    document.querySelector<HTMLButtonElement>('[data-role="status"][data-value="miss"]')!.click();
+    document.querySelector<HTMLButtonElement>('[data-role="status"][data-value="exception"]')!.click();
     expect(document.querySelector('[data-competitor="apple:111"]')).toBeNull();
-    expect(document.querySelector('[data-role="missed-row"]')).not.toBeNull();
-    expect(document.querySelector(".group-head")?.textContent).toContain("1 包 · 0 命中 · 1 未命中");
-    expect(window.location.search).toContain("status=miss");
+    expect(document.querySelector('[data-role="exception-row"][data-reason="miss"]')).not.toBeNull();
+    expect(document.querySelector(".wx-group-head")).toBeNull();
+    expect(window.location.search).toContain("status=exception");
     expect(fetchMock).toHaveBeenCalledTimes(callsBefore);
 
     document.querySelector<HTMLButtonElement>('[data-role="status"][data-value="hit"]')!.click();
-    expect(document.querySelector('[data-role="missed-row"]')).toBeNull();
+    expect(document.querySelector('[data-role="exception-row"]')).toBeNull();
     expect(document.querySelector('[data-competitor="apple:111"]')).not.toBeNull();
     expect(window.location.search).toContain("status=hit");
+  });
+
+  it("treats legacy status=miss URLs as the exception filter", async () => {
+    vi.stubGlobal("fetch", createFetchMock());
+    await mountPage("?status=miss");
+    await vi.waitFor(() => {
+      expect(document.querySelector('[data-role="exception-row"][data-reason="miss"]')).not.toBeNull();
+    });
+    const active = document.querySelector<HTMLButtonElement>('[data-role="status"].is-active');
+    expect(active?.dataset.value).toBe("exception");
+    expect(document.querySelector('[data-role="exception-row"][data-reason="miss"]')).not.toBeNull();
+  });
+
+  it("lists a pending package in the exception zone with the pending reason", async () => {
+    const pending = packageDetail({
+      packageCode: "com.pending.ios",
+      displayName: "Pending Source",
+      lookupStatus: "pending",
+      enrichStatus: "pending",
+      assetStatus: "pending",
+      appleId: null,
+      appStoreJson: {},
+      iconLocalPath: null,
+      screenshotLocalPaths: [],
+      versions: [],
+    });
+    const groups: SummaryGroup[] = [{
+      groupKey: "团队 A",
+      packageCount: 1,
+      hitCount: 0,
+      missCount: 0,
+      pendingCount: 1,
+      competitorCount: 0,
+      competitors: [],
+      missedPackages: [],
+      pendingPackages: [],
+      timeline: timeline([0, 0, 0, 0, 0, 0, 1]),
+    }];
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(String(input), "http://localhost");
+      if (url.pathname === "/api/competitor/summary") return json(groups);
+      if (url.pathname.startsWith("/api/competitor/day/")) return json({ ...day, packages: [pending] });
+      return json({ days: [] });
+    }));
+    await mountPage();
+    await vi.waitFor(() => {
+      expect(document.querySelector('[data-role="exception-row"][data-reason="pending"]')).not.toBeNull();
+    });
+    const row = document.querySelector('[data-role="exception-row"][data-reason="pending"]')!;
+    expect(row.textContent).toContain("Pending Source");
+    expect(row.textContent).toContain("com.pending.ios");
+    expect(row.textContent).toContain("详情待补全");
   });
 
   it("surfaces a 503 database error with a retry action", async () => {
