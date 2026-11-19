@@ -18,6 +18,39 @@
   --space-5: 20px;
   --space-6: 24px;
   --space-8: 32px;
+  --color-bg: #f3f6fb;
+  --color-surface: #ffffff;
+  --color-surface-subtle: #f8fafc;
+  --color-surface-info: #f8fbff;
+  --color-border: #dbe4f0;
+  --color-border-strong: #cbd5e1;
+  --color-divider: #e2e8f0;
+  --color-divider-soft: #f1f5f9;
+  --color-text: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #64748b;
+  --color-accent: #2563eb;
+  --color-accent-strong: #1d4ed8;
+  --color-accent-weak: #dbeafe;
+  --color-accent-surface: #eff6ff;
+  --color-success-bg: #dcfce7;
+  --color-success-text: #166534;
+  --color-success-edge: #bbf7d0;
+  --color-warning-bg: #fef3c7;
+  --color-warning-text: #92400e;
+  --color-warning-edge: #fde68a;
+  --color-danger-bg: #fee2e2;
+  --color-danger-text: #b91c1c;
+  --color-danger-edge: #fecaca;
+  --color-neutral-bg: #f1f5f9;
+  --color-neutral-text: #475569;
+  --color-neutral-edge: #cbd5e1;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 18px;
+  --radius-pill: 999px;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --shadow-control: 0 10px 18px rgba(148, 163, 184, 0.12);
   background: #f3f6fb;
   color: #0f172a;
   font-synthesis: none;
@@ -2024,4 +2057,65 @@ body.is-lightbox-open {
     transition: none !important;
     animation: none !important;
   }
+}
+
+/* Workspace top-level tab navigation (search / competitor). */
+.workspace-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+}
+
+.workspace-tabs a {
+  display: inline-flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 16px;
+  border-bottom: 2px solid transparent;
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.workspace-tabs a:hover {
+  background: var(--color-surface-subtle);
+  color: #334155;
+}
+
+.workspace-tabs a[aria-current="page"] {
+  border-bottom-color: var(--color-accent);
+  color: var(--color-accent-strong);
+}
+
+.region-note {
+  color: var(--color-text-secondary);
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+@media (max-width: 840px) {
+  .workspace-header {
+    flex-wrap: wrap;
+  }
+
+  .workspace-tabs {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .workspace-tabs a {
+    flex: 0 0 auto;
+  }
+}
+
+.workspace-brand {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.25;
 }

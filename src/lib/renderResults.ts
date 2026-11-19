@@ -118,12 +118,12 @@ function getHighResolutionScreenshotUrl(src: string) {
   }
 }
 
-type ScreenshotLightbox = {
+export type ScreenshotLightbox = {
   element: HTMLDivElement;
   open: (index: number, trigger: HTMLButtonElement) => void;
 };
 
-function createScreenshotLightbox(
+export function createScreenshotLightbox(
   urls: string[],
   appName: string,
 ): ScreenshotLightbox {

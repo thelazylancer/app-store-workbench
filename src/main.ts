@@ -29,6 +29,10 @@ app.innerHTML = `
           />
           <h1>App搜索工作台</h1>
         </div>
+        <nav class="workspace-tabs" aria-label="主导航">
+          <a href="${import.meta.env.BASE_URL}index.html" aria-current="page">App Store 搜索</a>
+          <a href="${import.meta.env.BASE_URL}competitor.html">竞品</a>
+        </nav>
         <div class="workspace-badges" aria-label="商店信息">
           <span data-role="country-code">US</span>
         </div>
@@ -203,6 +207,13 @@ addQueryButton.addEventListener("click", () => {
 
 queryRows.append(createQueryRow());
 syncQueryRows();
+
+// Competitor detail links can prefill a Bundle ID without starting a search.
+const initialBundleId = new URLSearchParams(window.location.search).get("bundle");
+if (initialBundleId) {
+  queryRows.querySelector<HTMLInputElement>('[data-role="query-bundle"]')!.value = initialBundleId;
+  syncComposerSummary();
+}
 
 function updateSummary(items: SearchResult[], searched: boolean) {
   if (!searched) {
