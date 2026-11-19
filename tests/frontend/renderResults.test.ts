@@ -197,16 +197,42 @@ describe("renderResults", () => {
     await vi.waitFor(() => expect(copy.parentElement?.querySelector('[role="status"]')?.textContent).toBe("已复制"));
   });
 
+  it("opens a lightbox from a candidate card thumbnail", () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    try {
+      renderResults(host, [
+        {
+          ...identityResult,
+          candidates: [
+            { ...alternateApp, screenshotUrls: ["https://example.com/c1.png", "https://example.com/c2.png"] },
+          ],
+        },
+      ]);
+      const thumb = host.querySelector<HTMLButtonElement>('[data-role="candidates-panel"] .screenshot-trigger')!;
+      expect(thumb.getAttribute("aria-label")).toContain("Funce Daily 商店截图 1");
+      thumb.click();
+      const dialog = Array.from(document.querySelectorAll<HTMLElement>(".screenshot-lightbox")).find((el) => !el.hidden)!;
+      expect(dialog.hidden).toBe(false);
+      expect(dialog.querySelectorAll(".screenshot-lightbox-image, img").length).toBeGreaterThan(0);
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+      expect(dialog.hidden).toBe(true);
+    } finally {
+      renderResults(host, [], false);
+      host.remove();
+    }
+  });
+
   it("returns lightbox focus to the visible detail trigger and closes it on a view change", () => {
     const host = document.createElement("div");
     document.body.append(host);
     try {
       renderResults(host, [{ ...identityResult, app: { ...identityApp, screenshotUrls: ["https://example.com/shot.png"] } }]);
       host.querySelector<HTMLButtonElement>('[data-role="detail-tab"]')!.click();
-      const trigger = host.querySelector<HTMLButtonElement>(".screenshot-trigger")!;
+      const trigger = host.querySelector<HTMLButtonElement>('[data-role="detail-panel"] .screenshot-trigger')!;
       trigger.focus();
       trigger.click();
-      const dialog = document.querySelector<HTMLElement>(".screenshot-lightbox")!;
+      const dialog = Array.from(document.querySelectorAll<HTMLElement>(".screenshot-lightbox")).find((el) => !el.hidden)!;
       expect(document.activeElement).toBe(dialog.querySelector(".lightbox-close"));
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
       expect(dialog.hidden).toBe(true);

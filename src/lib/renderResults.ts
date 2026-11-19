@@ -268,6 +268,7 @@ function createScreenshot(
   alt: string,
   index: number,
   openLightbox: ScreenshotLightbox["open"],
+  imageClassName = "screenshot",
 ) {
   const trigger = document.createElement("button");
   trigger.type = "button";
@@ -278,7 +279,7 @@ function createScreenshot(
   const image = document.createElement("img");
   image.src = src;
   image.alt = alt;
-  image.className = "screenshot";
+  image.className = imageClassName;
   image.loading = "lazy";
   image.decoding = "async";
   trigger.append(image);
@@ -562,16 +563,21 @@ function createCandidateCard(
   if (screenshotUrls.length > 0) {
     const screenshots = document.createElement("div");
     screenshots.className = "candidate-card-screenshots";
+    const lightbox = createScreenshotLightbox(app.screenshotUrls, app.name);
 
     for (const [index, screenshotUrl] of screenshotUrls.entries()) {
-      const image = document.createElement("img");
-      image.src = screenshotUrl;
-      image.alt = `${app.name} 商店截图 ${index + 1}`;
-      image.className = "candidate-card-screenshot";
-      image.loading = "lazy";
-      image.decoding = "async";
-      screenshots.append(image);
+      screenshots.append(
+        createScreenshot(
+          screenshotUrl,
+          `${app.name} 商店截图 ${index + 1}`,
+          index,
+          lightbox.open,
+          "candidate-card-screenshot",
+        ),
+      );
     }
+    // overlay 挂在卡内：fixed 定位不受影响，卡片重渲染时随卡销毁，不泄漏到 body
+    screenshots.append(lightbox.element);
 
     footer.append(screenshots);
   }

@@ -1624,6 +1624,14 @@ body.is-lightbox-open {
   padding-bottom: 2px;
 }
 
+/* 缩略图触发器沿用详情视图的 .screenshot-trigger，只收窄为缩略图尺寸 */
+.candidate-card-screenshots .screenshot-trigger {
+  flex: 0 0 58px;
+  width: auto;
+  border: 0;
+  border-radius: 4px;
+}
+
 .candidate-card-screenshot {
   flex: 0 0 58px;
   width: 58px;
