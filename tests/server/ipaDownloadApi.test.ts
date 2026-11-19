@@ -36,6 +36,7 @@ function buildApp(ipaDownload?: ReturnType<typeof createIpaDownloadManager>) {
   return createApp({
     lookupAppById: async () => null,
     lookupAppStore: async () => [],
+    lookupAppByBundleId: async () => null,
     fetchProductPageDetails: async () => ({ screenshotUrls: [], iapItems: [], versionHistory: [] }),
     buildIapHints: async () => ({ "4.99": "unavailable", "9.99": "unavailable", source: "best_effort" } as IapHints),
     ...(ipaDownload ? { ipaDownload } : {}),

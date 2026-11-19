@@ -775,9 +775,9 @@ function createInspector(
   query.className = "query-label";
   query.append("搜索词：");
   const queryName = document.createElement("strong");
-  queryName.textContent = originalResult.query;
+  queryName.textContent = originalResult.query || originalResult.requestedBundleId || "";
   query.append(queryName);
-  if (originalResult.requestedBundleId) {
+  if (originalResult.query && originalResult.requestedBundleId) {
     const requestedBundle = document.createElement("span");
     requestedBundle.className = "requested-bundle";
     requestedBundle.textContent = `Bundle ID：${originalResult.requestedBundleId}`;
@@ -1148,7 +1148,7 @@ function createResultRow(result: SearchResult) {
   } else {
     const placeholder = document.createElement("div");
     placeholder.className = "row-icon-placeholder";
-    placeholder.textContent = result.query.slice(0, 1).toUpperCase();
+    placeholder.textContent = (result.query || result.requestedBundleId || "").slice(0, 1).toUpperCase();
     identity.append(placeholder);
   }
 
@@ -1156,9 +1156,9 @@ function createResultRow(result: SearchResult) {
   copy.className = "result-row-copy";
 
   const title = document.createElement("strong");
-  title.textContent = result.query;
+  title.textContent = result.query || result.requestedBundleId || "";
   copy.append(title);
-  if (result.requestedBundleId) {
+  if (result.query && result.requestedBundleId) {
     const requestedBundle = document.createElement("span");
     requestedBundle.className = "requested-bundle";
     requestedBundle.textContent = `Bundle ID：${result.requestedBundleId}`;
@@ -1222,7 +1222,7 @@ export function renderResults(
     empty.className = "empty";
     empty.textContent = hasSearched
       ? "没有返回结果。"
-      : "输入应用名称开始检索";
+      : "输入应用名称或 Bundle ID 开始检索";
     host.append(empty);
     return;
   }
@@ -1396,7 +1396,8 @@ export function renderResults(
     selectedIndex = index;
     const result = results[index]!;
     view = !result.app || (result.status !== "matched" && getCandidates(result).length > 0) ? "candidates" : "detail";
-    currentQuery.textContent = `当前：${result.query}${result.requestedBundleId ? ` · ${result.requestedBundleId}` : ""}`;
+    const queryLabel = result.query || (result.requestedBundleId ? `Bundle ID：${result.requestedBundleId}` : "");
+    currentQuery.textContent = `当前：${queryLabel}${result.query && result.requestedBundleId ? ` · ${result.requestedBundleId}` : ""}`;
 
     rows.forEach((row, rowIndex) => {
       const isActive = rowIndex === selectedIndex;

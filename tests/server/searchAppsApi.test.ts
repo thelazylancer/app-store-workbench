@@ -1,7 +1,7 @@
 import request from "supertest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../../server/app";
-import { lookupAppById, lookupAppStore } from "../../server/lib/appleLookup";
+import { lookupAppByBundleId, lookupAppById, lookupAppStore } from "../../server/lib/appleLookup";
 import { buildIapHints } from "../../server/lib/iapHints";
 import { fetchProductPageDetails } from "../../server/lib/productPage";
 import type { LookupCandidate, SearchResult } from "../../shared/types";
@@ -12,7 +12,7 @@ describe("GET /api/app-details/:appleId", () => {
   it("rejects invalid detail identity or country and distinguishes absent apps from upstream failure", async () => {
     const lookup = vi.fn(async (_id: number, _country: string) => null);
     const page = vi.fn(async () => ({ screenshotUrls: [], iapItems: [], versionHistory: [] }));
-    const app = createApp({ lookupAppStore, lookupAppById: lookup, fetchProductPageDetails: page, buildIapHints });
+    const app = createApp({ lookupAppStore, lookupAppById: lookup, lookupAppByBundleId, fetchProductPageDetails: page, buildIapHints });
     for (const path of ["0", "-1", "1.5", "1e3", "9007199254740992", "not-an-id", "123?country=de", "123?country=", "123?country=us&country=jp"]) {
       expect((await request(app).get(`/api/app-details/${path}`)).status).toBe(400);
     }
@@ -38,6 +38,7 @@ describe("GET /api/app-details/:appleId", () => {
     }
     const app = createApp({
       lookupAppStore,
+      lookupAppByBundleId,
       lookupAppById: async () => ({
         appleId: 456, name: "Selected", developer: "Own Dev", appStoreUrl: "https://apps.apple.com/us/app/id456",
         iconUrl: "", description: "Own description", screenshotUrls: ["Own screenshot"],
@@ -67,7 +68,7 @@ describe("GET /api/app-details/:appleId", () => {
       iapItems: [{ name: "Selected pack", price: "¥4.99" }],
       versionHistory: [{ version: "2.0", releasedAt: null, notes: "Selected page history" }],
     }));
-    const app = createApp({ lookupAppStore, lookupAppById, fetchProductPageDetails: page, buildIapHints });
+    const app = createApp({ lookupAppStore, lookupAppById, lookupAppByBundleId, fetchProductPageDetails: page, buildIapHints });
     const response = await request(app).get("/api/app-details/456?country=JP");
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({
@@ -92,8 +93,12 @@ describe("POST /api/search-apps", () => {
 
   it("rejects malformed or ambiguous requests before any lookup or enrichment", async () => {
     const lookup = vi.fn(async () => []);
+    const byBundle = vi.fn(async () => null);
     const page = vi.fn(async () => ({ screenshotUrls: [], iapItems: [], versionHistory: [] }));
-    const app = createApp({ lookupAppById, lookupAppStore: lookup, fetchProductPageDetails: page, buildIapHints });
+    const app = createApp({
+      lookupAppById, lookupAppByBundleId: byBundle, lookupAppStore: lookup,
+      fetchProductPageDetails: page, buildIapHints,
+    });
     const invalidRequests = [
       {},
       { queries: null },
@@ -103,7 +108,10 @@ describe("POST /api/search-apps", () => {
       { queries: [{}] },
       { queries: [{ name: 123 }] },
       { queries: [{ name: " \t " }] },
-      { queries: [{ bundleId: "com.example.Funce" }] },
+      { queries: [{ bundleId: "" }] },
+      { queries: [{ bundleId: " \t " }] },
+      { queries: [{ bundleId: 123 }] },
+      { queries: [{ name: "", bundleId: " \t " }] },
       { queries: [{ name: "Funce", bundleId: 123 }] },
       { queries: [{ name: "Funce", bundleId: null }] },
       { queries: [{ name: "Funce" }, { name: "" }] },
@@ -118,6 +126,7 @@ describe("POST /api/search-apps", () => {
       expect(response.status, JSON.stringify(body)).toBe(400);
     }
     expect(lookup).not.toHaveBeenCalled();
+    expect(byBundle).not.toHaveBeenCalled();
     expect(page).not.toHaveBeenCalled();
   });
 
@@ -135,7 +144,7 @@ describe("POST /api/search-apps", () => {
       iapItems: [{ name: "Pack", price: "¥4.99" }],
       versionHistory: [],
     }));
-    const app = createApp({ lookupAppById, lookupAppStore: lookup, fetchProductPageDetails: page, buildIapHints });
+    const app = createApp({ lookupAppById, lookupAppByBundleId, lookupAppStore: lookup, fetchProductPageDetails: page, buildIapHints });
 
     const response = await request(app).post("/api/search-apps").send({
       queries: [
@@ -174,6 +183,69 @@ describe("POST /api/search-apps", () => {
     expect(results[3]).not.toHaveProperty("requestedBundleId");
   });
 
+  it("matches and enriches a Bundle-only query without a name lookup", async () => {
+    const candidate: LookupCandidate = {
+      name: "Target", developer: "Target Dev", appleId: 555, bundleId: "com.example.Target",
+      appStoreUrl: "https://apps.apple.com/us/app/target/id555", iconUrl: "",
+      description: "Baseline description", screenshotUrls: ["Baseline screenshot"],
+      versionHistory: [{ version: "1.0", releasedAt: null, notes: "Baseline history" }],
+    };
+    const lookup = vi.fn(async (_query: string, _country: string) => []);
+    const byBundle = vi.fn(async (_bundleId: string, _country: string) => candidate);
+    const page = vi.fn(async (_url: string) => ({
+      screenshotUrls: ["Page screenshot"],
+      iapItems: [{ name: "Pack", price: "$4.99" }],
+      versionHistory: [{ version: "2.0", releasedAt: null, notes: "Page history" }],
+    }));
+    const app = createApp({
+      lookupAppById, lookupAppStore: lookup, lookupAppByBundleId: byBundle,
+      fetchProductPageDetails: page, buildIapHints,
+    });
+
+    const response = await request(app).post("/api/search-apps").send({
+      queries: [{ bundleId: " com.example.Target " }], country: "jp",
+    });
+
+    expect(response.status).toBe(200);
+    expect(byBundle.mock.calls).toEqual([["com.example.Target", "jp"]]);
+    expect(lookup).not.toHaveBeenCalled();
+    expect(response.body.results[0]).toMatchObject({
+      query: "",
+      requestedBundleId: "com.example.Target",
+      status: "matched",
+      app: {
+        appleId: 555,
+        description: "Baseline description",
+        screenshotUrls: ["Page screenshot"],
+        iapItems: [{ name: "Pack", price: "$4.99" }],
+        versionHistory: [{ version: "2.0", releasedAt: null, notes: "Page history" }],
+      },
+    });
+    expect(page.mock.calls[0]?.[0]).toBe("https://apps.apple.com/jp/app/target/id555?l=en");
+  });
+
+  it("returns the supplied-Bundle no-match message for an unmatched Bundle-only query", async () => {
+    const byBundle = vi.fn(async (_bundleId: string, _country: string) => null);
+    const page = vi.fn(async () => ({ screenshotUrls: [], iapItems: [], versionHistory: [] }));
+    const app = createApp({
+      lookupAppById, lookupAppByBundleId: byBundle, lookupAppStore: async () => [],
+      fetchProductPageDetails: page, buildIapHints,
+    });
+
+    const response = await request(app).post("/api/search-apps").send({
+      queries: [{ bundleId: "com.example.Missing" }], country: "cn",
+    });
+
+    expect(response.status).toBe(200);
+    expect(byBundle.mock.calls).toEqual([["com.example.Missing", "cn"]]);
+    expect(response.body.results).toEqual([{
+      query: "", requestedBundleId: "com.example.Missing", status: "no_match",
+      app: null, candidates: [], alternates: [], iapHints: null,
+      message: "No App Store candidate matched the supplied Bundle ID",
+    }]);
+    expect(page).not.toHaveBeenCalled();
+  });
+
   it.each([false, true])("preserves the supplied-Bundle no-match message in another country (candidates: %s)", async (hasCandidates) => {
     const candidates: LookupCandidate[] = hasCandidates ? [{
       name: "Funce", bundleId: "com.example.Target.extra", developer: "Own Dev", appleId: 123,
@@ -181,7 +253,7 @@ describe("POST /api/search-apps", () => {
     }] : [];
     const page = vi.fn(async () => ({ screenshotUrls: [], iapItems: [], versionHistory: [] }));
     const app = createApp({
-      lookupAppById, lookupAppStore: async () => candidates, fetchProductPageDetails: page, buildIapHints,
+      lookupAppById, lookupAppByBundleId, lookupAppStore: async () => candidates, fetchProductPageDetails: page, buildIapHints,
     });
 
     const response = await request(app).post("/api/search-apps").send({
@@ -211,7 +283,7 @@ describe("POST /api/search-apps", () => {
       iapItems: [{ name: "Pack", price: "¥4.99" }],
       versionHistory: [],
     }));
-    const app = createApp({ lookupAppById, lookupAppStore, fetchProductPageDetails, buildIapHints });
+    const app = createApp({ lookupAppById, lookupAppByBundleId, lookupAppStore, fetchProductPageDetails, buildIapHints });
 
     const response = await request(app).post("/api/search-apps")
       .send({ names: ["Funce"], country: "JP" });
@@ -234,6 +306,7 @@ describe("POST /api/search-apps", () => {
     const lookup = vi.fn(async (_query: string, _country: string) => []);
     const app = createApp({
       lookupAppById,
+      lookupAppByBundleId,
       lookupAppStore: lookup,
       fetchProductPageDetails: async () => ({ screenshotUrls: [], iapItems: [], versionHistory: [] }),
       buildIapHints,
@@ -266,6 +339,7 @@ describe("POST /api/search-apps", () => {
       }));
     const app = createApp({
       lookupAppById,
+      lookupAppByBundleId,
       lookupAppStore: async () => candidates,
       fetchProductPageDetails: async () => ({
         screenshotUrls: [], iapItems: [{ name: "Primary pack", price: "$4.99" }],
@@ -286,6 +360,7 @@ describe("POST /api/search-apps", () => {
     }));
     const app = createApp({
       lookupAppById,
+      lookupAppByBundleId,
       lookupAppStore: async () => [{
         name: "Missing ID", developer: "Own Dev", appStoreUrl: "https://example.com/arbitrary",
         iconUrl: "", description: "Own description", screenshotUrls: ["Own screenshot"],
@@ -335,6 +410,7 @@ describe("POST /api/search-apps", () => {
     );
     const app = createApp({
       lookupAppById,
+      lookupAppByBundleId,
       lookupAppStore,
       fetchProductPageDetails: async () => {
         throw new Error("Product page unavailable");
@@ -373,6 +449,7 @@ describe("POST /api/search-apps", () => {
   it("returns one result per input name in the same order", async () => {
     const app = createApp({
       lookupAppById,
+      lookupAppByBundleId,
       lookupAppStore: async (query) => {
         if (query === "Funce") {
           return [
@@ -452,6 +529,7 @@ describe("POST /api/search-apps", () => {
   ])("returns search_failed with the request identity for $label when lookup throws", async ({ body, identity }) => {
     const app = createApp({
       lookupAppById,
+      lookupAppByBundleId,
       lookupAppStore: async () => {
         throw new Error("forced failure");
       },

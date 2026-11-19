@@ -2,7 +2,7 @@ export const STORE_COUNTRIES = ["us", "cn", "hk", "tw", "jp", "sg", "gb", "au"] 
 export type StoreCountry = (typeof STORE_COUNTRIES)[number];
 
 export type AppSearchQuery = {
-  name: string;
+  name?: string;
   bundleId?: string;
 };
 

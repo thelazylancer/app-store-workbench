@@ -133,6 +133,17 @@ describe("renderResults", () => {
     expect(host.querySelector(".requested-bundle")).toBeNull();
   });
 
+  it("falls back to the requested Bundle ID for a result without a query name", () => {
+    const host = document.createElement("div");
+    renderResults(host, [{ ...identityResult, query: "", requestedBundleId: "com.requested.only" }]);
+    const row = host.querySelector<HTMLButtonElement>(".result-row")!;
+    expect(row.querySelector("strong")?.textContent).toBe("com.requested.only");
+    expect(row.querySelector(".requested-bundle")).toBeNull();
+    expect(host.querySelector(".query-label strong")?.textContent).toBe("com.requested.only");
+    expect(host.querySelector(".query-label .requested-bundle")).toBeNull();
+    expect(host.querySelector(".query-queue-summary")?.textContent).toContain("当前：Bundle ID：com.requested.only");
+  });
+
   it.each([0, 2])("translates an explicit missing Bundle match with %i candidates without a generic store failure", (count) => {
     const host = document.createElement("div");
     renderResults(host, [{
@@ -1095,7 +1106,7 @@ describe("renderResults", () => {
 
     renderResults(host, [], false);
 
-    expect(host.textContent).toContain("输入应用名称开始检索");
+    expect(host.textContent).toContain("输入应用名称或 Bundle ID 开始检索");
   });
 
   it("renders a result list with an inspector for a matched app", () => {

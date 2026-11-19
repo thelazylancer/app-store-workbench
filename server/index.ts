@@ -74,6 +74,7 @@ async function main() {
   const app = createApp({
     lookupAppById,
     lookupAppStore,
+    lookupAppByBundleId,
     fetchProductPageDetails,
     buildIapHints,
     ipaDownload,

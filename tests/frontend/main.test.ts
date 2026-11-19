@@ -80,8 +80,10 @@ describe("main shell", () => {
     expect(app?.textContent).not.toContain("Captured signals");
     expect(document.querySelectorAll(".query-row")).toHaveLength(1);
     expect(getNameInput().labels?.[0]?.textContent).toContain("应用名称 1");
-    expect(getNameInput().getAttribute("aria-required")).toBe("true");
-    expect(getBundleInput().labels?.[0]?.textContent).toContain("Bundle ID 1（可选）");
+    expect(getNameInput().getAttribute("aria-required")).toBeNull();
+    expect(getNameInput().placeholder).toBe("应用名称（与 Bundle ID 二选一）");
+    expect(getBundleInput().labels?.[0]?.textContent).toContain("Bundle ID 1（与名称二选一）");
+    expect(getBundleInput().placeholder).toBe("Bundle ID（与名称二选一）");
     expect(document.querySelector<HTMLButtonElement>('[data-role="remove-query"]')!.hidden).toBe(true);
     expect(document.querySelector('[data-role="quick-query"], [data-role="batch-query"], [data-role="batch-toggle"], textarea')).toBeNull();
   });
@@ -91,7 +93,7 @@ describe("main shell", () => {
 
     expect(document.querySelector(".filter-bar")?.hasAttribute("hidden")).toBe(true);
     expect(document.querySelector('[data-role="status-filter"]')?.textContent).toContain("全部 0");
-    expect(document.querySelector(".empty-state")?.textContent).toContain("输入应用名称后显示结果");
+    expect(document.querySelector(".empty-state")?.textContent).toContain("输入应用名称或 Bundle ID 后显示结果");
     expect(document.querySelector(".empty-state-kicker")).toBeNull();
     expect(document.querySelector(".empty-state-mark")).not.toBeNull();
     expect(document.querySelector(".empty-state-visual")).toBeNull();
@@ -158,7 +160,7 @@ describe("main shell", () => {
       document.querySelector<HTMLButtonElement>('[data-role="clear"]')!.click();
     } else if (action === "empty submission" || action === "invalid row") {
       typeQuery("");
-      if (action === "invalid row") typeBundle("com.example.Funce");
+      if (action === "invalid row") typeBundle("  ");
       search.click();
     } else {
       const latest = structuredClone(oldResponse);
@@ -228,6 +230,17 @@ describe("main shell", () => {
     expect(disclosure.textContent).toContain("US 区");
   });
 
+  it("counts bundle-only rows as queries in the composer summary", async () => {
+    await import("../../src/main");
+    typeBundle("com.example.only");
+    const disclosure = document.querySelector<HTMLDetailsElement>(".search-composer")!.querySelector<HTMLElement>("summary")!;
+    expect(disclosure.textContent).toContain("1 个查询 · US 区");
+    typeQuery("Funce");
+    expect(disclosure.textContent).toContain("1 个应用名称 · US 区");
+    document.querySelector<HTMLButtonElement>('[data-role="search"]')!.click();
+    await vi.waitFor(() => expect(document.querySelector(".result-row")).not.toBeNull());
+  });
+
   it("adds and removes paired rows with accessible controls, stable values and predictable focus", async () => {
     await import("../../src/main");
     const first = typeQuery("First");
@@ -269,9 +282,6 @@ describe("main shell", () => {
     addQuery();
     typeQuery(" Name only ", 2);
     typeBundle("  \t ", 2);
-    addQuery();
-    typeQuery("  ", 3);
-    typeBundle(" \t ", 3);
     document.querySelector<HTMLButtonElement>('[data-role="search"]')!.click();
     expect(searchApps).toHaveBeenCalledTimes(1);
     expect(searchApps).toHaveBeenCalledWith([
@@ -282,12 +292,20 @@ describe("main shell", () => {
     expect(document.querySelector(".composer-summary")?.textContent).toContain("3 个应用名称 · US 区");
   });
 
-  it("validates a Bundle-only row locally and sends all rows after the name is supplied", async () => {
+  it("accepts a Bundle-only row and sends only the Bundle ID", async () => {
     await import("../../src/main");
-    typeQuery("First");
-    addQuery();
-    typeBundle("com.example.second", 1);
-    const name = getNameInput(1);
+    typeBundle("  com.example.only  ");
+    const search = document.querySelector<HTMLButtonElement>('[data-role="search"]')!;
+    search.click();
+    expect(searchApps).toHaveBeenCalledTimes(1);
+    expect(searchApps).toHaveBeenCalledWith([{ bundleId: "com.example.only" }], "us");
+    expect(document.querySelector<HTMLElement>('[data-role="query-error"]')!.hidden).toBe(true);
+  });
+
+  it("blocks a row where both the name and Bundle ID are blank", async () => {
+    await import("../../src/main");
+    const name = typeQuery(" \t ");
+    const bundle = typeBundle("  ");
     const composer = document.querySelector<HTMLDetailsElement>(".search-composer")!;
     const search = document.querySelector<HTMLButtonElement>('[data-role="search"]')!;
     const error = document.querySelector<HTMLElement>('[data-role="query-error"]')!;
@@ -296,39 +314,19 @@ describe("main shell", () => {
     expect(searchApps).not.toHaveBeenCalled();
     expect(composer.open).toBe(true);
     expect(error.hidden).toBe(false);
-    expect(error.textContent).toBe("请填写应用名称");
+    expect(error.textContent).toBe("应用名称与 Bundle ID 至少填一项");
     expect(error.getAttribute("role")).toBe("alert");
     expect(name.getAttribute("aria-invalid")).toBe("true");
+    expect(bundle.getAttribute("aria-invalid")).toBe("true");
     expect(name.getAttribute("aria-describedby")).toBe(error.id);
+    expect(bundle.getAttribute("aria-describedby")).toBe(error.id);
     expect(document.activeElement).toBe(name);
-    typeQuery("Second", 1);
+    typeBundle("com.example.only");
     expect(error.hidden).toBe(true);
     expect(name.hasAttribute("aria-invalid")).toBe(false);
+    expect(bundle.hasAttribute("aria-invalid")).toBe(false);
     search.click();
-    expect(searchApps).toHaveBeenCalledWith([
-      { name: "First" }, { name: "Second", bundleId: "com.example.second" },
-    ], "us");
-  });
-
-  it("ignores entirely blank rows and resets existing results on an empty overall submission", async () => {
-    await import("../../src/main");
-    const name = typeQuery("Funce");
-    const search = document.querySelector<HTMLButtonElement>('[data-role="search"]')!;
-    search.click();
-    await vi.waitFor(() => expect(document.querySelector(".result-row")).not.toBeNull());
-    document.querySelector<HTMLElement>(".composer-summary")!.click();
-    typeQuery(" \t ");
-    typeBundle("  ");
-    addQuery();
-    typeQuery(" ", 1);
-    search.click();
-    expect(searchApps).toHaveBeenCalledTimes(1);
-    expect(document.querySelectorAll(".result-row")).toHaveLength(0);
-    expect(document.querySelector(".empty-state")?.textContent).toContain("输入应用名称后显示结果");
-    expect(document.querySelector('[data-role="summary"]')?.textContent).toBe("尚未检索");
-    expect(document.querySelector<HTMLElement>('[data-role="query-error"]')!.hidden).toBe(true);
-    expect(document.querySelector<HTMLDetailsElement>(".search-composer")!.open).toBe(true);
-    expect(getNameInput()).toBe(name);
+    expect(searchApps).toHaveBeenCalledWith([{ bundleId: "com.example.only" }], "us");
   });
 
   it("keeps native row nodes, selection and caret intact during edits", async () => {
@@ -408,7 +406,7 @@ describe("main shell", () => {
     const name = typeQuery("Funce");
     typeBundle("com.first");
     addQuery();
-    typeBundle("com.second", 1);
+    typeBundle("  ", 1);
     document.querySelector<HTMLButtonElement>('[data-role="search"]')!.click();
     expect(document.querySelector<HTMLElement>('[data-role="query-error"]')!.hidden).toBe(false);
     composer.open = false;

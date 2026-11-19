@@ -77,7 +77,7 @@ app.innerHTML = `
           </div>
 
           <section class="results" aria-live="polite">
-            <p class="empty">输入应用名称开始检索</p>
+            <p class="empty">输入应用名称或 Bundle ID 开始检索</p>
           </section>
         </section>
       </div>
@@ -123,17 +123,29 @@ function getQueryRows() {
 }
 
 function syncComposerSummary() {
-  const count = Array.from(queryRows.querySelectorAll<HTMLInputElement>('[data-role="query-name"]'))
-    .filter((input) => input.value.trim()).length;
+  // 名称与 Bundle 二选一后，摘要按有效行计数；纯 Bundle 行不叫"应用名称"
+  let rowCount = 0;
+  let nameCount = 0;
+  getQueryRows().forEach((row) => {
+    const hasName = !!row.querySelector<HTMLInputElement>('[data-role="query-name"]')?.value.trim();
+    const hasBundle = !!row.querySelector<HTMLInputElement>('[data-role="query-bundle"]')?.value.trim();
+    if (hasName || hasBundle) rowCount += 1;
+    if (hasName) nameCount += 1;
+  });
   const context = requireElement(app.querySelector('[data-role="composer-context"]'), "composer context");
   const country = selectedCountry.toUpperCase();
-  context.textContent = count > 0 ? `${count} 个应用名称 · ${country} 区` : `${country} 区`;
+  if (rowCount === 0) {
+    context.textContent = `${country} 区`;
+    return;
+  }
+  const unit = rowCount === nameCount ? "个应用名称" : "个查询";
+  context.textContent = `${rowCount} ${unit} · ${country} 区`;
 }
 
 function clearQueryValidation() {
   queryError.hidden = true;
   queryError.textContent = "";
-  queryRows.querySelectorAll<HTMLInputElement>('[data-role="query-name"]').forEach((input) => {
+  queryRows.querySelectorAll<HTMLInputElement>('[data-role="query-name"], [data-role="query-bundle"]').forEach((input) => {
     input.removeAttribute("aria-invalid");
     input.removeAttribute("aria-describedby");
   });
@@ -144,7 +156,7 @@ function syncQueryRows() {
   rows.forEach((row, index) => {
     row.setAttribute("aria-label", `应用 ${index + 1}`);
     row.querySelector('[data-role="name-label"]')!.textContent = `应用名称 ${index + 1}`;
-    row.querySelector('[data-role="bundle-label"]')!.textContent = `Bundle ID ${index + 1}（可选）`;
+    row.querySelector('[data-role="bundle-label"]')!.textContent = `Bundle ID ${index + 1}（与名称二选一）`;
     const remove = row.querySelector<HTMLButtonElement>('[data-role="remove-query"]')!;
     remove.hidden = rows.length === 1;
     remove.setAttribute("aria-label", `移除应用 ${index + 1}`);
@@ -160,11 +172,11 @@ function createQueryRow() {
   row.innerHTML = `
     <label class="field query-field query-name-field">
       <span class="visually-hidden" data-role="name-label"></span>
-      <input type="text" name="query-name" data-role="query-name" placeholder="输入应用名称" aria-required="true" autocomplete="off" spellcheck="false" />
+      <input type="text" name="query-name" data-role="query-name" placeholder="应用名称（与 Bundle ID 二选一）" autocomplete="off" spellcheck="false" />
     </label>
     <label class="field query-field query-bundle-field">
       <span class="visually-hidden" data-role="bundle-label"></span>
-      <input type="text" name="query-bundle" data-role="query-bundle" placeholder="Bundle ID（可选）" autocomplete="off" autocapitalize="none" spellcheck="false" />
+      <input type="text" name="query-bundle" data-role="query-bundle" placeholder="Bundle ID（与名称二选一）" autocomplete="off" autocapitalize="none" spellcheck="false" />
     </label>
     <button type="button" class="secondary-button query-remove" data-role="remove-query" hidden>
       <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M5 5L15 15M15 5L5 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
@@ -392,7 +404,7 @@ function updateResultsView() {
     syncFilterUi();
     updateSummary([], false);
     results.replaceChildren(
-      createEmptyState("输入应用名称后显示结果"),
+      createEmptyState("输入应用名称或 Bundle ID 后显示结果"),
     );
     void refreshMotion("empty");
     return;
@@ -452,28 +464,33 @@ function bindFilterEvents() {
 button.addEventListener("click", async () => {
   const generation = ++searchGeneration;
   const queries: AppSearchQuery[] = [];
-  let invalidName: HTMLInputElement | null = null;
+  let invalidInput: HTMLInputElement | null = null;
   clearQueryValidation();
   for (const row of getQueryRows()) {
-    const input = row.querySelector<HTMLInputElement>('[data-role="query-name"]')!;
-    const name = input.value.trim();
-    const bundleId = row.querySelector<HTMLInputElement>('[data-role="query-bundle"]')!.value.trim();
-    if (!name && bundleId) {
-      input.setAttribute("aria-invalid", "true");
-      input.setAttribute("aria-describedby", queryError.id);
-      invalidName ??= input;
+    const nameInput = row.querySelector<HTMLInputElement>('[data-role="query-name"]')!;
+    const bundleInput = row.querySelector<HTMLInputElement>('[data-role="query-bundle"]')!;
+    const name = nameInput.value.trim();
+    const bundleId = bundleInput.value.trim();
+    if (!name && !bundleId) {
+      for (const input of [nameInput, bundleInput]) {
+        input.setAttribute("aria-invalid", "true");
+        input.setAttribute("aria-describedby", queryError.id);
+      }
+      invalidInput ??= nameInput;
+      continue;
     }
     if (name) queries.push(bundleId ? { name, bundleId } : { name });
+    else queries.push({ bundleId });
   }
   syncComposerSummary();
 
-  if (invalidName) {
+  if (invalidInput) {
     composer.open = true;
-    queryError.textContent = "请填写应用名称";
+    queryError.textContent = "应用名称与 Bundle ID 至少填一项";
     queryError.hidden = false;
     hasSearched = allResults.length > 0;
     updateResultsView();
-    invalidName.focus();
+    invalidInput.focus();
     return;
   }
 

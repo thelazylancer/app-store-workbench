@@ -22,6 +22,7 @@ import type { ProductPageDetails } from "./lib/productPage";
 type AppDependencies = {
   lookupAppById: (appleId: number, country: StoreCountry) => Promise<LookupCandidate | null>;
   lookupAppStore: (query: string, country: StoreCountry) => Promise<LookupCandidate[]>;
+  lookupAppByBundleId: (bundleId: string, country: StoreCountry) => Promise<LookupCandidate | null>;
   fetchProductPageDetails: (appStoreUrl: string) => Promise<ProductPageDetails>;
   buildIapHints: (items: ProductPageDetails["iapItems"] | null) => Promise<IapHints>;
   ipaDownload?: IpaDownloadManager;
@@ -39,9 +40,14 @@ function isSearchAppsRequest(value: unknown): value is SearchAppsRequest {
   if (typeof value !== "object" || value === null) return false;
   if ("queries" in value) {
     return !("names" in value) && Array.isArray(value.queries) && value.queries.every(
-      (item: unknown) => typeof item === "object" && item !== null &&
-        "name" in item && typeof item.name === "string" && item.name.trim().length > 0 &&
-        (!("bundleId" in item) || typeof item.bundleId === "string"),
+      (item: unknown) => {
+        if (typeof item !== "object" || item === null) return false;
+        const { name, bundleId } = item as { name?: unknown; bundleId?: unknown };
+        if (name !== undefined && typeof name !== "string") return false;
+        if (bundleId !== undefined && typeof bundleId !== "string") return false;
+        return (typeof name === "string" && name.trim().length > 0) ||
+          (typeof bundleId === "string" && bundleId.trim().length > 0);
+      },
     );
   }
   return "names" in value && Array.isArray(value.names) &&
@@ -126,17 +132,26 @@ export function createApp(deps: AppDependencies) {
 
   app.post("/api/search-apps", async (req, res) => {
     if (!isSearchAppsRequest(req.body)) {
-      return res.status(400).json({ message: "Supply queries with nonblank names and optional string Bundle IDs, or names as an array of strings" });
+      return res.status(400).json({ message: "Supply queries with a nonblank name, a Bundle ID, or both, or names as an array of strings" });
     }
     const country = parseCountry(req.body.country);
     if (!country) return res.status(400).json({ message: "Unsupported App Store country" });
 
     const queries: AppSearchQuery[] = req.body.queries ?? req.body.names?.map((name) => ({ name })) ?? [];
     const results = await mapWithConcurrency(queries, SEARCH_CONCURRENCY, async ({ name: query, bundleId }) => {
+      const nameQuery = query ?? "";
       const requestedBundleId = bundleId?.trim();
       try {
-        const candidates = await deps.lookupAppStore(query, country);
-        const result = classifyCandidates(query, candidates, requestedBundleId);
+        let candidates: LookupCandidate[];
+        if (nameQuery.trim()) {
+          candidates = await deps.lookupAppStore(nameQuery, country);
+        } else {
+          const candidate = requestedBundleId
+            ? await deps.lookupAppByBundleId(requestedBundleId, country)
+            : null;
+          candidates = candidate ? [candidate] : [];
+        }
+        const result = classifyCandidates(nameQuery, candidates, requestedBundleId);
 
         if (result.app) {
           Object.assign(result, await enrichApp(result.app, country));
@@ -148,7 +163,7 @@ export function createApp(deps: AppDependencies) {
         return result;
       } catch {
         return {
-          query,
+          query: nameQuery,
           ...(requestedBundleId ? { requestedBundleId } : {}),
           status: "search_failed",
           app: null,

@@ -7,6 +7,7 @@ import type { DateKind, DayDetail, PackageDetail } from "../../shared/competitor
 const baseDeps = {
   lookupAppById: async () => null,
   lookupAppStore: async () => [],
+  lookupAppByBundleId: async () => null,
   fetchProductPageDetails: async () => ({ screenshotUrls: [], iapItems: [], versionHistory: [] }),
   buildIapHints: async () => ({ "4.99": "unavailable", "9.99": "unavailable", source: "best_effort" } as const),
 };
