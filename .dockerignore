@@ -6,7 +6,6 @@ dist
 .scratch
 .impeccable
 docs
-scripts
 tests
 *.log
 .dev.log
