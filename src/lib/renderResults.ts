@@ -628,7 +628,7 @@ function createCandidates(
 
   const section = document.createElement("section");
   section.className = "alternates compare-section";
-  const title = document.createElement("h4");
+  const title = document.createElement("p");
   title.className = "alternates-label";
   title.textContent = "候选对比";
   section.append(title);

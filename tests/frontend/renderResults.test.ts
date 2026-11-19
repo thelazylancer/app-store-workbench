@@ -888,11 +888,11 @@ describe("renderResults", () => {
 
       for (const card of host.querySelectorAll(".candidate-card")) {
         const appleId = card.querySelector<HTMLElement>(".candidate-card-apple-id")!;
-        expect(getComputedStyle(appleId).color).toBe("rgb(29, 78, 216)");
-        expect(getComputedStyle(appleId.querySelector(".identifier-text")!).color).toBe("rgb(29, 78, 216)");
+        expect(getComputedStyle(appleId).color).toBe("rgb(36, 90, 135)");
+        expect(getComputedStyle(appleId.querySelector(".identifier-text")!).color).toBe("rgb(36, 90, 135)");
         const bundleId = card.querySelector<HTMLElement>(".candidate-card-bundle-id")!;
-        expect(getComputedStyle(bundleId).color).toBe("rgb(100, 116, 139)");
-        expect(getComputedStyle(bundleId.querySelector(".identifier-text")!).color).toBe("rgb(100, 116, 139)");
+        expect(getComputedStyle(bundleId).color).toBe("rgb(84, 95, 105)");
+        expect(getComputedStyle(bundleId.querySelector(".identifier-text")!).color).toBe("rgb(84, 95, 105)");
       }
     } finally {
       style.remove();

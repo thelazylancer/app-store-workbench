@@ -7,11 +7,7 @@ import type {
   SummaryCompetitor,
   SummaryGroup,
 } from "../../shared/competitorTypes";
-import {
-  GROUP_BY_LABEL,
-  formatGroupName,
-  type StatusFilter,
-} from "./format";
+import { formatGroupName, type StatusFilter } from "./format";
 
 export type ExceptionReason = "miss" | "pending";
 
@@ -160,11 +156,10 @@ function createHitRow(
 
 function createExceptionRow(
   entry: ExceptionEntry,
-  groupBy: GroupBy,
   href: string,
 ): HTMLAnchorElement {
   const row = document.createElement("a");
-  row.className = "wx-exception-row";
+  row.className = "wx-row wx-exception-row";
   row.dataset.role = "exception-row";
   row.dataset.reason = entry.reason;
   row.dataset.package = entry.packageCode;
@@ -175,16 +170,26 @@ function createExceptionRow(
     `查看 ${entry.displayName}，${entry.reason === "miss" ? "未命中 App Store" : "详情待补全"}`,
   );
 
-  row.append(createRowIcon(entry.displayName, entry.iconLocalPath, entry.reason === "miss"));
+  row.append(createRowIcon(entry.displayName, entry.iconLocalPath, true));
   appendText(row, "span", "wx-row-name", entry.displayName);
   appendText(row, "span", "wx-row-code", entry.packageCode);
+  appendText(row, "span", "wx-row-meta", entry.appVersion ? `v${entry.appVersion}` : "—");
+
+  const side = document.createElement("span");
+  side.className = "wx-row-side";
+  if (entry.reason === "pending") {
+    const strip = document.createElement("span");
+    strip.className = "wx-strip";
+    strip.setAttribute("aria-hidden", "true");
+    side.append(strip);
+  }
   appendText(
-    row,
+    side,
     "span",
-    "wx-exception-reason",
-    entry.reason === "miss" ? "未命中 App Store" : "详情待补全",
+    entry.reason === "miss" ? "wx-badge wx-badge-miss" : "wx-badge wx-badge-pend",
+    entry.reason === "miss" ? "App Store 未命中" : "待补全",
   );
-  appendText(row, "span", "wx-row-group", formatGroupName(entry.groupKey, groupBy));
+  row.append(side);
   return row;
 }
 
@@ -217,26 +222,13 @@ function createGroup(
   head.append(chevron);
 
   appendText(head, "span", "wx-group-name", formatGroupName(group.groupKey, groupBy));
-
-  const counts = document.createElement("span");
-  counts.className = "wx-group-counts";
-  counts.dataset.role = "group-counts";
-  const count = (value: number, label: string, className?: string) => {
-    const part = document.createElement("span");
-    if (className) part.className = className;
-    const strong = document.createElement("b");
-    strong.textContent = String(value);
-    part.append(strong, ` ${label}`);
-    return part;
-  };
-  counts.append(
-    count(group.packageCount, "包"),
-    count(group.hitCount, "命中", "is-hit"),
-    count(exceptionCount, "异常", exceptionCount > 0 ? "is-exception" : undefined),
-  );
-  head.append(counts);
-
-  appendText(head, "span", "wx-group-comps", `${group.competitorCount} 个竞品`);
+  appendText(head, "span", "wx-group-n", `${group.packageCount} 包`);
+  appendText(
+    head,
+    "span",
+    "wx-group-sum",
+    `命中 ${group.hitCount} · 异常 ${exceptionCount}`,
+  ).dataset.role = "group-counts";
   section.append(head);
 
   const body = document.createElement("div");
@@ -296,24 +288,6 @@ export function renderSummary(host: HTMLElement, options: SummaryRenderOptions):
       (a, b) => b.packageCount - a.packageCount || a.groupKey.localeCompare(b.groupKey),
     );
 
-    const listHead = document.createElement("div");
-    listHead.className = "wx-list-head";
-    appendText(listHead, "span", "wx-list-caption", `${GROUP_BY_LABEL[groupBy]} · 按包数排序`);
-
-    const actions = document.createElement("span");
-    actions.className = "wx-list-actions";
-    const controls: Array<[string, string]> = [["expand-all", "全部展开"], ["collapse-all", "全部收起"]];
-    for (const [role, label] of controls) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "wx-text-action";
-      button.dataset.role = role;
-      button.textContent = label;
-      actions.append(button);
-    }
-    listHead.append(actions);
-    host.append(listHead);
-
     for (const group of ordered) {
       host.append(createGroup(
         group,
@@ -334,6 +308,10 @@ export function renderSummary(host: HTMLElement, options: SummaryRenderOptions):
 
     const head = document.createElement("div");
     head.className = "wx-exceptions-head";
+    const strip = document.createElement("span");
+    strip.className = "wx-strip";
+    strip.setAttribute("aria-hidden", "true");
+    head.append(strip);
     appendText(head, "h2", "wx-exceptions-title", "异常");
     appendText(
       head,
@@ -346,7 +324,6 @@ export function renderSummary(host: HTMLElement, options: SummaryRenderOptions):
     for (const entry of exceptions) {
       section.append(createExceptionRow(
         entry,
-        groupBy,
         buildDetailHref(packageCompetitorKey(entry.packageCode), entry.packageCode),
       ));
     }

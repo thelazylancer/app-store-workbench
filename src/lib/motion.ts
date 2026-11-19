@@ -4,8 +4,12 @@ export function initMotion(root: ParentNode, mode: "boot" | "empty" | "results" 
   if (typeof window === "undefined" || !("matchMedia" in window)) {
     return;
   }
+  // 本世界的动效教义：reduced-motion 下全部静止
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    return;
+  }
 
-  const header = root.querySelector(".workspace-header");
+  const header = root.querySelector(".wx-top");
   const rail = root.querySelector(".search-rail");
   const filterBar = root.querySelector(".filter-bar");
   const emptyState = root.querySelector(".empty-state");

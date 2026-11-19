@@ -17,25 +17,20 @@ const app = requireElement(document.querySelector<HTMLDivElement>("#app"), "#app
 app.innerHTML = `
   <main class="app-shell app-shell-root">
     <section class="workspace-frame">
-      <header class="workspace-header">
-        <div class="workspace-title">
-          <img
-            class="workspace-logo"
-            src="${import.meta.env.BASE_URL}brand/workbench-logo.png"
-            alt=""
-            width="36"
-            height="36"
-            decoding="async"
-          />
-          <h1>App搜索工作台</h1>
+      <header class="wx-top">
+        <div class="wx-brand">
+          <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
+            <rect x="3" y="12" width="4" height="7" rx="1" fill="#2E6FA3"></rect>
+            <rect x="9" y="8" width="4" height="11" rx="1" fill="#2E6FA3"></rect>
+            <rect x="15" y="3" width="4" height="16" rx="1" fill="#2E6FA3"></rect>
+          </svg>
+          <span>App 搜索工作台</span>
         </div>
-        <nav class="workspace-tabs" aria-label="主导航">
+        <nav class="wx-tabs" aria-label="主导航">
           <a href="${import.meta.env.BASE_URL}index.html" aria-current="page">App Store 搜索</a>
           <a href="${import.meta.env.BASE_URL}competitor.html">竞品</a>
         </nav>
-        <div class="workspace-badges" aria-label="商店信息">
-          <span data-role="country-code">US</span>
-        </div>
+        <span class="wx-region" data-role="country-code" aria-label="当前商店区域">US</span>
       </header>
 
       <div class="workspace-grid">

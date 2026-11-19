@@ -73,7 +73,7 @@ describe("main shell", () => {
     await import("../../src/main");
 
     const app = document.querySelector("#app");
-    expect(app?.textContent).toContain("App搜索工作台");
+    expect(app?.textContent).toContain("App 搜索工作台");
     expect(app?.textContent).toContain("添加应用");
     expect(app?.textContent).not.toContain("Competitor Workbench");
     expect(app?.textContent).not.toContain("Apple search endpoint plus rendered App Store product page");

@@ -6,13 +6,23 @@
   --blue-text: #245a87;
   --amber: #c97f1e;
   --amber-text: #824d0e;
-  --dim: #5c6771;
+  --dim: #545f69;
   --faint: rgba(28, 39, 51, 0.38);
   --line: rgba(28, 39, 51, 0.16);
   --line-strong: rgba(28, 39, 51, 0.3);
   --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --date: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
   --sans: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
 }
 
 html,
@@ -58,9 +68,9 @@ input:focus-visible {
 
 .wx-shell {
   min-height: 100vh;
-  max-width: 1600px;
+  max-width: 1440px;
   margin: 0 auto;
-  padding: 0 40px;
+  padding: 0 32px;
   display: flex;
   flex-direction: column;
 }
@@ -69,7 +79,7 @@ input:focus-visible {
   display: flex;
   align-items: center;
   gap: 36px;
-  height: 56px;
+  height: 54px;
   border-bottom: 1px solid var(--line);
   flex: 0 0 auto;
 }
@@ -79,21 +89,18 @@ input:focus-visible {
   align-items: center;
   gap: 10px;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 700;
   white-space: nowrap;
 }
 
-.wx-brand img {
+.wx-brand svg {
   display: block;
-  width: 28px;
-  height: 28px;
-  object-fit: contain;
 }
 
 .wx-tabs {
   display: flex;
-  gap: 28px;
-  height: 56px;
+  gap: 36px;
+  height: 54px;
 }
 
 .wx-tabs a {
@@ -114,13 +121,6 @@ input:focus-visible {
   box-shadow: inset 0 -2px 0 var(--ink);
 }
 
-.wx-region {
-  margin-left: auto;
-  color: var(--dim);
-  font-size: 12px;
-  white-space: nowrap;
-}
-
 /* ---------- report head / controls ---------- */
 
 .wx-report {
@@ -135,7 +135,7 @@ input:focus-visible {
   align-items: flex-end;
   justify-content: space-between;
   gap: 32px;
-  padding: 26px 0 0;
+  padding: 22px 0 18px;
   flex-wrap: wrap;
 }
 
@@ -149,14 +149,14 @@ input:focus-visible {
 .wx-title h1 {
   margin: 0;
   font-size: 20px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0;
   white-space: nowrap;
 }
 
 .wx-date {
   font-family: var(--date);
-  font-size: 46px;
+  font-size: 48px;
   font-weight: 600;
   line-height: 0.9;
   letter-spacing: 0.01em;
@@ -165,7 +165,7 @@ input:focus-visible {
 
 .wx-tag {
   align-self: center;
-  padding: 3px 8px;
+  padding: 4px 10px;
   border-radius: 2px;
   background: var(--ink);
   color: var(--air);
@@ -177,70 +177,21 @@ input:focus-visible {
 .wx-controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 18px;
+  gap: 24px;
   align-items: flex-end;
-  padding-bottom: 4px;
+  padding-bottom: 6px;
 }
 
 .wx-control {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .wx-label {
   color: var(--dim);
   font-size: 12px;
   white-space: nowrap;
-}
-
-.wx-stepper {
-  display: flex;
-  align-items: center;
-  height: 30px;
-  border: 1px solid var(--line-strong);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.wx-stepper button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 100%;
-  border: 0;
-  background: transparent;
-  color: var(--ink);
-  font-size: 16px;
-  line-height: 1;
-}
-
-.wx-stepper button:hover:not(:disabled) {
-  background: rgba(28, 39, 51, 0.06);
-}
-
-.wx-stepper button:disabled {
-  color: var(--dim);
-  cursor: default;
-}
-
-.wx-stepper input {
-  width: 128px;
-  height: 100%;
-  padding: 0 8px;
-  border: 0;
-  border-left: 1px solid var(--line);
-  border-right: 1px solid var(--line);
-  background: transparent;
-  color: var(--ink);
-  font-family: var(--mono);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-}
-
-.wx-stepper input::-webkit-calendar-picker-indicator {
-  opacity: 0.55;
 }
 
 .wx-text-action {
@@ -261,29 +212,21 @@ input:focus-visible {
 
 .wx-seg {
   display: flex;
-  height: 30px;
-  border: 1px solid var(--line-strong);
-  border-radius: 3px;
+  border: 1px solid var(--faint);
+  border-radius: 4px;
   overflow: hidden;
 }
 
 .wx-seg button {
-  height: 100%;
-  padding: 0 12px;
+  padding: 6px 14px;
   border: 0;
-  border-left: 1px solid var(--line);
   background: transparent;
   color: var(--dim);
-  font-size: 12px;
+  font-size: 13px;
   white-space: nowrap;
 }
 
-.wx-seg button:first-child {
-  border-left: 0;
-}
-
 .wx-seg button:hover {
-  background: rgba(28, 39, 51, 0.06);
   color: var(--ink);
 }
 
@@ -293,12 +236,57 @@ input:focus-visible {
   font-weight: 600;
 }
 
-.wx-subline {
-  margin: 12px 0 0;
-  color: var(--dim);
+.wx-seg-count {
   font-family: var(--mono);
-  font-size: 12px;
   font-variant-numeric: tabular-nums;
+}
+
+/* ---------- stats strip ---------- */
+
+.wx-stats {
+  display: flex;
+  align-items: center;
+  padding: 0 0 16px;
+}
+
+.wx-stat {
+  padding: 0 26px;
+  border-left: 1px solid var(--line);
+}
+
+.wx-stat:first-child {
+  border-left: 0;
+  padding-left: 0;
+}
+
+.wx-stat b {
+  display: block;
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.wx-stat span {
+  color: var(--dim);
+  font-size: 12px;
+}
+
+.wx-stat-hit b {
+  color: var(--blue);
+}
+
+.wx-stat-exception b {
+  color: var(--amber-text);
+}
+
+.wx-stat-exception span {
+  padding: 3px 8px;
+  border-radius: 2px;
+  background: var(--amber);
+  color: var(--ink);
+  font-weight: 600;
 }
 
 /* ---------- batch banner ---------- */
@@ -313,13 +301,52 @@ input:focus-visible {
 
 /* ---------- 7-day forecast spine ---------- */
 
+.wx-cap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 0 8px;
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.wx-cap-nav {
+  display: flex;
+  gap: 6px;
+}
+
+.wx-cap-nav button {
+  height: 22px;
+  min-width: 24px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.wx-cap-nav button:hover:not(:disabled) {
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+.wx-cap-nav button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
 .wx-forecast {
   display: flex;
   align-items: stretch;
-  margin-top: 18px;
+  height: 224px;
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
-  min-height: 220px;
 }
 
 .wx-day {
@@ -331,8 +358,6 @@ input:focus-visible {
   padding: 14px 8px 12px;
   border: 0;
   border-left: 1px solid var(--line);
-  border-top: 1px solid transparent;
-  border-bottom: 1px solid transparent;
   background: transparent;
   color: var(--ink);
   text-align: center;
@@ -342,19 +367,18 @@ input:focus-visible {
   border-left: 0;
 }
 
-.wx-day:hover {
-  background: rgba(28, 39, 51, 0.035);
+.wx-day:hover .wx-day-date {
+  color: var(--ink);
 }
 
 .wx-day.is-main {
   flex: 1.9 1 0;
+  padding: 14px 12px 12px;
   background: rgba(28, 39, 51, 0.05);
 }
 
 .wx-day.is-in-range {
   background: rgba(46, 111, 163, 0.09);
-  border-top-color: var(--blue);
-  border-bottom-color: var(--blue);
 }
 
 .wx-day.is-main.is-in-range {
@@ -376,7 +400,7 @@ input:focus-visible {
 .wx-day.is-main .wx-day-date {
   color: var(--ink);
   font-family: var(--date);
-  font-size: 30px;
+  font-size: 28px;
   font-weight: 600;
   line-height: 1;
 }
@@ -385,55 +409,28 @@ input:focus-visible {
   color: var(--blue-text);
 }
 
-.wx-day-weekday {
-  font-family: var(--date);
-  font-size: 20px;
-  letter-spacing: 0.02em;
-}
-
-.wx-day-md {
-  font-family: var(--date);
-  font-size: 30px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
 .wx-day-tag {
-  padding: 2px 6px;
+  padding: 3px 8px;
   border-radius: 2px;
   background: var(--ink);
   color: var(--air);
   font-family: var(--sans);
-  font-size: 11px;
+  font-size: 12px;
   font-style: normal;
   font-weight: 600;
 }
 
 .wx-day-plot {
-  position: relative;
   flex: 1;
-  min-height: 150px;
   display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  align-items: center;
+  align-items: flex-end;
+  justify-content: center;
   padding-top: 10px;
 }
 
-.wx-day-plot::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  bottom: 0;
-  width: 62%;
-  height: 1px;
-  background: var(--line-strong);
-  transform: translateX(-50%);
-}
-
 .wx-day-count {
-  margin-bottom: 6px;
-  color: var(--ink);
+  padding-top: 10px;
+  color: var(--dim);
   font-family: var(--mono);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
@@ -441,9 +438,8 @@ input:focus-visible {
 }
 
 .wx-day.is-main .wx-day-count {
-  margin-bottom: 8px;
   color: var(--blue-text);
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 600;
 }
 
@@ -465,17 +461,25 @@ input:focus-visible {
   to { transform: scaleY(1); }
 }
 
+.wx-bar.is-zero {
+  width: 30px;
+  border-top: 4px dashed var(--faint);
+  border-radius: 0;
+  background: transparent;
+  animation: none;
+}
+
 .wx-day.is-main .wx-bar {
-  width: 46px;
+  width: 48px;
   background: var(--blue);
 }
 
-.wx-day.is-in-range .wx-bar {
+.wx-day.is-in-range .wx-bar:not(.is-zero) {
   background: var(--blue);
   opacity: 0.5;
 }
 
-.wx-day.is-main.is-in-range .wx-bar {
+.wx-day.is-main.is-in-range .wx-bar:not(.is-zero) {
   opacity: 1;
 }
 
@@ -508,38 +512,15 @@ input:focus-visible {
 .wx-body {
   flex: 1;
   min-width: 0;
-}
-
-.wx-list-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 18px 0 8px;
-}
-
-.wx-list-caption {
-  color: var(--dim);
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing: 0.02em;
-}
-
-.wx-list-actions {
-  display: flex;
-  gap: 16px;
-}
-
-.wx-group {
-  border-top: 1px solid var(--line);
+  padding-top: 6px;
 }
 
 .wx-group-head {
   display: flex;
   align-items: baseline;
-  gap: 14px;
+  gap: 12px;
   width: 100%;
-  padding: 12px 0 10px;
+  padding: 12px 0 8px;
   border: 0;
   background: transparent;
   color: inherit;
@@ -567,33 +548,16 @@ input:focus-visible {
   font-weight: 700;
 }
 
-.wx-group-counts {
-  display: flex;
-  gap: 10px;
+.wx-group-n,
+.wx-group-sum {
   color: var(--dim);
   font-family: var(--mono);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
 
-.wx-group-counts b {
-  font-weight: 500;
-}
-
-.wx-group-counts .is-hit {
-  color: var(--blue-text);
-}
-
-.wx-group-counts .is-exception {
-  color: var(--amber-text);
-}
-
-.wx-group-comps {
+.wx-group-sum {
   margin-left: auto;
-  color: var(--dim);
-  font-family: var(--mono);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
 }
 
 .wx-rows {
@@ -609,18 +573,17 @@ input:focus-visible {
 
 .wx-row {
   display: grid;
-  grid-template-columns: 46px minmax(180px, 1.45fr) minmax(180px, 1.2fr) minmax(150px, 1fr) auto;
+  grid-template-columns: 44px minmax(160px, 210px) minmax(220px, 330px) minmax(140px, 1fr) auto;
   align-items: center;
   gap: 16px;
-  min-height: 64px;
-  padding: 8px 4px;
+  height: 68px;
+  padding: 0 4px;
   border-top: 1px solid var(--line);
   color: inherit;
   text-decoration: none;
 }
 
-.wx-row:hover,
-.wx-exception-row:hover {
+.wx-row:hover {
   background: rgba(46, 111, 163, 0.06);
 }
 
@@ -630,16 +593,15 @@ input:focus-visible {
   height: 36px;
   border-radius: 8px;
   object-fit: cover;
-  background: rgba(28, 39, 51, 0.06);
+  background: rgba(46, 111, 163, 0.13);
 }
 
 .wx-row-icon-fallback {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px dashed var(--faint);
-  background: transparent;
-  color: var(--dim);
+  background: rgba(46, 111, 163, 0.13);
+  color: var(--blue-text);
   font-family: var(--mono);
   font-size: 14px;
 }
@@ -647,7 +609,7 @@ input:focus-visible {
 .wx-row-icon-empty {
   width: 36px;
   height: 36px;
-  border: 1px dashed var(--faint);
+  border: 1.5px dashed var(--faint);
   background: transparent;
 }
 
@@ -678,32 +640,27 @@ input:focus-visible {
   white-space: nowrap;
 }
 
-.wx-row-code {
-  overflow: hidden;
-  color: var(--dim);
-  font-family: var(--mono);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
+.wx-row-code,
 .wx-row-meta {
   overflow: hidden;
   color: var(--dim);
-  font-size: 12px;
+  font-family: var(--mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .wx-row-side {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: 10px;
 }
 
 .wx-badge {
-  padding: 3px 9px;
-  border-radius: 2px;
+  padding: 4px 12px;
+  border-radius: 3px;
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
@@ -711,23 +668,40 @@ input:focus-visible {
 
 .wx-badge-hit {
   background: var(--blue);
-  color: #ffffff;
+  color: var(--air);
+}
+
+.wx-badge-miss {
+  border: 1px dashed var(--faint);
+  color: var(--dim);
+  font-weight: 500;
+}
+
+.wx-badge-pend {
+  background: var(--amber);
+  color: var(--ink);
+}
+
+.wx-strip {
+  display: inline-block;
+  width: 22px;
+  height: 5px;
+  border-radius: 1px;
+  background: var(--amber);
 }
 
 /* ---------- exception zone ---------- */
 
 .wx-exceptions {
   margin-top: 24px;
-  border-top: 1px solid var(--line-strong);
-  padding-top: 2px;
+  border-top: 1px solid var(--line);
 }
 
 .wx-exceptions-head {
   display: flex;
-  align-items: baseline;
-  gap: 14px;
-  padding: 10px 0 8px;
-  border-bottom: 1px solid var(--line);
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0 8px;
 }
 
 .wx-exceptions-title {
@@ -742,34 +716,6 @@ input:focus-visible {
   font-family: var(--mono);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
-}
-
-.wx-exception-row {
-  display: grid;
-  grid-template-columns: 46px minmax(180px, 1.45fr) minmax(180px, 1.2fr) auto minmax(90px, 0.6fr);
-  align-items: center;
-  gap: 16px;
-  min-height: 54px;
-  padding: 6px 4px;
-  border-bottom: 1px solid var(--line);
-  color: inherit;
-  text-decoration: none;
-}
-
-.wx-exception-reason {
-  color: var(--amber-text);
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.wx-row-group {
-  overflow: hidden;
-  color: var(--dim);
-  font-size: 12px;
-  text-align: right;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /* ---------- empty / error / loading ---------- */
@@ -853,32 +799,45 @@ input:focus-visible {
 
 .wx-foot {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px 28px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 28px;
+  min-height: 44px;
   margin-top: auto;
-  padding: 12px 0 20px;
+  padding: 8px 0;
   border-top: 1px solid var(--line);
   color: var(--dim);
   font-family: var(--mono);
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
 .wx-foot p {
   margin: 0;
 }
 
-.wx-foot [data-role="batch-summary"] {
-  color: var(--ink);
+.wx-foot-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.wx-foot-right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px 20px;
 }
 
 .wx-batch-dot {
   display: inline-block;
-  width: 7px;
-  height: 7px;
-  margin-right: 7px;
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--ink);
-  vertical-align: 1px;
 }
 
 /* ---------- detail view ---------- */
@@ -1015,7 +974,7 @@ input:focus-visible {
 
 .status-hit {
   background: var(--blue);
-  color: #ffffff;
+  color: var(--air);
 }
 
 .status-bundle_not_found {
@@ -1274,7 +1233,7 @@ input:focus-visible {
   padding: 1px 6px;
   border-radius: 2px;
   background: var(--blue);
-  color: #ffffff;
+  color: var(--air);
   font-family: var(--sans);
   font-size: 11px;
   font-weight: 600;
@@ -1435,6 +1394,161 @@ input:focus-visible {
   font-family: var(--mono);
 }
 
+/* ---------- screenshot lightbox ---------- */
+
+body.is-lightbox-open {
+  overflow: hidden;
+}
+
+.screenshot-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 64px 0 20px;
+  background: rgba(28, 39, 51, 0.88);
+  overflow: hidden;
+}
+
+.screenshot-lightbox[hidden] {
+  display: none;
+}
+
+.lightbox-frame {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.screenshot-lightbox-strip {
+  display: flex;
+  flex: 0 0 auto;
+  flex-flow: row nowrap;
+  align-items: center;
+  gap: 12px;
+  height: 100%;
+  padding: 0 4vw;
+}
+
+.screenshot-lightbox-slide {
+  position: relative;
+  flex: 0 0 auto;
+  width: auto;
+  height: min(100%, 720px);
+  max-height: 100%;
+  aspect-ratio: 1290 / 2796;
+  margin: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--air);
+}
+
+.screenshot-lightbox-placeholder {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  padding: 20px;
+  background: var(--air);
+  color: var(--dim);
+  font-size: 12px;
+  text-align: center;
+  transition: opacity 180ms ease;
+}
+
+.screenshot-lightbox-placeholder-indicator {
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--line);
+  border-top-color: var(--blue);
+  border-radius: 50%;
+  animation: lightbox-spin 800ms linear infinite;
+}
+
+.screenshot-lightbox-placeholder-indicator.is-error {
+  display: none;
+}
+
+.screenshot-lightbox-image {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  background: var(--air);
+  object-fit: contain;
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.screenshot-lightbox-slide.is-loaded .screenshot-lightbox-image {
+  opacity: 1;
+}
+
+.screenshot-lightbox-slide.is-loaded .screenshot-lightbox-placeholder {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.screenshot-lightbox-slide.is-error .screenshot-lightbox-placeholder {
+  background: rgba(201, 127, 30, 0.12);
+  color: var(--amber-text);
+}
+
+.lightbox-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid rgba(231, 237, 242, 0.22);
+  border-radius: 8px;
+  background: rgba(28, 39, 51, 0.7);
+  color: var(--air);
+}
+
+.lightbox-close:hover {
+  background: rgba(28, 39, 51, 0.92);
+}
+
+.lightbox-footer {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 0 4vw;
+  color: var(--air);
+  font-size: 12px;
+}
+
+.lightbox-caption,
+.lightbox-counter {
+  margin: 0;
+}
+
+.lightbox-counter {
+  color: rgba(231, 237, 242, 0.78);
+}
+
+@keyframes lightbox-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ---------- responsive ---------- */
 
 @media (max-width: 1180px) {
@@ -1453,15 +1567,7 @@ input:focus-visible {
   }
 
   .wx-row {
-    grid-template-columns: 46px minmax(160px, 1.4fr) minmax(160px, 1.2fr) 1fr auto;
-  }
-
-  .wx-exception-row {
-    grid-template-columns: 46px minmax(160px, 1.4fr) minmax(160px, 1.2fr) auto;
-  }
-
-  .wx-row-group {
-    display: none;
+    grid-template-columns: 44px minmax(150px, 1.3fr) minmax(170px, 1.3fr) 1fr auto;
   }
 }
 
@@ -1470,12 +1576,15 @@ input:focus-visible {
     gap: 20px;
   }
 
-  .wx-region {
-    display: none;
+  .wx-foot {
+    flex-wrap: wrap;
   }
 
   .wx-row {
-    grid-template-columns: 46px 1fr auto;
+    grid-template-columns: 44px 1fr auto;
+    height: auto;
+    min-height: 68px;
+    padding: 8px 4px;
   }
 
   .wx-row-code,
@@ -1486,19 +1595,6 @@ input:focus-visible {
   .wx-row-side {
     grid-column: 3;
     grid-row: 1;
-  }
-
-  .wx-exception-row {
-    grid-template-columns: 46px 1fr auto;
-  }
-
-  .wx-day-plot {
-    min-height: 110px;
-  }
-
-  .wx-day.is-main .wx-day-weekday,
-  .wx-day.is-main .wx-day-md {
-    font-size: 20px;
   }
 
   .detail-columns,

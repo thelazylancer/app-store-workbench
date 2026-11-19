@@ -321,25 +321,41 @@ describe("competitor report page", () => {
     const groups = Array.from(document.querySelectorAll(".wx-group-head"));
     expect(groups[0]?.textContent).toContain("团队 A");
     expect(groups[0]?.textContent).toContain("3 包");
-    expect(groups[0]?.textContent).toContain("2 命中");
-    expect(groups[0]?.textContent).toContain("3 异常");
-    expect(groups[0]?.textContent).toContain("2 个竞品");
+    expect(groups[0]?.textContent).toContain("命中 2 · 异常 3");
+    expect(document.querySelector(".wx-list-head")).toBeNull();
 
     const missedRow = document.querySelector<HTMLAnchorElement>('[data-role="exception-row"][data-reason="miss"]')!;
     expect(missedRow.textContent).toContain("Beta Source");
     expect(missedRow.textContent).toContain("com.beta.s");
-    expect(missedRow.textContent).toContain("未命中 App Store");
+    expect(missedRow.textContent).toContain("App Store 未命中");
 
     const icon = alphaRow.querySelector<HTMLImageElement>(".wx-row-icon")!;
     expect(icon.src).toContain(`/competitor-assets/${DATE}/com.alpha.ios/icon.png`);
 
     expect(document.querySelector(".wx-day.is-main .wx-day-count")?.textContent).toBe("4");
     expect(document.querySelector('[data-role="status"][data-value="hit"]')?.textContent).toBe("命中 3");
-    expect(document.querySelector('[data-role="date-line"]')?.textContent).toContain(DATE);
-    expect(document.querySelector('[data-role="batch-summary"]')?.textContent).toContain("批次正常");
+    expect(document.querySelector('[data-role="stat-total"]')?.textContent).toBe("4");
+    expect(document.querySelector('[data-role="stat-competitors"]')?.textContent).toBe("3");
+    expect(document.querySelector('[data-role="stat-hit"]')?.textContent).toBe("3");
+    expect(document.querySelector('[data-role="stat-exception"]')?.textContent).toBe("3");
+    expect(document.querySelector('[data-role="week-total"]')?.textContent).toContain("近 7 天合计 28 包");
+    expect(document.querySelector('[data-role="footer-kind"]')?.textContent).toContain("8 个区域自动抓取 · 不可筛选");
+    expect(document.querySelector('[data-role="batch-summary"]')?.textContent).toContain(`批次正常 · 批次 ${DATE}`);
     expect(document.querySelectorAll(".wx-day")).toHaveLength(7);
     expect(document.querySelectorAll(".wx-day.is-main")).toHaveLength(1);
     expect(document.querySelector('[data-role="exceptions"]')).not.toBeNull();
+
+    const firstDay = () => document.querySelector<HTMLButtonElement>(".wx-day")?.dataset.date;
+    expect(firstDay()).toBe(addDays(DATE, -6));
+    document.querySelector<HTMLButtonElement>('[data-role="forecast-prev"]')!.click();
+    expect(firstDay()).toBe(addDays(DATE, -13));
+    expect(document.querySelector('[data-role="forecast-caption"]')?.textContent).toContain(`${addDays(DATE, -13).slice(5)} — ${addDays(DATE, -7).slice(5)}`);
+    await vi.waitFor(() => {
+      const urls = fetchMock.mock.calls.map(([input]) => String(input));
+      expect(urls.some((url) => url.includes(`start=${addDays(DATE, -13)}`) && url.includes(`end=${addDays(DATE, -7)}`))).toBe(true);
+    });
+    document.querySelector<HTMLButtonElement>('[data-role="forecast-next"]')!.click();
+    expect(firstDay()).toBe(addDays(DATE, -6));
 
     const requested = fetchMock.mock.calls.map(([input]) => String(input));
     expect(requested.some((url) => url.includes("/api/competitor/summary?") && url.includes("date_kind=first_ad") && url.includes("group_by=team"))).toBe(true);
@@ -365,7 +381,7 @@ describe("competitor report page", () => {
     await vi.waitFor(() => {
       expect(document.body.textContent).toContain("上架口径组");
     });
-    expect(document.querySelector('[data-role="date-line"]')?.textContent).toContain("上架日期口径");
+    expect(document.querySelector('[data-role="footer-kind"]')?.textContent).toContain("当前口径：上架日期");
 
     document.querySelector<HTMLButtonElement>('[data-role="group-by"][data-value="category"]')!.click();
     await vi.waitFor(() => {
@@ -600,7 +616,7 @@ describe("competitor report page", () => {
     const row = document.querySelector('[data-role="exception-row"][data-reason="pending"]')!;
     expect(row.textContent).toContain("Pending Source");
     expect(row.textContent).toContain("com.pending.ios");
-    expect(row.textContent).toContain("详情待补全");
+    expect(row.textContent).toContain("待补全");
   });
 
   it("surfaces a 503 database error with a retry action", async () => {

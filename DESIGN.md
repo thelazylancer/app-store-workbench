@@ -1,6 +1,6 @@
 ---
 name: App搜索工作台 · 竞品气象台
-description: 竞品上架像天气一样可预报——平涂空气底、墨色文字、一像素规线、等宽数据层、零阴影零渐变的日报世界
+description: 两页工作台（App Store 搜索 + 竞品日报）共用的气象台世界——平涂空气底、墨色文字、一像素规线、等宽数据层、零阴影零渐变
 colors:
   air: "#e7edf2"
   ink: "#1c2733"
@@ -8,7 +8,8 @@ colors:
   blue-text: "#245a87"
   amber: "#c97f1e"
   amber-text: "#824d0e"
-  dim: "#5c6771"
+  dim: "#545f69"
+  danger: "#a5342b"
   faint: "rgba(28, 39, 51, 0.38)"
   line: "rgba(28, 39, 51, 0.16)"
   line-strong: "rgba(28, 39, 51, 0.3)"
@@ -16,7 +17,7 @@ colors:
 typography:
   display:
     fontFamily: "Barlow Condensed, Arial Narrow, Helvetica Neue, sans-serif"
-    fontSize: "46px"
+    fontSize: "48px"
     fontWeight: 600
     lineHeight: 0.9
     letterSpacing: "0.01em"
@@ -28,7 +29,7 @@ typography:
   title:
     fontFamily: "Noto Sans SC, PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif"
     fontSize: "20px"
-    fontWeight: 600
+    fontWeight: 700
   body:
     fontFamily: "Noto Sans SC, PingFang SC, Hiragino Sans GB, Microsoft YaHei, sans-serif"
     fontSize: "14px"
@@ -45,6 +46,7 @@ typography:
 rounded:
   xs: "2px"
   sm: "3px"
+  seg: "4px"
   md: "8px"
   lg: "16px"
 spacing:
@@ -52,25 +54,46 @@ spacing:
   md: "16px"
   lg: "36px"
 components:
+  date-tag:
+    backgroundColor: "{colors.ink}"
+    textColor: "{colors.air}"
+    rounded: "{rounded.xs}"
+    padding: "4px 10px"
+    typography: "{typography.label}"
   badge-hit:
     backgroundColor: "{colors.blue}"
-    textColor: "{colors.white}"
-    rounded: "{rounded.xs}"
-    padding: "3px 9px"
+    textColor: "{colors.air}"
+    rounded: "{rounded.sm}"
+    padding: "4px 12px"
+    typography: "{typography.label}"
+  badge-pending:
+    backgroundColor: "{colors.amber}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.sm}"
+    padding: "4px 12px"
+    typography: "{typography.label}"
+  badge-miss:
+    textColor: "{colors.dim}"
+    rounded: "{rounded.sm}"
+    padding: "4px 12px"
     typography: "{typography.label}"
   badge-exception:
     textColor: "{colors.amber-text}"
     rounded: "{rounded.xs}"
     padding: "3px 9px"
     typography: "{typography.label}"
-  badge-neutral:
-    textColor: "{colors.dim}"
-    rounded: "{rounded.xs}"
-    padding: "3px 9px"
-    typography: "{typography.label}"
+  stat-numeral:
+    textColor: "{colors.blue}"
+    typography: "{typography.data}"
   text-action:
     textColor: "{colors.blue-text}"
     typography: "{typography.data}"
+  button-primary:
+    backgroundColor: "{colors.ink}"
+    textColor: "{colors.air}"
+    rounded: "{rounded.sm}"
+    padding: "0 14px"
+    height: "36px"
   button-ghost:
     backgroundColor: "transparent"
     textColor: "{colors.ink}"
@@ -106,7 +129,9 @@ components:
     width: "26px"
   forecast-bar-main:
     backgroundColor: "{colors.blue}"
-    width: "46px"
+    width: "48px"
+  forecast-bar-zero:
+    width: "30px"
 ---
 
 # Design System: App搜索工作台 · 竞品气象台
@@ -115,94 +140,97 @@ components:
 
 **Creative North Star: "竞品气象台"**
 
-竞品上架像天气一样可预报。整个界面是一片平涂的空气色底（#E7EDF2），没有浮卡、没有灰上灰：所有分区靠一像素细规线分隔，所有深度靠墨色透明度薄涂表达，阴影和渐变为零。数据是这间气象台里唯一的主角——每一个数字、包码、日期都以 IBM Plex Mono 的 tabular-nums 等宽数字呈现，形成可纵向对齐读的「仪表读数层」；中文正文用 Noto Sans SC 安静铺底；Barlow Condensed 是唯一被放大的显示声部，只用于日期。
+两页共用的一个世界：App Store 搜索页（`index.html` + `src/styles.css`）与竞品日报页（`competitor.html` + `src/competitor/competitor.css`）。整个工作台是一片平涂的空气色底（#E7EDF2），没有浮卡、没有灰上灰：所有分区靠一像素细规线分隔，所有深度靠墨色透明度薄涂表达，阴影和渐变为零。数据是唯一的主角——每一个数字、包码、日期都以 IBM Plex Mono 的 tabular-nums 等宽数字呈现，形成可纵向对齐读的「仪表读数层」；中文正文用 Noto Sans SC 安静铺底；Barlow Condensed 是唯一被放大的显示声部，只用于日期（搜索页甚至不加载它）。
 
-页面的脊柱是横贯全宽的 7 天预报栏：每日一格，柱高严格编码包数（`Math.round(count / max × 112px)`），昨日格放大成主格（flex 1.9），支持单日点击与两点式范围选中，选中区间整体染上蓝色薄涂。异常（未命中 bundle_not_found 与待补全 pending）统一归入页面底部的异常区，只在非空时渲染；警戒琥珀只在这类时刻出现。平时一眼望去，全是平静的空气色。
+两页同构的顶部导航壳（54px 高、1px 底规线、22×22 三柱蓝 SVG 品牌、当前 tab `inset 0 -2px 0` 墨色下划线）把工作台钉成一个产品。竞品页的脊柱是横贯全宽的 7 天预报栏：每日一格，柱高严格编码包数（`Math.round(count / max × 112px)`），昨日格放大成主格（flex 1.9），支持单日点击与两点式范围选中，窗口可用说明行右侧的 ‹ › 按钮整周平移；页首是 Barlow Condensed 48px 大日期 + 墨底「昨日」tag，其下恢复 mono 22px 统计行（异常 = 未命中 + 待补全合并口径），这是已批准 A 稿的壳对齐，取代了此前「删除统计条」的否决。异常统一归入页面底部的异常区，只在非空时渲染。
 
 **Key Characteristics:**
 
-- 平涂空气底（#E7EDF2）承托一切内容；无卡片容器、无灰上灰、无阴影、无渐变
-- 一像素规线（rgba(28,39,51,0.16)，强调 0.3）是唯一的分区语言
-- 风暴蓝（#2E6FA3）只给命中与交互状态；警戒琥珀（#C97F1E）只给异常，且从不承载文字
+- 平涂空气底（#E7EDF2）承托两页全部内容；无卡片容器、无灰上灰、无阴影、无渐变
+- 两页同构 54px 导航壳；一像素规线（rgba(28,39,51,0.16)，强调 0.3）是唯一的分区语言
+- 风暴蓝（#2E6FA3）只给命中与交互；警戒琥珀（#C97F1E）只给异常席位；文字用加深变体
 - 等宽数字层（IBM Plex Mono · tabular-nums）承载全部数据；正文下限 12px
 - 柱高即数量：预报柱高度严格由包数推导，不做装饰性起伏
-- 动效只有三种：柱入场 scaleY 260ms、骨架脉冲 1.2s、折叠箭头 120ms；`prefers-reduced-motion` 下全部关闭
+- 动效克制：柱入场 scaleY 260ms、骨架脉冲 1.2s、折叠箭头 120ms、搜索页控件过渡 140ms、灯箱淡入 180ms；`prefers-reduced-motion` 下 CSS 动效全部关闭
 
-**范围说明：** 本文件记录的是竞品报告页（`competitor.html` + `src/competitor/competitor.css`）已落地的「气象台」世界。App 搜索页（`index.html` + `src/styles.css`）属于更早的旧样式（Outfit 字体、卡片、阴影、#2563eb 蓝accent），不在本系统内；该页经 `src/competitor/main.ts` 的 import 仍会加载到本页，但渲染被 competitor.css 完全覆盖。旧页样式属既存漂移，未在本世界内修复，也不应被新表面继承。
+**范围说明：** 本文件覆盖全工作台两个页面。两页各自样式自含（`src/competitor/main.ts` 不再 import `src/styles.css`）。已知页面间漂移：灯箱遮罩搜索页 0.94 / 竞品页 0.88。
 
 ## Colors
 
-两色职能分立的世界：蓝色管「命中与操作」，琥珀管「异常」，两者都有专用的加深文字变体，线色本身从不染指文字。
+两色职能分立的世界：蓝色管「命中与操作」，琥珀管「异常」，两者都有专用的加深文字变体，线色本身不染正文。
 
 ### Primary
 
-- **风暴蓝 Storm Blue** (#2e6fa3)：命中与交互的唯一直彩色。命中徽章底色、主格预报柱、范围选中涂染、focus 轮廓、选中高亮、状态点。以线、块、点的方式出现，从不作为文字颜色。
-- **风暴蓝文字变体** (#245a87)：一切蓝色文字（文字操作链接、详情返回链接、命中计数、区间内日期）都用这个加深变体，在空气底上对比度 6.16:1（AA 达标）。
+- **风暴蓝 Storm Blue** (#2e6fa3)：命中与交互的唯一直彩色。命中徽章底、主格预报柱、范围选中涂染、focus 轮廓、状态点、IPA 下载按钮底。以线、块、点的方式出现；唯一的文字席位是统计行的命中大数字（22px/600 大字号，空气底上 ≈4.5:1，大字号 AA 达标）。
+- **风暴蓝文字变体** (#245a87)：一切常规尺寸的蓝色文字（文字操作链接、详情返回、区间内日期、主格包数），在空气底上 6.16:1（AA 达标）。
 
 ### Secondary
 
-- **警戒琥珀 Amber** (#c97f1e)：异常专用。批次告警左侧 1px 竖线、异常状态徽章描边、异常状态点。作为文字会只有 2.72:1（不达标），所以它永远只出现在线和点的位置上。
-- **警戒琥珀文字变体** (#824d0e)：异常标题、异常原因、批次告警正文，在空气底上 5.9:1（AA 达标）。
+- **警戒琥珀 Amber** (#c97f1e)：异常专用。批次告警左侧 1px 竖线、异常状态点、待补全徽章底、统计行「异常」小标签底。作为正文文字色会只有 2.72:1（不达标），所以它只出现在线、点和**小徽章底**上——小徽章内承载墨字（#1c2733 on #c97f1e = 4.7:1，AA 达标）。
+- **警戒琥珀文字变体** (#824d0e)：异常标题、异常原因、批次告警正文、统计行异常大数字，在空气底上 5.9:1（AA 达标）。
 
 ### Neutral
 
-- **空气底 Air** (#e7edf2)：整页唯一背景色，从 html 到 body 平涂到底。
-- **墨 Ink** (#1c2733)：全部正文与主格主色，在空气底上 12.83:1。一切透明度薄涂（规线 0.16/0.3、悬停 0.06、主格 0.05、柱 0.55、遮罩 0.86）都由它派生。
-- **暗灰 Dim** (#5c6771)：次要说明、包码、计数等大量二级文字，4.9:1（AA 达标）。
-- **淡墨 Faint** (rgba(28,39,51,0.38))：缺数据占位的 1px 虚线图标框。
-- **规线** (rgba(28,39,51,0.16))：默认 1px 分隔线；**强调规线** (rgba(28,39,51,0.3))：控件描边、柱底基线、异常区顶线。
-- **白** (#ffffff)：命中徽章与「当前版本」pill 在蓝底上的文字（5.36:1，AA 达标）。
+- **空气底 Air** (#e7edf2)：两页唯一背景色，从 html 到 body 平涂到底。
+- **墨 Ink** (#1c2733)：全部正文与主按钮底色，在空气底上 12.83:1。一切透明度薄涂（规线 0.16/0.3、悬停 0.06、主格 0.05、柱 0.55、遮罩 0.88–0.94）都由它派生。
+- **暗灰 Dim** (#545f69)：次要说明、包码、计数等大量二级文字。空气底上 5.5:1；在蓝薄涂底（rgba(46,111,163,0.09)）上 ≈4.95:1，仍 ≥4.5:1——这正是由旧值 #5c6771（蓝薄涂上仅 4.38:1）加深的原因，两张样式表现均已同步。
+- **故障红 Danger** (#a5342b)：搜索失败徽章与错误提示文字（空气底上 5.7:1），只出现在失败/错误语境。
+- **淡墨 Faint** (rgba(28,39,51,0.38))：缺数据占位的 1px 虚线图标框、分段控件外框。
+- **规线** (rgba(28,39,51,0.16))：默认 1px 分隔线；**强调规线** (rgba(28,39,51,0.3))：幽灵按钮描边、异常区外框、柱底基线。
+- **白** (#ffffff)：蓝底徽章文字（5.36:1，AA 达标；搜索页状态徽章用纯白，竞品页徽章用空气色）。
 
 ### Named Rules
 
-**The Split-Voice Rule.** 线色与文字色永不互换：#2e6fa3 与 #c97f1e 只出现在线、块、点上；文字必须用加深变体 #245a87 / #824d0e。任何新文字色都先算对比度（正文 ≥4.5:1）。
+**The Split-Voice Rule.** 线块点色与正文文字色分立：#2e6fa3 与 #c97f1e 不出现在常规尺寸的文字颜色里，正文蓝/琥珀一律用加深变体 #245a87 / #824d0e。已录例外只有两处——统计行的命中大数字可用风暴蓝本体（22px/600 大字号），琥珀可作小徽章/小标签底色承载墨字。任何新文字席位都先算对比度（正文 ≥4.5:1）。
 
-**The Calm Air Rule.** 琥珀只在有事时点亮：异常区仅在非空时渲染，批次告警横幅仅在批次异常（过期/失败/范围不完整）时出现。平静的日子整个页面没有一点琥珀。
+**The Calm Air Rule.** 琥珀只出现在异常的固定席位上：统计行异常标签、待补全徽章、异常区标题、批次告警竖线。异常区与告警横幅只在非空/异常时渲染；琥珀永远不做大面积填充。
 
 ## Typography
 
-**显示字体（日期声部）：** Barlow Condensed（回退 Arial Narrow, Helvetica Neue）
+**显示字体（日期声部）：** Barlow Condensed（回退 Arial Narrow, Helvetica Neue；仅竞品页加载）
 **正文字体：** Noto Sans SC（回退 PingFang SC, Hiragino Sans GB, Microsoft YaHei）
 **数据字体：** IBM Plex Mono（回退 ui-monospace 栈），恒开 tabular-nums
 
-三声部各司其职：Barlow Condensed 负责被放大的日期（页面唯一的显示性时刻），Noto Sans SC 负责一切中文叙述，IBM Plex Mono 负责一切可对齐读的数字。字重只用了 400 / 500 / 600，没有更重的字重。
+三声部各司其职：Barlow Condensed 负责被放大的日期（页面唯一的显示性时刻），Noto Sans SC 负责一切中文叙述，IBM Plex Mono 负责一切可对齐读的数字。字重只用了 400 / 500 / 600 / 700，没有更重的字重。
 
 ### Hierarchy
 
-- **Display** (Barlow Condensed 600, 46px, line-height 0.9, tabular-nums)：页首大日期。主格内日期为同声部缩小版（星期 20px、月日 30px）。
+- **Display** (Barlow Condensed 600, 48px, line-height 0.9, tabular-nums)：竞品页首大日期。主格内日期为同声部缩小版（28px, line-height 1）。
 - **Headline** (Noto Sans SC 600, 24px, line-height 1.2)：详情页竞品名。
-- **Title** (Noto Sans SC 600, 20px)：页首 h1「竞品日报」。空态/错误卡标题为 17px。
+- **Title** (Noto Sans SC 700, 20px)：竞品页 h1「竞品日报」与搜索页空态标题；空态/错误卡标题为 17px/600，搜索页结果面板头 16px/600。
 - **Body** (Noto Sans SC 400, 14px, line-height 1.5)：正文基准。条目名 15px/600，组名 14px/700，小节标题 13px/600。
-- **Data** (IBM Plex Mono 400–500, 12px, tabular-nums)：包数、包码、计数、日期串、版本号、页脚批次状态——页面占比最大的一个声部。主格包数放大为 22px/600。
-- **Label** (Noto Sans SC 600, 12px)：徽章与标签文字。11px 只允许出现在徽章/pill 内部（「昨日」小签、包数小签、「当前版本」pill），正文与元信息永不小于 12px。
+- **Data** (IBM Plex Mono 400–500, 12px, tabular-nums)：包码、元信息、日期串、版本号、页脚状态——两页占比最大的一个声部。放大的等宽数字：统计行 22px/600、主格包数 24px/600。
+- **Label** (Noto Sans SC 600, 12px)：徽章与标签文字。11px 只允许出现在徽章/pill 内部（「昨日」小签、包数小签、状态徽章、候选卡 tag），正文与元信息永不小于 12px。
 
 ### Named Rules
 
 **The Data-Mono Rule.** 一切数字、包码、日期串、版本号都必须走 IBM Plex Mono + tabular-nums。sans 声部从不渲染数据，数据声部从不渲染中文叙述。
 
-**The One Display Voice Rule.** Barlow Condensed 是唯一的显示声部，且只用于日期。不要再发明第二个被放大的字族；放大即日期，日期即放大。
+**The One Display Voice Rule.** Barlow Condensed 是唯一的显示声部，且只用于日期；搜索页连字体都不加载。不要再发明第二个被放大的字族；放大即日期，日期即放大。
 
 ## Layout
 
-单列纵向文档流，内容壳最大宽 1600px、左右内边距 40px（≤1180px 收窄到 24px），顶部 56px 品牌与 Tab 栏以 1px 规线收底。密度是数据密：分组纵列平铺，不设多栏瀑布。
+单列纵向文档流。顶部导航壳两页同构：54px 高、1px 底规线、22×22 三柱蓝 SVG 品牌 + 15px/700 品名、tab 14px（当前项墨色 600 + 2px 下划线）、搜索页右侧多一枚等宽区域码（如 US）。内容壳：搜索页 `min(1600px, 100%)` 内边距 40px（≤1180px 24px、≤840px 16px）；竞品页 1440px 内边距 32px（≤1180px 24px）。密度是数据密：分组纵列平铺，不设多栏瀑布。
 
-- **预报栏**：横贯全宽，7 个等宽 flex 格（`flex: 1 1 0`），主格 `flex: 1.9 1 0`；整栏最小高 220px，格内绘图区最小高 150px（≤860px 降到 110px、主格日期缩到 20px）。
-- **竞品条目**：网格 `46px(图标列) + minmax(180px,1.45fr)(名称) + minmax(180px,1.2fr)(包码) + minmax(150px,1fr)(类目/版本) + auto(徽章)`，列距 16px，行最小高 64px，行间以 1px 规线分隔。≤1180px 收窄列宽、隐藏最右组名列；≤860px 塌成 `46px 1fr auto` 三列，包码与类目换行到第二行。
-- **详情页**：内容最大宽 1200px，双栏 `1.1fr / 0.9fr`、栏距 36px（≤860px 单栏）；信息表为 `110px 标签列 + 1fr`；截图网格 `auto-fill, minmax(180px, 1fr)`、间距 12px。
-- **页脚**：一条 1px 规线之下的一行等宽批次状态细线（正常态为 7px 墨点 + 一句话），加两行数据口径说明。
-- **间距节奏**：小步进为主（6/8/10/12/14/16/18），区块间隔 22–36px；没有大块留白，靠规线而不是空白来换气。
+- **统计行**（竞品页）：页首下方一行四个统计（包总数 / 竞品数 / 命中 / 异常），项间 1px 规线分隔、内边距 0 26px，异常 = 未命中 + 待补全合并口径。
+- **预报栏**（竞品页）：说明行（等宽 caption + ‹ › 窗口平移按钮）之下横贯全宽，固定高 224px、上下 1px 规线，7 个等宽 flex 格（`flex: 1 1 0`），主格 `flex: 1.9 1 0`。
+- **竞品条目**（竞品页）：网格 `44px(图标列) + minmax(160px,210px)(名称) + minmax(220px,330px)(包码) + minmax(140px,1fr)(类目/版本) + auto(徽章)`，列距 16px，行高 68px，行间以 1px 规线分隔。≤1180px 收窄列宽；≤860px 塌成 `44px 1fr auto` 三列，包码与类目换行到第二行。
+- **搜索工作台**（搜索页）：结果区为 `280px 结果队列 + minmax(0,1fr) 检查器` 双栏，队列以 1px 右规线分隔、sticky；≤959px 塌成单栏、队列转折叠 summary 行。结果行 `40px(图标) + 1fr(名称/副题)`，等宽 meta 12px。
+- **详情页**（竞品页）：内容最大宽 1200px，双栏 `1.1fr / 0.9fr`、栏距 36px（≤860px 单栏）；信息表为 `110px 标签列 + 1fr`；截图网格 `auto-fill, minmax(180px, 1fr)`、间距 12px。
+- **页脚**（竞品页）：一条 1px 规线之下 44px 高的等宽批次状态细线（8px 墨点 + 一句话）+ 右侧近 7 天合计与口径说明。
+- **间距节奏**：小步进为主（4/6/8/10/12/14/16/18/24/32），区块间隔 22–36px；没有大块留白，靠规线而不是空白来换气。
 
 ## Elevation & Depth
 
-零阴影、零渐变。深度全部由墨色透明度薄涂表达：悬停 0.06（预报格 0.035）、主格底 0.05、区间选中 0.09（主格 0.15）、普通柱 0.55、骨架 0.04–0.05、截图灯箱遮罩 0.86。焦点是唯一的「浮起」时刻：`outline: 2px solid #2e6fa3, offset 2px`。
+零阴影、零渐变。深度全部由墨色透明度薄涂表达：悬停墨 0.06、结果行悬停/选中蓝 0.06 / 0.1、主格底 0.05、区间选中蓝 0.09（主格 0.15）、普通柱 0.55、骨架 0.04–0.05、图标占位 0.08、候选卡 tag 蓝 0.13、灯箱遮罩墨 0.88（竞品页）/ 0.94（搜索页）。焦点是唯一的「浮起」时刻：`outline: 2px solid #2e6fa3, offset 2px`。
 
 ### Named Rules
 
-**The Flat-Ground Rule.** 任何表面都不许用 box-shadow 或渐变制造高度。全库唯一的 box-shadow 是 Tab 当前项的下划线（`inset 0 -2px 0 #1c2733`）——那是用阴影语法画的一条规线，不是海拔。
+**The Flat-Ground Rule.** 任何表面都不许用 box-shadow 或渐变制造高度。全库唯一的 box-shadow 是导航 tab 当前项的下划线（`inset 0 -2px 0 #1c2733`）——那是用阴影语法画的一条规线，不是海拔。
 
 ## Shapes
 
-近方形世界：2px 圆角给徽章、标签、pill 与幽灵按钮；3px 给步进器与分段控件；8px 给条目图标；16px 只给详情页大图标。缺数据一律 1px 虚线（faint）空框，诚实的空位而不是假占位。预报柱顶端 1px 圆角、以一条 62% 宽的强调规线作柱底基线。
+近方形世界：2px 圆角给 tag、pill、chip 与幽灵按钮；3px 给命中/待补全徽章与搜索页按钮、输入框；4px 给两页分段控件；8px 给条目图标与搜索页灯箱滑片；16px 只给详情页大图标（84px）。灯箱滑片竞品页为 12px、截图触发器搜索页 6px，是已录的页面级例外。缺数据一律 1px 虚线（faint）空框，诚实的空位而不是假占位。预报柱顶端 1px 圆角；零包日不是零高柱，而是一段 30px 宽、顶边 4px 虚线（faint）的透明基线。
 
 ### Named Rules
 
@@ -210,76 +238,86 @@ components:
 
 ## Components
 
+### 导航壳（签名组件）
+
+- **形态**：54px 高横条，1px 底规线。品牌 = 22×22 三柱蓝色 SVG（#2E6FA3）+ 15px/700 品名；两个 tab 14px，dim 底色，悬停转墨。
+- **当前项**：墨色 600 + `inset 0 -2px 0 #1c2733` 下划线 + `aria-current="page"`。两页同一份规格。
+
 ### 预报格（签名组件）
 
-- **形态**：等宽按钮格，日期（等宽 12px，区间内转蓝文字）+ 包数 + 底部对齐的柱。柱宽 26px（主格 46px），柱高 = `Math.max(1, Math.round(packageCount / max × 112px))`，零包日为 0，普通柱墨色 0.55 薄涂、主格与区间柱为风暴蓝。
-- **状态**：悬停墨色 0.035 薄涂；主格底 0.05；区间内蓝 0.09（主格 0.15）且上下边线转蓝。
+- **形态**：等宽按钮格，日期（等宽 12px；主格转 Barlow Condensed 28px；区间内转蓝文字）+ 底对齐柱 + 柱下等宽包数（主格 24px/600 蓝文字变体）。柱宽 26px（主格 48px），柱高 = `Math.max(1, Math.round(packageCount / max × 112px))`；普通柱墨色 0.55 薄涂、主格与区间柱为风暴蓝（区间内 0.5 透明度，主格不透明）。零包日为 30px 宽、顶边 4px 虚线的透明基线。
+- **状态**：悬停只把日期文字转墨（无底色薄涂）；主格底墨 0.05；区间内蓝 0.09（主格 0.15）。
+- **交互**：单日点击选中；再次点击另一日成两点式范围。预报栏说明行右侧 ‹ › 按钮整周平移窗口（22px 高、透明底、悬停出 1px 规线描边），向后不越过昨日。
 - **动效**：入场 `scaleY(0→1)` 260ms cubic-bezier(0.22, 0.61, 0.36, 1)，自柱底生长；`prefers-reduced-motion: reduce` 下关闭。柱高本身永远来自数据，不做缓动补偿。
 
-### 分段控件（口径/分组/状态）
+### 统计行
 
-- **形态**：30px 高、3px 圆角、1px 强调规线外框，内部按钮以 1px 规线分隔。
-- **状态**：悬停墨色 0.06 薄涂；激活项墨底反白（`#1c2733` 底 + 空气色文字，字重 600），并同步 `aria-pressed`。状态分段激活项带实时计数（如「命中 12」）。
+- **形态**：页首之下一行四项（包总数 / 竞品数 / 命中 / 异常），项间 1px 规线分隔；数字为等宽 22px/600 tabular-nums，标签 12px dim。
+- **色彩**：包总数、竞品数为墨；命中数字为风暴蓝本体（大字号 AA）；异常数字为琥珀文字变体，标签为琥珀底墨字小签。异常 = 未命中 + 待补全合并口径，由分组数据汇总。
 
-### 日期步进器
+### 分段控件（口径/分组/状态/筛选）
 
-- **形态**：30px 高、26px 宽的双箭头按钮夹一个 128px 等宽日期输入，内部以 1px 规线分隔。
-- **状态**：悬停墨色 0.06；越界（>昨日）禁用转 dim；「回到昨天」为旁挂的文字操作链接，仅离开昨日时出现。
+- **形态**：1px 淡墨（faint）外框、4px 圆角、零内距排布。竞品页按钮 13px、padding 6px 14px；搜索页筛选片 30px 高、12px 字、padding 0 12px、首片无左边线。
+- **状态**：竞品页悬停只转墨字；搜索页悬停墨 0.06 薄涂。激活项一律墨底反白（`#1c2733` 底 + 空气色文字，字重 600），并同步 `aria-pressed`。状态分段激活项带实时计数（如「命中 12」）。
 
 ### 徽章
 
-- **命中**：蓝底白字（#2e6fa3 / #ffffff，12px/600，2px 圆角，3px 9px 内边距）。
-- **异常**（bundle_not_found / 待补全）：透明底 + 1px 琥珀描边 + 琥珀文字变体。
-- **中性**：1px 强调规线描边 + dim 文字。
+- **命中**：蓝底空气色字（#2e6fa3 / #e7edf2，12px/600，3px 圆角，4px 12px 内边距）。搜索页状态徽章为蓝底白字、2px 圆角、2px 9px 内边距。
+- **待补全**：琥珀底墨字（#c97f1e / #1c2733 = 4.7:1），同命中形制。
+- **未命中**：1px 虚线 faint 描边 + dim 文字。
+- **详情页异常**（bundle_not_found / 详情不全）：透明底 + 1px 琥珀描边 + 琥珀文字变体。
+- **搜索失败**：红薄涂底（rgba(165,52,43,0.1)）+ 故障红文字。
 
 ### 竞品条目行
 
-- **形态**：36px 图标（缺图标为 1px 虚线空框或首字母等宽回退）+ 15px/600 名称 + 等宽包码 + dim 元信息 + 命中蓝徽章。
-- **状态**：悬停蓝 0.06 薄涂；整行可点进详情。分组头（组名 14px/700 + 等宽计数 + 折叠箭头，箭头旋转 120ms）也遵循同一悬停语言。
+- **形态**：44px 图标列内 36px 圆角 8 图标（缺图标为 1.5px 虚线空框或首字母等宽回退、蓝薄涂底）+ 15px/600 名称（多包附 11px 等宽「N 个包」pill）+ 等宽 13px 包码 + dim 元信息 + 命中蓝徽章。
+- **状态**：悬停蓝 0.06 薄涂；整行可点进详情。组头（chevron + 组名 14px/700 + 等宽「N 包」+ 右对齐等宽「命中 n · 异常 n」，箭头旋转 120ms）也遵循同一悬停语言。
 
-### 异常区
+### 搜索结果行
 
-- **形态**：列表底部以 1px 强调规线开区，标题琥珀文字变体 13px/700；异常行比普通行矮（54px），原因列琥珀文字变体 12px/600。
-- **行为**：非空才渲染，空则整区不出现。
+- **形态**：40px 圆角 8 图标（占位为墨 0.08 底）+ 15px/600 名称 + 13px dim 副题 + 等宽 12px meta + 11px 状态徽章，行间 1px 规线。
+- **状态**：悬停蓝 0.06 薄涂，选中 0.1；行内按钮区在名称下方缩进对齐（margin-left 52px）。
 
-### 批次状态
+### 主按钮（搜索页）
 
-- **正常**：页脚一行等宽细线 + 7px 墨点。
-- **异常**：预报栏下方一条批次告警横幅：左侧 1px 琥珀竖线 + 琥珀文字变体 12px，多原因以「；」串联。
+- **形态**：墨底空气色字、3px 圆角、36px 高、padding 0 14px、13px/600；悬停墨微亮（#2a3847）。IPA 下载为蓝底白字变体（悬停 #3b7fb5）。次级按钮 = 1px 强调规线描边 + 透明底 + 墨字 500，悬停墨 0.06 薄涂。
 
-### 文字操作链接
-
-- 12px 蓝文字变体 + 1px 下划线（offset 3px），悬停转墨。清除筛选、回到单日、详情返回都用它。
-
-### 幽灵按钮
+### 幽灵按钮（竞品页）
 
 - 透明底 + 1px 强调规线描边 + 2px 圆角 + 7px 14px 内边距，12px 墨字；悬停描边转纯墨。重试、空态动作用它。
 
-### 截图网格与灯箱
+### 文字操作链接
 
-- 缩略图触发器：1px 规线框、零圆角、零悬停变换（描边加深到 0.3 即止）；灯箱遮罩墨色 0.86，说明文字走等宽声部。
+- 12px 蓝文字变体 + 1px 下划线（offset 3px），悬停转墨。清除筛选、添加应用、详情返回都用它。
+
+### 灯箱
+
+- 深墨遮罩（搜索页 0.94 / 竞品页 0.88），说明文字与计数走等宽声部；关闭为描边小按钮；图片 180ms 淡入，占位 spinner 800ms 线性旋转。竞品页滑片 12px 圆角、搜索页 8px。
 
 ### 空态 / 错误 / 加载
 
-- 空态与错误卡无卡底，以 1px 规线开区：17px/600 标题 + dim 13px 说明 + 幽灵按钮动作组。加载骨架为墨色 0.05 条块 1.2s 脉冲（reduced-motion 下静止）。
+- 空态与错误卡无卡底，以 1px 规线开区：17px/600 标题 + dim 13px 说明 + 幽灵按钮动作组。加载骨架为墨色 0.05 条块 1.2s 脉冲（reduced-motion 下静止）。搜索页空态以一枚 22×3 蓝条作墨字之上的唯一色点缀。
+
+### 动效补充（搜索页）
+
+- 搜索页内容入场用 gsap 做轻微上浮/淡入（0.12–0.5s，小错峰）。注意：当前实现未接 `prefers-reduced-motion` 守卫，属待修缺陷；新表面若做入场动效，必须带守卫，勿效仿现状。
 
 ## Do's and Don'ts
 
 ### Do:
 
 - **Do** 一切数字、包码、日期串走 IBM Plex Mono + tabular-nums（The Data-Mono Rule）。
-- **Do** 蓝色与琥珀色的文字一律用加深变体 #245a87 / #824d0e（对比度 6.16:1 / 5.9:1）。
+- **Do** 常规尺寸的蓝/琥珀文字一律用加深变体 #245a87 / #824d0e；大字号数字（22px/600+）可用风暴蓝本体。
 - **Do** 用 1px 规线分隔一切区块；悬停用墨色 0.06（或蓝 0.06）薄涂表达。
-- **Do** 保持柱高严格由 `Math.round(count / max × 112px)` 推导，主格 1.9 倍宽、蓝柱。
+- **Do** 保持柱高严格由 `Math.round(count / max × 112px)` 推导，主格 1.9 倍宽、48px 蓝柱；统计行异常按「未命中 + 待补全」合并口径。
 - **Do** 异常区与批次告警只在非空/异常时渲染（The Calm Air Rule）。
-- **Do** 动效只用三种已录节奏：柱入场 260ms、骨架脉冲 1.2s、箭头 120ms，并在 `prefers-reduced-motion` 下全部关闭。
+- **Do** 新动效先接 `prefers-reduced-motion` 再谈节奏；已录节奏：柱 260ms、骨架 1.2s、箭头 120ms、控件 140ms、灯箱 180ms。
 
 ### Don't:
 
-- **Don't** 使用阴影、渐变、卡片容器或灰上灰——深度只来自墨色透明度薄涂（The Flat-Ground Rule）。
-- **Don't** 让 #2e6fa3 或 #c97f1e 出现在文字颜色里；也永远不要用琥珀作大面积填充。
+- **Don't** 使用阴影、渐变、卡片容器或灰上灰——深度只来自墨/蓝透明度薄涂（The Flat-Ground Rule）。
+- **Don't** 让 #2e6fa3 或 #c97f1e 出现在常规尺寸文字色里；琥珀永远不做大面积填充。
 - **Don't** 让正文或元信息小于 12px；11px 只活在徽章/pill 内部。
-- **Don't** 在预报栏之外再发明第二个显示声部，或用 Barlow Condensed 渲染非日期内容。
-- **Don't** 在预报栏上方加统计卡行：预报脊柱本身就是趋势概览（本页已删除统计条，属确认否决）。
-- **Don't** 圆角超出已录阶梯（2/3/8/16px）；不要引入胶囊（999px）或大圆角。
-- **Don't** 在本表面引入 `src/styles.css` 的旧世界 token（Outfit 字体、#2563eb accent、--shadow-control、radius-pill）——那是 App 搜索页的既存样式，不是本系统的一部分。
+- **Don't** 发明第二个显示声部，或用 Barlow Condensed 渲染非日期内容。
+- **Don't** 圆角超出已录阶梯（2/3/4/8/16px；灯箱滑片 12px、搜索截图触发器 6px 为已录页面级例外）；不要引入胶囊（999px）或大圆角。
+- **Don't** 把 `--dim` 写回 #5c6771——系统值为 #545f69，蓝薄涂底上必须保持 ≥4.5:1。
