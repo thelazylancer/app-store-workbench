@@ -32,6 +32,7 @@ RUN npm ci --include=dev
 COPY tsconfig.json ./
 COPY server ./server
 COPY shared ./shared
+COPY scripts ./scripts
 ENV IPATOOL_BIN=/usr/local/bin/ipatool
 ENV DOWNLOADS_DIR=/app/downloads
 ENV HOME=/home/app

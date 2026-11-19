@@ -13,6 +13,7 @@
 - 详情页：商品页截图、内购列表、版本历史、Qimai 外链
 - 美国区 4.99 / 9.99 美元内购价格线索
 - IPA 下载：队列、进度、2FA 验证码、取消、重试、重启后任务记录恢复
+- 竞品每日快照：每天 09:30（Asia/Shanghai）自动抓取前一天的首投 iOS 竞品包，按 Bundle ID 精确补全 App Store 详情，图标/截图落盘、版本历史与每日报告页（投放/上架日期双口径，按团队/类目/iOS 版本分组）
 - 独立 CLI：批量读取 CSV 并导出 Apple 商店详情
 
 ## 架构
@@ -113,6 +114,24 @@ chmod 600 .env
 
 至少填写 `IPATOOL_KEYCHAIN_PASSPHRASE`；该值用于解密容器内的 ipatool 文件 keychain，丢失后需要重新登录 Apple ID。
 
+竞品每日快照需要额外配置：
+
+- `POSTGRES_PASSWORD`（必填）：compose 内 PostgreSQL 的密码。容器内数据库是独立的 `postgres` 服务（数据落 `pgdata` 具名卷），与宿主机 5433 实例互不影响。
+- `FIRST_DELIVERY_API_URL` / `FIRST_DELIVERY_API_KEY`：内部首投包接口地址与密钥，密钥只存在 `.env`，不进代码与镜像。
+- 未配置 `DATABASE_URL` 时（宿主机直跑场景），竞品 API 返回 503、调度器不启动，其余功能不受影响。
+
+手动同步与回填：
+
+```bash
+# 宿主机直跑（使用 .env 的 DATABASE_URL，socket 5433）
+npm run sync:competitor -- --date 2026-11-18
+
+# 容器内（镜像内含 tsx 与 scripts/）
+docker compose exec app ./node_modules/.bin/tsx scripts/competitor-sync.ts --date 2026-11-18
+```
+
+调度器每天 09:30 自动跑前一天；漏跑或源接口当天不可达时，用上面的命令按日期回填，重复执行幂等。
+
 ### 启动
 
 ```bash
@@ -148,6 +167,11 @@ docker exec -it app-store-workbench-app-1 ipatool auth login
 | `SEARCH_CONCURRENCY` | `3` | 批量查询的并发上限 |
 | `PRODUCT_PAGE_CACHE_TTL_SECONDS` | `600` | 商品页解析结果缓存时间 |
 | `PRODUCT_PAGE_CACHE_MAX_ENTRIES` | `200` | 商品页缓存条目上限 |
+| `POSTGRES_PASSWORD` | 必填 | compose 内 PostgreSQL 密码；宿主机直跑不需要 |
+| `DATABASE_URL` | 见 `.env.example` | 竞品功能的数据库连接串；compose 内自动注入，宿主机直跑用 socket 形式 |
+| `FIRST_DELIVERY_API_URL` | 空 | 内部首投包接口地址（兼容 `FIRST_DELIVERY_API_BASE_URL`） |
+| `FIRST_DELIVERY_API_KEY` | 空 | 首投包接口密钥；只存 `.env`，不进代码与镜像 |
+| `COMPETITOR_DATA_DIR` | `data/competitor` | 竞品图标与截图的落盘目录；compose 内已挂载持久卷 |
 
 ## API
 
