@@ -1,8 +1,11 @@
 import path from "node:path";
 import { createApp } from "./app";
-import { lookupAppById, lookupAppStore } from "./lib/appleLookup";
-import { createCompetitorRepo, type CompetitorQueryRepo } from "./lib/competitorRepo";
+import { lookupAppById, lookupAppByBundleId, lookupAppStore } from "./lib/appleLookup";
+import { downloadAppAssets } from "./lib/assetStore";
+import { createCompetitorRepo } from "./lib/competitorRepo";
+import { startCompetitorScheduler } from "./lib/competitorScheduler";
 import { createPool, runMigrations } from "./lib/db";
+import { fetchFirstDeliveryPackages } from "./lib/firstDeliverySource";
 import { buildIapHints } from "./lib/iapHints";
 import { createIpaDownloadManager } from "./lib/ipaDownload";
 import { fetchProductPageDetails as fetchProductPageDetailsUncached } from "./lib/productPage";
@@ -32,7 +35,7 @@ const cleanupTimer = setInterval(() => {
 }, 60 * 60 * 1000);
 cleanupTimer.unref();
 
-async function competitorRepoFromEnv(): Promise<CompetitorQueryRepo | undefined> {
+async function competitorRepoFromEnv(): Promise<ReturnType<typeof createCompetitorRepo> | undefined> {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) return undefined;
   const pool = createPool(databaseUrl);
@@ -50,6 +53,17 @@ async function competitorRepoFromEnv(): Promise<CompetitorQueryRepo | undefined>
 
 async function main() {
   const competitorRepo = await competitorRepoFromEnv();
+
+  if (competitorRepo) {
+    startCompetitorScheduler({
+      fetchSourcePackages: fetchFirstDeliveryPackages,
+      lookupAppByBundleId,
+      fetchProductPageDetails,
+      downloadAssets: downloadAppAssets,
+      repo: competitorRepo,
+    });
+  }
+
   const app = createApp({
     lookupAppById,
     lookupAppStore,
@@ -57,6 +71,7 @@ async function main() {
     buildIapHints,
     ipaDownload,
     ...(competitorRepo ? { competitorRepo } : {}),
+    competitorAssetsDir: process.env.COMPETITOR_DATA_DIR ?? path.resolve("data/competitor"),
   });
 
   const port = 3001;

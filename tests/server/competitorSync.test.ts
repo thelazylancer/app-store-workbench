@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { computeTargetDate, syncCompetitorDay } from "../../server/lib/competitorSync";
-import type { PackageRow } from "../../shared/competitorTypes";
+import type { DownloadedAsset } from "../../server/lib/assetStore";
+import type { CountryHitRow } from "../../server/lib/competitorRepo";
 import type { SourceBatch } from "../../server/lib/firstDeliverySource";
+import type { BatchRow, PackageRow, VersionRow } from "../../shared/competitorTypes";
+import { STORE_COUNTRIES } from "../../shared/types";
+import type { LookupCandidate, StoreCountry } from "../../shared/types";
 
 const sourceBatch: SourceBatch = {
   syncId: "sync-1",
@@ -17,6 +21,39 @@ const sourceBatch: SourceBatch = {
   ],
 };
 
+function candidate(bundleId: string): LookupCandidate {
+  return {
+    name: `Real ${bundleId}`,
+    developer: "Dev",
+    appleId: 42,
+    bundleId,
+    appStoreUrl: "https://apps.apple.com/us/app/id42",
+    iconUrl: "https://cdn.example/icon.png",
+    description: "Description",
+    screenshotUrls: [],
+    category: "Utilities",
+    minimumOsVersion: "16.0",
+    versionHistory: [{ version: "1.0", releasedAt: null, notes: "" }],
+  };
+}
+
+function fakeRepo() {
+  return {
+    upsertBatch: vi.fn(async (_batch: BatchRow) => {}),
+    upsertPackage: vi.fn(async (_pkg: PackageRow) => {}),
+    upsertCountryHits: vi.fn(async (_code: string, _hits: CountryHitRow[]) => {}),
+    upsertAssets: vi.fn(async (_code: string, _assets: DownloadedAsset[]) => {}),
+    upsertVersions: vi.fn(async (_code: string, _versions: VersionRow[]) => {}),
+  };
+}
+
+function fakeDownload() {
+  return vi.fn(async (_date: string, _code: string, _icon: string, _shots: string[]) => ({
+    assets: [{ type: "icon" as const, sourceUrl: "https://cdn.example/icon.png", localPath: "icon.png" }],
+    status: "ok" as const,
+  }));
+}
+
 describe("computeTargetDate", () => {
   it("returns yesterday in UTC regardless of local time", () => {
     expect(computeTargetDate(new Date("2026-11-19T09:30:00+08:00"))).toBe("2026-11-18");
@@ -29,64 +66,95 @@ describe("syncCompetitorDay", () => {
     vi.unstubAllEnvs();
   });
 
-  it("upserts the batch and every package with initial statuses", async () => {
-    const repo = {
-      upsertBatch: vi.fn(async () => {}),
-      upsertPackage: vi.fn(async (_pkg: PackageRow) => {}),
-    };
+  it("looks up all eight storefronts in order and writes hits plus enriched packages", async () => {
+    const repo = fakeRepo();
+    const lookup = vi.fn(async (bundleId: string, country: StoreCountry) => (
+      country === "us" || country === "jp" ? candidate(bundleId) : null
+    ));
 
     const report = await syncCompetitorDay("2026-11-18", {
       fetchSourcePackages: async () => sourceBatch,
+      lookupAppByBundleId: lookup,
+      fetchProductPageDetails: async () => ({ screenshotUrls: [], iapItems: [], versionHistory: [] }),
+      downloadAssets: fakeDownload(),
       repo,
     });
 
     expect(report).toEqual({
-      targetDate: "2026-11-18", total: 3, hit: 0, missed: 0, failed: 0, status: "ok",
+      targetDate: "2026-11-18", total: 3, hit: 3, missed: 0, failed: 0, status: "ok",
     });
-    expect(repo.upsertPackage).toHaveBeenCalledTimes(3);
-    expect(repo.upsertPackage.mock.calls.map(([pkg]) => pkg.packageCode)).toEqual(["com.a", "com.b", "com.c"]);
-    for (const [pkg] of repo.upsertPackage.mock.calls) {
-      expect(pkg).toMatchObject({
-        targetDate: "2026-11-18",
-        lookupStatus: "pending",
-        enrichStatus: "pending",
-        assetStatus: "pending",
-        appStoreJson: {},
-      });
-    }
+    expect(lookup.mock.calls
+      .filter(([bundleId]) => bundleId === "com.a")
+      .map(([, country]) => country)).toEqual([...STORE_COUNTRIES]);
+
+    expect(repo.upsertCountryHits).toHaveBeenCalledTimes(3);
+    const hits = repo.upsertCountryHits.mock.calls.find(([code]) => code === "com.a")![1];
+    expect(hits.map((hit) => [hit.country, hit.status, hit.appleId])).toEqual(
+      STORE_COUNTRIES.map((country) => [country, country === "us" || country === "jp" ? "hit" : "not_found", country === "us" || country === "jp" ? 42 : null]),
+    );
+
+    const firstPackageCalls = repo.upsertPackage.mock.calls
+      .map(([pkg]) => pkg)
+      .filter((pkg) => pkg.packageCode === "com.a");
+    expect(firstPackageCalls).toHaveLength(2);
+    expect(firstPackageCalls[0]).toMatchObject({ lookupStatus: "pending", appStoreJson: {} });
+    expect(firstPackageCalls[1]).toMatchObject({
+      lookupStatus: "hit",
+      assetStatus: "ok",
+      category: "Utilities",
+      minimumOsVersion: "16.0",
+      appVersion: "1.0",
+      appStoreJson: expect.objectContaining({ appleId: 42, name: "Real com.a" }),
+    });
     expect(repo.upsertBatch).toHaveBeenCalledWith(expect.objectContaining({
-      targetDate: "2026-11-18",
-      syncId: "sync-1",
-      snapshotId: "snap-1",
-      status: "ok",
+      targetDate: "2026-11-18", syncId: "sync-1", snapshotId: "snap-1", status: "ok",
     }));
   });
 
-  it("isolates a single failing package and reports partial completion", async () => {
-    const repo = {
-      upsertBatch: vi.fn(async () => {}),
-      upsertPackage: vi.fn(async (pkg: PackageRow) => {
-        if (pkg.packageCode === "com.b") throw new Error("db rejected row");
-      }),
-    };
-
+  it("records bundle_not_found when all storefronts miss", async () => {
+    const repo = fakeRepo();
     const report = await syncCompetitorDay("2026-11-18", {
-      fetchSourcePackages: async () => sourceBatch,
+      fetchSourcePackages: async () => ({ ...sourceBatch, rows: [sourceBatch.rows[0]!] }),
+      lookupAppByBundleId: async () => null,
+      fetchProductPageDetails: async () => ({ screenshotUrls: [], iapItems: [], versionHistory: [] }),
+      downloadAssets: fakeDownload(),
       repo,
     });
 
-    expect(report).toMatchObject({ total: 3, failed: 1, status: "partial" });
+    expect(report).toMatchObject({ total: 1, hit: 0, missed: 1, failed: 0, status: "ok" });
+    const finalCall = repo.upsertPackage.mock.calls.at(-1)![0];
+    expect(finalCall).toMatchObject({ lookupStatus: "bundle_not_found", appStoreJson: {} });
+    expect(repo.upsertCountryHits.mock.calls[0]![1].every((hit) => hit.status === "not_found")).toBe(true);
+  });
+
+  it("isolates a single package lookup failure and reports partial completion", async () => {
+    const repo = fakeRepo();
+    const lookup = vi.fn(async (bundleId: string) => {
+      if (bundleId === "com.b") throw new Error("Apple unavailable");
+      return candidate(bundleId);
+    });
+
+    const report = await syncCompetitorDay("2026-11-18", {
+      fetchSourcePackages: async () => sourceBatch,
+      lookupAppByBundleId: lookup,
+      fetchProductPageDetails: async () => ({ screenshotUrls: [], iapItems: [], versionHistory: [] }),
+      downloadAssets: fakeDownload(),
+      repo,
+    });
+
+    expect(report).toMatchObject({ total: 3, hit: 2, missed: 0, failed: 1, status: "partial" });
+    expect(repo.upsertCountryHits).toHaveBeenCalledTimes(2);
     expect(repo.upsertBatch).toHaveBeenCalledWith(expect.objectContaining({ status: "partial" }));
   });
 
   it("propagates source failures without writing a batch", async () => {
-    const repo = {
-      upsertBatch: vi.fn(async () => {}),
-      upsertPackage: vi.fn(async (_pkg: PackageRow) => {}),
-    };
+    const repo = fakeRepo();
 
     await expect(syncCompetitorDay("2026-11-18", {
       fetchSourcePackages: async () => { throw new Error("source down"); },
+      lookupAppByBundleId: async () => null,
+      fetchProductPageDetails: async () => ({ screenshotUrls: [], iapItems: [], versionHistory: [] }),
+      downloadAssets: fakeDownload(),
       repo,
     })).rejects.toThrow("source down");
     expect(repo.upsertBatch).not.toHaveBeenCalled();

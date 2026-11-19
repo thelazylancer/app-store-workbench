@@ -1,5 +1,6 @@
 import express from "express";
 import { stat } from "node:fs/promises";
+import path from "node:path";
 import { mapWithConcurrency } from "./lib/concurrency";
 import { createCompetitorRouter } from "./lib/competitorApi";
 import type { CompetitorQueryRepo } from "./lib/competitorRepo";
@@ -25,6 +26,7 @@ type AppDependencies = {
   buildIapHints: (items: ProductPageDetails["iapItems"] | null) => Promise<IapHints>;
   ipaDownload?: IpaDownloadManager;
   competitorRepo?: CompetitorQueryRepo;
+  competitorAssetsDir?: string;
 };
 
 const BUNDLE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,254}$/;
@@ -57,6 +59,11 @@ export function createApp(deps: AppDependencies) {
   const app = express();
 
   app.use(express.json());
+
+  app.use(
+    "/competitor-assets",
+    express.static(deps.competitorAssetsDir ?? path.resolve("data/competitor")),
+  );
 
   app.use("/api/competitor", (_req, res, next) => {
     if (!deps.competitorRepo) {

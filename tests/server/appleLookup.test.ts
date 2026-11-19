@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { lookupAppById, lookupAppStore } from "../../server/lib/appleLookup";
+import { lookupAppById, lookupAppByBundleId, lookupAppStore } from "../../server/lib/appleLookup";
 
 describe("lookupAppStore", () => {
   afterEach(() => {
@@ -151,6 +151,40 @@ describe("lookupAppStore", () => {
     for (const result of results.slice(1)) {
       expect(result).not.toHaveProperty("minimumOsVersion");
     }
+  });
+
+  it("looks up an exact Bundle ID in one storefront", async () => {
+    const fetchApple = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      results: [
+        { trackId: 1, trackName: "Other", sellerName: "Dev", trackViewUrl: "https://apps.apple.com/us/app/id1", bundleId: "com.example.Other" },
+        { trackId: 2, trackName: "Target", sellerName: "Dev", trackViewUrl: "https://apps.apple.com/us/app/id2", bundleId: " com.example.Target " },
+      ],
+    })));
+
+    const app = await lookupAppByBundleId("com.example.Target", "jp");
+
+    expect(app).toMatchObject({ appleId: 2, name: "Target", bundleId: "com.example.Target" });
+    const url = new URL(String(fetchApple.mock.calls[0]![0]));
+    expect(url.pathname).toBe("/lookup");
+    expect(url.searchParams.get("bundleId")).toBe("com.example.Target");
+    expect(url.searchParams.get("country")).toBe("jp");
+    expect(url.searchParams.get("entity")).toBe("software");
+    expect(fetchApple.mock.calls[0]![1]).toEqual(expect.objectContaining({ signal: expect.any(AbortSignal) }));
+  });
+
+  it("rejects non-matching Bundle IDs, blank input and upstream failures", async () => {
+    const blank = vi.spyOn(globalThis, "fetch");
+    expect(await lookupAppByBundleId("  ", "us")).toBeNull();
+    expect(blank).not.toHaveBeenCalled();
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      results: [{ trackId: 2, trackName: "Target", sellerName: "Dev", trackViewUrl: "https://apps.apple.com/us/app/id2", bundleId: "com.example.Target.extra" }],
+    })));
+    expect(await lookupAppByBundleId("com.example.Target", "us")).toBeNull();
+
+    vi.mocked(fetch).mockResolvedValue(new Response("nope", { status: 503 }));
+    await expect(lookupAppByBundleId("com.example.Target", "us"))
+      .rejects.toThrow("Apple lookup failed with 503");
   });
 
   it("maps a valid Apple trackId to appleId and omits malformed IDs", async () => {

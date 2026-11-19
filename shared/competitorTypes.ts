@@ -116,6 +116,14 @@ export type SummaryCompetitor = {
   packages: PackageBrief[];
 };
 
+export type TimelinePoint = {
+  date: string;
+  packageCount: number;
+  hitCount: number;
+  missCount: number;
+  batchStatus: BatchStatus | null;
+};
+
 export type SummaryGroup = {
   groupKey: string;
   packageCount: number;
@@ -124,4 +132,12 @@ export type SummaryGroup = {
   competitorCount: number;
   competitors: SummaryCompetitor[];
   missedPackages: PackageBrief[];
+  timeline: TimelinePoint[];
+};
+
+export type SummaryResponse = {
+  date: string;
+  dateKind: DateKind;
+  groupBy: GroupBy;
+  groups: SummaryGroup[];
 };

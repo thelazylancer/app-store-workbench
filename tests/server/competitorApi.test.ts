@@ -17,6 +17,7 @@ function emptyRepo(): CompetitorQueryRepo {
     getDay: async () => null,
     getPackage: async () => null,
     getPackageHistory: async () => [],
+    getSummary: async () => [],
     getBatch: async () => null,
   };
 }
@@ -59,6 +60,7 @@ describe("competitor query API", () => {
     const app = createApp(baseDeps);
     for (const path of [
       "/api/competitor/days?start=2026-11-01&end=2026-11-18",
+      "/api/competitor/summary?date=2026-11-18",
       "/api/competitor/day/2026-11-18",
       "/api/competitor/package/com.example.app",
       "/api/competitor/batch/2026-11-18",
@@ -74,6 +76,7 @@ describe("competitor query API", () => {
     repo.getDay = vi.fn(repo.getDay);
     repo.getPackage = vi.fn(repo.getPackage);
     repo.getPackageHistory = vi.fn(repo.getPackageHistory);
+    repo.getSummary = vi.fn(repo.getSummary);
     repo.getBatch = vi.fn(repo.getBatch);
     const app = createApp({ ...baseDeps, competitorRepo: repo });
 
@@ -82,6 +85,10 @@ describe("competitor query API", () => {
       "/api/competitor/days?start=2026-11-01",
       "/api/competitor/days?start=2026-02-30&end=2026-03-01",
       "/api/competitor/days?start=2026-03-02&end=2026-03-01",
+      "/api/competitor/summary",
+      "/api/competitor/summary?date=2026-02-30",
+      "/api/competitor/summary?date=2026-11-18&date_kind=weekly",
+      "/api/competitor/summary?date=2026-11-18&group_by=country",
       "/api/competitor/day/not-a-date",
       "/api/competitor/day/2026-11-18?date_kind=weekly",
       "/api/competitor/day/2026-11-18?date_kind=listing&date_kind=first_ad",
@@ -95,6 +102,7 @@ describe("competitor query API", () => {
     expect(repo.getDay).not.toHaveBeenCalled();
     expect(repo.getPackage).not.toHaveBeenCalled();
     expect(repo.getPackageHistory).not.toHaveBeenCalled();
+    expect(repo.getSummary).not.toHaveBeenCalled();
     expect(repo.getBatch).not.toHaveBeenCalled();
   });
 
@@ -156,6 +164,48 @@ describe("competitor query API", () => {
     });
     expect(JSON.stringify(response.body)).not.toContain("super-secret-key");
     expect(JSON.stringify(response.body)).not.toContain("X-API-Key");
+  });
+
+  it("defaults summary scope and forwards date_kind and group_by", async () => {
+    const group = {
+      groupKey: "Alpha",
+      packageCount: 2,
+      hitCount: 1,
+      missCount: 1,
+      competitorCount: 1,
+      competitors: [{
+        appleId: 123,
+        name: "Real App",
+        packageCount: 1,
+        packages: [{
+          packageCode: "com.example.app", displayName: "iOS-Example", team: "Alpha",
+          appVersion: "1.0", iconLocalPath: "2026-11-18/com.example.app/icon.png",
+        }],
+      }],
+      missedPackages: [{
+        packageCode: "com.example.miss", displayName: "iOS-Miss", team: "Alpha",
+        appVersion: null, iconLocalPath: null,
+      }],
+      timeline: [{
+        date: "2026-11-18", packageCount: 2, hitCount: 1, missCount: 1, batchStatus: "ok" as const,
+      }],
+    };
+    const repo = emptyRepo();
+    repo.getSummary = vi.fn(async () => [group]);
+    const app = createApp({ ...baseDeps, competitorRepo: repo });
+
+    const defaults = await request(app).get("/api/competitor/summary?date=2026-11-18");
+    expect(defaults.status).toBe(200);
+    expect(defaults.body).toMatchObject({
+      date: "2026-11-18", dateKind: "first_ad", groupBy: "team", groups: [group],
+    });
+    expect(repo.getSummary).toHaveBeenNthCalledWith(1, "2026-11-18", "first_ad", "team");
+
+    const custom = await request(app)
+      .get("/api/competitor/summary?date=2026-11-18&date_kind=listing&group_by=ios_version");
+    expect(custom.status).toBe(200);
+    expect(custom.body).toMatchObject({ dateKind: "listing", groupBy: "ios_version" });
+    expect(repo.getSummary).toHaveBeenNthCalledWith(2, "2026-11-18", "listing", "ios_version");
   });
 
   it("returns ordered snapshot rows for an existing range and empty rows for missing dates", async () => {

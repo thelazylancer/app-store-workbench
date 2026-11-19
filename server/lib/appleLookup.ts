@@ -85,6 +85,26 @@ export async function lookupAppById(appleId: number, country: StoreCountry): Pro
   return normalizeResults(body, country).find((candidate) => candidate.appleId === appleId) ?? null;
 }
 
+/**
+ * Looks up an exact Bundle ID in one storefront. Only a result whose Bundle ID
+ * matches the request after trimming counts; anything else is treated as a miss.
+ */
+export async function lookupAppByBundleId(
+  bundleId: string,
+  country: StoreCountry,
+): Promise<LookupCandidate | null> {
+  const target = bundleId.trim();
+  if (!target) return null;
+
+  const params = new URLSearchParams({ bundleId: target, country, entity: "software" });
+  const response = await fetch(`https://itunes.apple.com/lookup?${params.toString()}`, {
+    signal: AbortSignal.timeout(APPLE_REQUEST_TIMEOUT_MS),
+  });
+  if (!response.ok) throw new Error(`Apple lookup failed with ${response.status}`);
+  const body = (await response.json()) as AppleLookupResponse;
+  return normalizeResults(body, country).find((candidate) => candidate.bundleId?.trim() === target) ?? null;
+}
+
 function normalizeResults(body: AppleLookupResponse, country: StoreCountry): LookupCandidate[] {
   return (body.results ?? [])
     .map((result): LookupCandidate | null => {

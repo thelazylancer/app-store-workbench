@@ -1,7 +1,11 @@
 import { computeTargetDate, syncCompetitorDay } from "../server/lib/competitorSync";
+import { lookupAppByBundleId } from "../server/lib/appleLookup";
+import { downloadAppAssets } from "../server/lib/assetStore";
 import { createCompetitorRepo } from "../server/lib/competitorRepo";
 import { createPool, runMigrations } from "../server/lib/db";
 import { fetchFirstDeliveryPackages } from "../server/lib/firstDeliverySource";
+import { fetchProductPageDetails as fetchProductPageDetailsUncached } from "../server/lib/productPage";
+import { createCachedProductPageFetcher } from "../server/lib/productPageCache";
 
 try {
   process.loadEnvFile();
@@ -28,6 +32,12 @@ async function main(): Promise<void> {
     await runMigrations(pool);
     const report = await syncCompetitorDay(targetDate, {
       fetchSourcePackages: fetchFirstDeliveryPackages,
+      lookupAppByBundleId,
+      fetchProductPageDetails: createCachedProductPageFetcher(fetchProductPageDetailsUncached, {
+        ttlMs: 10 * 60 * 1000,
+        maxEntries: 200,
+      }),
+      downloadAssets: downloadAppAssets,
       repo: createCompetitorRepo(pool),
     });
     console.log(JSON.stringify(report, null, 2));

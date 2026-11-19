@@ -1,5 +1,5 @@
 import express from "express";
-import type { DateKind } from "../../shared/competitorTypes";
+import type { DateKind, GroupBy } from "../../shared/competitorTypes";
 import type { CompetitorQueryRepo } from "./competitorRepo";
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -17,6 +17,12 @@ function dateKindParam(value: unknown): DateKind | null {
   return null;
 }
 
+function groupByParam(value: unknown): GroupBy | null {
+  if (value === undefined) return "team";
+  if (value === "team" || value === "category" || value === "ios_version") return value;
+  return null;
+}
+
 export function createCompetitorRouter(repo: CompetitorQueryRepo): express.Router {
   const router = express.Router();
 
@@ -28,6 +34,25 @@ export function createCompetitorRouter(repo: CompetitorQueryRepo): express.Route
     }
     try {
       return res.json({ days: await repo.listDays(start, end) });
+    } catch {
+      return res.status(500).json({ message: "Competitor query failed" });
+    }
+  });
+
+  router.get("/summary", async (req, res) => {
+    const date = dateParam(req.query.date);
+    const dateKind = dateKindParam(req.query.date_kind);
+    const groupBy = groupByParam(req.query.group_by);
+    if (!date) return res.status(400).json({ message: "A valid date is required" });
+    if (!dateKind) return res.status(400).json({ message: "Unsupported date_kind" });
+    if (!groupBy) return res.status(400).json({ message: "Unsupported group_by" });
+    try {
+      return res.json({
+        date,
+        dateKind,
+        groupBy,
+        groups: await repo.getSummary(date, dateKind, groupBy),
+      });
     } catch {
       return res.status(500).json({ message: "Competitor query failed" });
     }
