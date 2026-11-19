@@ -42,7 +42,8 @@ export type CompetitorQueryRepo = {
   getDay(date: string, dateKind: DateKind): Promise<DayDetail | null>;
   getPackage(packageCode: string): Promise<PackageDetail | null>;
   getPackageHistory(packageCode: string, from: string, to: string): Promise<SnapshotEntry[]>;
-  getSummary(date: string, dateKind: DateKind, groupBy: GroupBy): Promise<SummaryGroup[]>;
+  /** With `from`, aggregates packages from `from` through `date`; without it, only `date`. */
+  getSummary(date: string, dateKind: DateKind, groupBy: GroupBy, from?: string): Promise<SummaryGroup[]>;
   getBatch(date: string): Promise<BatchRow | null>;
 };
 
@@ -206,14 +207,7 @@ function withAssets(base: ReturnType<typeof toPackageBase>, assets: AssetRow[]):
   };
 }
 
-type PackageRangeRow = {
-  day_date: string;
-  team: string;
-  category: string | null;
-  minimum_os_version: string | null;
-  app_version: string | null;
-  lookup_status: LookupStatus;
-};
+type PackageRangeRow = PackageRowResult & { day_date: string };
 
 export function createCompetitorRepo(pool: Pool): CompetitorWriteRepo & CompetitorQueryRepo {
   const dateColumn = (dateKind: DateKind) => dateKind === "listing" ? "listing_date" : "first_ad_date";
@@ -232,8 +226,7 @@ export function createCompetitorRepo(pool: Pool): CompetitorWriteRepo & Competit
   async function selectPackagesInRange(start: string, end: string, dateKind: DateKind) {
     const column = dateColumn(dateKind);
     const { rows } = await pool.query<PackageRangeRow>(
-      `SELECT to_char(${column}, 'YYYY-MM-DD') AS day_date,
-              team, category, minimum_os_version, app_version, lookup_status
+      `SELECT to_char(${column}, 'YYYY-MM-DD') AS day_date, ${PACKAGE_SELECT}
          FROM competitor_packages
         WHERE ${column} BETWEEN $1::date AND $2::date`,
       [start, end],
@@ -456,8 +449,10 @@ export function createCompetitorRepo(pool: Pool): CompetitorWriteRepo & Competit
       };
     },
 
-    async getSummary(date, dateKind, groupBy) {
-      const rows = await selectPackagesByDate(date, dateKind);
+    async getSummary(end, dateKind, groupBy, from) {
+      const timelineStart = from ?? shiftDay(end, -6);
+      const rangeRows = from === undefined ? null : await selectPackagesInRange(from, end, dateKind);
+      const rows = rangeRows ?? await selectPackagesByDate(end, dateKind);
       const assets = await assetsByPackage(pool, rows.map((row) => row.package_code));
 
       type Accumulator = {
@@ -468,6 +463,7 @@ export function createCompetitorRepo(pool: Pool): CompetitorWriteRepo & Competit
         pendingCount: number;
         competitors: Map<string, SummaryCompetitor>;
         missed: PackageBrief[];
+        pending: PackageBrief[];
       };
       const groups = new Map<string, Accumulator>();
 
@@ -483,6 +479,7 @@ export function createCompetitorRepo(pool: Pool): CompetitorWriteRepo & Competit
             pendingCount: 0,
             competitors: new Map(),
             missed: [],
+            pending: [],
           };
           groups.set(key, group);
         }
@@ -495,7 +492,10 @@ export function createCompetitorRepo(pool: Pool): CompetitorWriteRepo & Competit
           continue;
         }
         if (row.lookup_status !== "hit") {
-          if (row.lookup_status === "pending") group.pendingCount += 1;
+          if (row.lookup_status === "pending") {
+            group.pendingCount += 1;
+            group.pending.push(brief);
+          }
           continue;
         }
 
@@ -514,9 +514,9 @@ export function createCompetitorRepo(pool: Pool): CompetitorWriteRepo & Competit
         competitor.packages.push(brief);
       }
 
-      const start = shiftDay(date, -6);
       const counts = new Map<string, { packageCount: number; hitCount: number; missCount: number }>();
-      for (const row of await selectPackagesInRange(start, date, dateKind)) {
+      const timelineRows = rangeRows ?? await selectPackagesInRange(timelineStart, end, dateKind);
+      for (const row of timelineRows) {
         const key = `${row.day_date}|${groupKeyFor(row, groupBy)}`;
         const point = counts.get(key) ?? { packageCount: 0, hitCount: 0, missCount: 0 };
         point.packageCount += 1;
@@ -529,7 +529,7 @@ export function createCompetitorRepo(pool: Pool): CompetitorWriteRepo & Competit
         `SELECT to_char(target_date, 'YYYY-MM-DD') AS day_date, status
            FROM competitor_batches
           WHERE target_date BETWEEN $1::date AND $2::date`,
-        [start, date],
+        [timelineStart, end],
       );
       const batchStatusByDate = new Map(batchRows.map((row) => [row.day_date, row.status]));
 
@@ -543,7 +543,11 @@ export function createCompetitorRepo(pool: Pool): CompetitorWriteRepo & Competit
             }))
             .sort((left, right) => left.name.localeCompare(right.name));
           const missedPackages = group.missed.sort((a, b) => a.packageCode.localeCompare(b.packageCode));
-          const timeline = Array.from({ length: 7 }, (_, index) => shiftDay(start, index)).map((day) => {
+          const pendingPackages = group.pending.sort((a, b) => a.packageCode.localeCompare(b.packageCode));
+          const dayCount = Math.round(
+            (Date.parse(`${end}T00:00:00Z`) - Date.parse(`${timelineStart}T00:00:00Z`)) / 86_400_000,
+          ) + 1;
+          const timeline = Array.from({ length: dayCount }, (_, index) => shiftDay(timelineStart, index)).map((day) => {
             const point = counts.get(`${day}|${group.groupKey}`)
               ?? { packageCount: 0, hitCount: 0, missCount: 0 };
             return {
@@ -564,6 +568,7 @@ export function createCompetitorRepo(pool: Pool): CompetitorWriteRepo & Competit
             competitorCount: competitors.length,
             competitors,
             missedPackages,
+            pendingPackages,
             timeline,
           };
         });

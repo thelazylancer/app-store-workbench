@@ -439,6 +439,51 @@ describeDb("competitor repository writes", () => {
     }
   });
 
+  it("aggregates a date range with a per-day timeline and pending package list", async () => {
+    const repo = createCompetitorRepo(pool!);
+    const team = `Range Team ${suffix}`;
+    const from = `${RUN_YEAR}-02-15`;
+    const middle = `${RUN_YEAR}-02-16`;
+    const to = `${RUN_YEAR}-02-17`;
+    const pendingCode = `test.competitor.${suffix}.range-pending`;
+    const hitCode = `test.competitor.${suffix}.range-hit`;
+    const missCode = `test.competitor.${suffix}.range-miss`;
+    const iconPath = `${from}/${pendingCode}/icon.png`;
+
+    await repo.upsertPackage({
+      ...pkg, packageCode: pendingCode, targetDate: from, firstAdDate: from,
+      team, displayName: "iOS-Range-Pending", lookupStatus: "pending",
+    });
+    await repo.upsertAssets(pendingCode, [
+      { type: "icon", sourceUrl: "https://cdn.example/range-icon.png", localPath: iconPath },
+    ]);
+    await repo.upsertPackage({
+      ...pkg, packageCode: hitCode, targetDate: middle, firstAdDate: middle,
+      team, displayName: "iOS-Range-Hit", lookupStatus: "hit",
+      appStoreJson: { appleId: 7007, name: "Range App" },
+    });
+    await repo.upsertPackage({
+      ...pkg, packageCode: missCode, targetDate: to, firstAdDate: to,
+      team, displayName: "iOS-Range-Miss", lookupStatus: "bundle_not_found",
+    });
+
+    const groups = await repo.getSummary(to, "first_ad", "team", from);
+    const group = groups.find((entry) => entry.groupKey === team)!;
+
+    expect(group).toMatchObject({
+      packageCount: 3, hitCount: 1, missCount: 1, pendingCount: 1, competitorCount: 1,
+    });
+    expect(group.pendingPackages).toEqual([{
+      packageCode: pendingCode, displayName: "iOS-Range-Pending", team,
+      appVersion: null, iconLocalPath: iconPath,
+    }]);
+    expect(group.timeline).toEqual([
+      { date: from, packageCount: 1, hitCount: 0, missCount: 0, batchStatus: null },
+      { date: middle, packageCount: 1, hitCount: 1, missCount: 0, batchStatus: null },
+      { date: to, packageCount: 1, hitCount: 0, missCount: 1, batchStatus: null },
+    ]);
+  });
+
   it("returns only existing snapshots for a package, ordered by date", async () => {
     const repo = createCompetitorRepo(pool!);
     const code = `test.competitor.${suffix}.history`;

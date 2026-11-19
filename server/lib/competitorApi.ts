@@ -4,6 +4,11 @@ import type { CompetitorQueryRepo } from "./competitorRepo";
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const PACKAGE_CODE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,254}$/;
+const MAX_SUMMARY_RANGE_DAYS = 31;
+
+function inclusiveDays(from: string, to: string): number {
+  return (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000 + 1;
+}
 
 function dateParam(value: unknown): string | null {
   if (typeof value !== "string" || !DATE_PATTERN.test(value)) return null;
@@ -40,16 +45,33 @@ export function createCompetitorRouter(repo: CompetitorQueryRepo): express.Route
   });
 
   router.get("/summary", async (req, res) => {
+    const isRange = req.query.from !== undefined || req.query.to !== undefined;
     const date = dateParam(req.query.date);
+    const from = dateParam(req.query.from);
+    const to = dateParam(req.query.to);
     const dateKind = dateKindParam(req.query.date_kind);
     const groupBy = groupByParam(req.query.group_by);
-    if (!date) return res.status(400).json({ message: "A valid date is required" });
+    if (isRange) {
+      if (req.query.date !== undefined) {
+        return res.status(400).json({ message: "Pass either date or from/to, not both" });
+      }
+      if (!from || !to) return res.status(400).json({ message: "Valid from and to dates are required" });
+      if (from > to) return res.status(400).json({ message: "from must not be after to" });
+      if (inclusiveDays(from, to) > MAX_SUMMARY_RANGE_DAYS) {
+        return res.status(400).json({ message: `Date range must not exceed ${MAX_SUMMARY_RANGE_DAYS} days` });
+      }
+    } else if (!date) {
+      return res.status(400).json({ message: "A valid date is required" });
+    }
     if (!dateKind) return res.status(400).json({ message: "Unsupported date_kind" });
     if (!groupBy) return res.status(400).json({ message: "Unsupported group_by" });
     try {
-      const groups = await repo.getSummary(date, dateKind, groupBy);
+      const groups = isRange
+        ? await repo.getSummary(to!, dateKind, groupBy, from!)
+        : await repo.getSummary(date!, dateKind, groupBy);
       return res.json({
-        date,
+        date: isRange ? to! : date!,
+        ...(isRange ? { from: from!, to: to! } : {}),
         dateKind,
         groupBy,
         pendingCount: groups.reduce((total, group) => total + group.pendingCount, 0),

@@ -89,6 +89,13 @@ describe("competitor query API", () => {
       "/api/competitor/summary?date=2026-02-30",
       "/api/competitor/summary?date=2026-11-18&date_kind=weekly",
       "/api/competitor/summary?date=2026-11-18&group_by=country",
+      "/api/competitor/summary?from=2026-11-01",
+      "/api/competitor/summary?to=2026-11-18",
+      "/api/competitor/summary?from=2026-11-19&to=2026-11-18",
+      "/api/competitor/summary?from=2026-11-01&to=2026-12-02",
+      "/api/competitor/summary?from=2026-02-30&to=2026-03-01",
+      "/api/competitor/summary?from=bad&to=2026-11-18",
+      "/api/competitor/summary?date=2026-11-18&from=2026-11-01&to=2026-11-18",
       "/api/competitor/day/not-a-date",
       "/api/competitor/day/2026-11-18?date_kind=weekly",
       "/api/competitor/day/2026-11-18?date_kind=listing&date_kind=first_ad",
@@ -187,6 +194,7 @@ describe("competitor query API", () => {
         packageCode: "com.example.miss", displayName: "iOS-Miss", team: "Alpha",
         appVersion: null, iconLocalPath: null,
       }],
+      pendingPackages: [],
       timeline: [{
         date: "2026-11-18", packageCount: 2, hitCount: 1, missCount: 1, batchStatus: "ok" as const,
       }],
@@ -209,6 +217,25 @@ describe("competitor query API", () => {
     expect(repo.getSummary).toHaveBeenNthCalledWith(2, "2026-11-18", "listing", "ios_version");
   });
 
+  it("supports inclusive from/to ranges and forwards them to the repository", async () => {
+    const repo = emptyRepo();
+    repo.getSummary = vi.fn(async () => []);
+    const app = createApp({ ...baseDeps, competitorRepo: repo });
+
+    const response = await request(app)
+      .get("/api/competitor/summary?from=2026-11-01&to=2026-11-18&date_kind=listing&group_by=category");
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      date: "2026-11-18", from: "2026-11-01", to: "2026-11-18",
+      dateKind: "listing", groupBy: "category", pendingCount: 0, groups: [],
+    });
+    expect(repo.getSummary).toHaveBeenCalledWith("2026-11-18", "listing", "category", "2026-11-01");
+
+    const max = await request(app).get("/api/competitor/summary?from=2026-11-01&to=2026-12-01");
+    expect(max.status).toBe(200);
+    expect(repo.getSummary).toHaveBeenLastCalledWith("2026-12-01", "first_ad", "team", "2026-11-01");
+  });
+
   it("sums pendingCount across summary groups", async () => {
     const group = (groupKey: string, pendingCount: number) => ({
       groupKey,
@@ -219,6 +246,7 @@ describe("competitor query API", () => {
       competitorCount: 0,
       competitors: [],
       missedPackages: [],
+      pendingPackages: [],
       timeline: [],
     });
     const repo = emptyRepo();

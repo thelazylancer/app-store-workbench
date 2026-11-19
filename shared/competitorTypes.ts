@@ -133,11 +133,14 @@ export type SummaryGroup = {
   competitorCount: number;
   competitors: SummaryCompetitor[];
   missedPackages: PackageBrief[];
+  pendingPackages: PackageBrief[];
   timeline: TimelinePoint[];
 };
 
 export type SummaryResponse = {
-  date: string;
+  date: string; // range mode: the `to` date
+  from?: string; // present only in range mode
+  to?: string; // present only in range mode
   dateKind: DateKind;
   groupBy: GroupBy;
   pendingCount: number;

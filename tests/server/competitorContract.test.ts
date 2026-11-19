@@ -101,6 +101,7 @@ const group: SummaryGroup = {
     }],
   }],
   missedPackages: [],
+  pendingPackages: [],
   timeline: [{ date: "2026-11-18", packageCount: 1, hitCount: 1, missCount: 0, batchStatus: "ok" }],
 };
 
