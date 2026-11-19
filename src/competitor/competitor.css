@@ -1281,8 +1281,7 @@ input:focus-visible {
 }
 
 .entry-empty,
-.detail-placeholder,
-.detail-note {
+.detail-placeholder {
   margin: 0;
   padding: 10px 0;
   color: var(--dim);
@@ -1302,27 +1301,6 @@ input:focus-visible {
 
 .detail-placeholder-block p {
   margin: 0;
-}
-
-.why-missed {
-  margin-top: 18px;
-  padding: 14px 0;
-  border-top: 1px solid var(--line);
-}
-
-.why-missed h3 {
-  margin: 0 0 6px;
-  color: var(--amber-text);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.why-missed p {
-  margin: 0;
-  max-width: 720px;
-  color: var(--dim);
-  font-size: 13px;
-  line-height: 1.7;
 }
 
 .competitor-screenshot-grid {

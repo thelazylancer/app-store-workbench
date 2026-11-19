@@ -305,10 +305,6 @@ function createScreenshotSection(name: string, paths: string[]): HTMLElement {
   });
 
   section.append(grid);
-  const note = document.createElement("p");
-  note.className = "detail-note";
-  note.textContent = "点击任意截图放大浏览；图片来自本地快照。";
-  section.append(note);
   document.body.append(lightbox.element);
   return section;
 }
@@ -618,15 +614,6 @@ export function renderPackageDetail(host: HTMLElement, options: DetailRenderOpti
       ["图片状态", "—"],
     ]);
     wrapper.append(facts);
-
-    const why = document.createElement("section");
-    why.className = "why-missed";
-    const whyTitle = document.createElement("h3");
-    whyTitle.textContent = "为什么未命中";
-    const whyBody = document.createElement("p");
-    whyBody.textContent = "系统已把 package_code 当作 Bundle ID，在 8 个抓取区域做了精确查找，没有找到 bundleId 完全一致的结果。这不代表包不存在：可能尚未上架、已下架，或其他区域未覆盖。";
-    why.append(whyTitle, whyBody);
-    wrapper.append(why);
 
     const noDetails = document.createElement("section");
     noDetails.className = "detail-placeholder detail-placeholder-block";

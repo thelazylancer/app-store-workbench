@@ -21,7 +21,6 @@ import type {
   SummaryGroup,
 } from "../../shared/competitorTypes";
 import {
-  DATE_KIND_LABEL,
   addDays,
   daySpan,
   formatMonthDay,
@@ -193,7 +192,6 @@ app.innerHTML = `
         <p class="wx-foot-status" data-role="batch-summary"></p>
         <div class="wx-foot-right">
           <span data-role="week-total"></span>
-          <span data-role="footer-kind"></span>
         </div>
       </footer>
     </section>
@@ -226,7 +224,6 @@ const rangeNoteHost = requireElement<HTMLElement>('[data-role="range-note"]');
 const filterNote = requireElement<HTMLElement>('[data-role="filter-note"]');
 const reportBody = requireElement<HTMLElement>('[data-role="report-body"]');
 const weekTotal = requireElement<HTMLElement>('[data-role="week-total"]');
-const footerKind = requireElement<HTMLElement>('[data-role="footer-kind"]');
 const detailHost = detailView;
 
 function urlStateParams(): URLSearchParams {
@@ -298,7 +295,6 @@ function syncControls(): void {
   dateTag.textContent = state.rangeFrom
     ? `区间 ${rangeDays} 天`
     : state.date === yesterday ? "昨日" : "历史快照";
-  footerKind.textContent = `数据来源：内部首投包接口 + App Store 精确 Bundle ID 匹配 · 8 个区域自动抓取 · 不可筛选 · 仅含 iOS 包，已排除灵蜂。当前口径：${DATE_KIND_LABEL[state.dateKind]}。`;
 
   statTotal.textContent = String(counts.total);
   statCompetitors.textContent = String(counts.competitors);
@@ -522,7 +518,7 @@ function renderBatch(): void {
 function createEmptyCard(options: {
   role: string;
   title: string;
-  lines: string[];
+  lines?: string[];
   inline?: boolean;
   actions?: Array<{ label: string; role: string }>;
 }): HTMLElement {
@@ -532,7 +528,7 @@ function createEmptyCard(options: {
   const heading = document.createElement("h2");
   heading.textContent = options.title;
   card.append(heading);
-  for (const line of options.lines) {
+  for (const line of options.lines ?? []) {
     const paragraph = document.createElement("p");
     paragraph.textContent = line;
     card.append(paragraph);
@@ -665,7 +661,6 @@ function renderListContent(): void {
       role: "empty-day",
       title: "这一天还没有快照",
       lines: [
-        "每日任务在北京时间 09:30 抓取前一天的数据。",
         `${state.date} 没有成功完成的批次，可能是任务未运行或数据尚未就绪。`,
         ...(recentNote ? [recentNote] : []),
       ],
@@ -706,11 +701,6 @@ function renderListContent(): void {
       title: state.rangeFrom
         ? "该区间没有符合条件的 iOS 竞品包"
         : "当天没有符合条件的 iOS 竞品包",
-      lines: [
-        `已按当前口径（${DATE_KIND_LABEL[state.dateKind]} = ${state.rangeFrom ? `${state.rangeFrom} — ${state.date}` : state.date}）查询，并应用：`,
-        "· 仅保留 display_name 包含 ios 的记录",
-        "· 已排除 team = 灵蜂",
-      ],
       actions: [
         {
           label: state.dateKind === "first_ad" ? "切到上架日期口径" : "切到投放日期口径",
@@ -731,11 +721,6 @@ function renderListContent(): void {
       reportBody.replaceChildren(createEmptyCard({
         role: "empty-filter",
         title,
-        lines: [
-          state.status === "hit"
-            ? "全部包都在异常区，或当前口径下没有命中记录。"
-            : "未命中与待补全均为空，页面保持平静。",
-        ],
         inline: true,
         actions: [{ label: "清除筛选", role: "empty-clear-filter" }],
       }));

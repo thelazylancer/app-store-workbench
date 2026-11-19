@@ -339,7 +339,6 @@ describe("competitor report page", () => {
     expect(document.querySelector('[data-role="stat-hit"]')?.textContent).toBe("3");
     expect(document.querySelector('[data-role="stat-exception"]')?.textContent).toBe("3");
     expect(document.querySelector('[data-role="week-total"]')?.textContent).toContain("近 7 天合计 28 包");
-    expect(document.querySelector('[data-role="footer-kind"]')?.textContent).toContain("8 个区域自动抓取 · 不可筛选");
     expect(document.querySelector('[data-role="batch-summary"]')?.textContent).toContain(`批次正常 · 批次 ${DATE}`);
     expect(document.querySelectorAll(".wx-day")).toHaveLength(7);
     expect(document.querySelectorAll(".wx-day.is-main")).toHaveLength(1);
@@ -381,7 +380,6 @@ describe("competitor report page", () => {
     await vi.waitFor(() => {
       expect(document.body.textContent).toContain("上架口径组");
     });
-    expect(document.querySelector('[data-role="footer-kind"]')?.textContent).toContain("当前口径：上架日期");
 
     document.querySelector<HTMLButtonElement>('[data-role="group-by"][data-value="category"]')!.click();
     await vi.waitFor(() => {
@@ -438,7 +436,7 @@ describe("competitor report page", () => {
 
     document.querySelector<HTMLAnchorElement>('[data-role="exception-row"][data-reason="miss"]')!.click();
     await vi.waitFor(() => {
-      expect(document.querySelector('[data-role="detail-view"]')?.textContent).toContain("为什么未命中");
+      expect(document.querySelector('[data-role="detail-view"]')?.textContent).toContain("App Store 未命中");
     });
 
     const detail = document.querySelector('[data-role="detail-view"]');
