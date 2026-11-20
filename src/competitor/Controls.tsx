@@ -45,14 +45,27 @@ export function Controls({ days, loading, filters, onChange, onClear }: Props) {
 
   return (
     <>
-      <div className="wx-head">
-        <div className="wx-title">
-          <h1 className="wx-title-h1">竞品日报</h1>
-        </div>
+      <h1 className="visually-hidden">竞品日报</h1>
+      <div className="wx-toolbar">
+        <TabList
+          className="wx-team-tabs"
+          aria-label="团队"
+          size="sm"
+          value={filters.team ?? ""}
+          onChange={(value) => onChange({ team: value || null })}
+        >
+          <Tab value="" label="全部" data-role="team-tab" data-team="" />
+          {teams.map((team) => (
+            <Tab key={team} value={team} label={team} data-role="team-tab" data-team={team} />
+          ))}
+        </TabList>
+
         <div className="wx-controls">
           <div className="wx-control">
+            <Text type="supporting" as="span">类目</Text>
             <Selector
               label="类目"
+              isLabelHidden
               size="sm"
               options={categoryOptions}
               value={filters.category ?? ""}
@@ -83,8 +96,10 @@ export function Controls({ days, loading, filters, onChange, onClear }: Props) {
             </SegmentedControl>
           </div>
           <div className="wx-control">
+            <Text type="supporting" as="span">日期</Text>
             <DateInput
               label="日期"
+              isLabelHidden
               size="sm"
               format="system_date"
               placeholder="选择日期"
@@ -96,19 +111,6 @@ export function Controls({ days, loading, filters, onChange, onClear }: Props) {
           </div>
         </div>
       </div>
-
-      <TabList
-        className="wx-team-tabs"
-        aria-label="团队"
-        size="sm"
-        value={filters.team ?? ""}
-        onChange={(value) => onChange({ team: value || null })}
-      >
-        <Tab value="" label="全部" data-role="team-tab" data-team="" />
-        {teams.map((team) => (
-          <Tab key={team} value={team} label={team} data-role="team-tab" data-team={team} />
-        ))}
-      </TabList>
 
       <div className="wx-stats">
         <Stat role="stat-total" label="包总数" value={counts.total} />
