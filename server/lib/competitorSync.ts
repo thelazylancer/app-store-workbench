@@ -34,6 +34,25 @@ export function computeTargetDate(now: Date): string {
   return new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
+/**
+ * Apple serves the same artwork at several sizes (lookup thumbnails + product
+ * page originals), so URLs differing only in their size segment are one image.
+ * Keep the highest-resolution URL per image, in first-seen order.
+ */
+function mergeScreenshots(lookupUrls: string[], pageUrls: string[]): string[] {
+  const best = new Map<string, { url: string; area: number }>();
+  for (const raw of [...lookupUrls, ...pageUrls]) {
+    const url = raw.trim();
+    if (!url) continue;
+    const size = url.match(/\/(\d+)x(\d+)bb\.[a-z]+$/i);
+    const identity = size ? url.slice(0, url.lastIndexOf("/")) : url;
+    const area = size ? Number(size[1]) * Number(size[2]) : 0;
+    const existing = best.get(identity);
+    if (!existing || area > existing.area) best.set(identity, { url, area });
+  }
+  return [...best.values()].map((entry) => entry.url);
+}
+
 function concurrency(): number {
   const configured = Number(process.env.COMPETITOR_SYNC_CONCURRENCY);
   return Number.isSafeInteger(configured) && configured > 0 ? configured : 3;
@@ -102,7 +121,7 @@ export async function syncCompetitorDay(
           try {
             const details = await deps.fetchProductPageDetails(firstHit.appStoreUrl);
             enrichStatus = "ok";
-            screenshots = [...new Set([...firstHit.screenshotUrls, ...details.screenshotUrls])];
+            screenshots = mergeScreenshots(firstHit.screenshotUrls, details.screenshotUrls);
             versions = details.versionHistory.map((entry) => ({
               version: entry.version,
               releasedAt: entry.releasedAt ?? fetchedAt,

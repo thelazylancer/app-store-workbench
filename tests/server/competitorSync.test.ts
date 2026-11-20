@@ -112,6 +112,38 @@ describe("syncCompetitorDay", () => {
     }));
   });
 
+  it("collapses the same artwork across sizes and keeps the largest", async () => {
+    const repo = fakeRepo();
+    const download = fakeDownload();
+    const lookup = vi.fn(async (bundleId: string) => ({
+      ...candidate(bundleId),
+      screenshotUrls: [
+        "https://cdn.example/shot/a.png/320x480bb.jpg",
+        "https://cdn.example/shot/b.png/320x480bb.jpg",
+      ],
+    }));
+
+    await syncCompetitorDay("2026-11-18", {
+      fetchSourcePackages: async () => ({ ...sourceBatch, rows: [sourceBatch.rows[0]!] }),
+      lookupAppByBundleId: lookup,
+      fetchProductPageDetails: async () => ({
+        screenshotUrls: [
+          "https://cdn.example/shot/a.png/1320x2868bb.jpg",
+          "https://cdn.example/shot/b.png/1320x2868bb.jpg",
+        ],
+        iapItems: [],
+        versionHistory: [],
+      }),
+      downloadAssets: download,
+      repo,
+    });
+
+    expect(download.mock.calls[0]![3]).toEqual([
+      "https://cdn.example/shot/a.png/1320x2868bb.jpg",
+      "https://cdn.example/shot/b.png/1320x2868bb.jpg",
+    ]);
+  });
+
   it("records bundle_not_found when all storefronts miss", async () => {
     const repo = fakeRepo();
     const report = await syncCompetitorDay("2026-11-18", {

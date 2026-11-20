@@ -179,6 +179,23 @@ describeDb("competitor repository writes", () => {
     ]);
   });
 
+  it("drops screenshot rows the new snapshot set no longer references", async () => {
+    const repo = createCompetitorRepo(pool!);
+    const code = `test.competitor.${suffix}.stale-shots`;
+    await repo.upsertPackage({ ...pkg, packageCode: code });
+    const large = { type: "screenshot" as const, sourceUrl: "https://cdn.example/a.png/1320x2868bb.jpg", localPath: "a-large.jpg" };
+    const small = { type: "screenshot" as const, sourceUrl: "https://cdn.example/a.png/320x480bb.jpg", localPath: "a-small.jpg" };
+
+    await repo.upsertAssets(code, [small, large]);
+    await repo.upsertAssets(code, [large]);
+
+    const stored = await pool!.query<{ source_url: string }>(
+      "SELECT source_url FROM competitor_assets WHERE package_code = $1 ORDER BY source_url",
+      [code],
+    );
+    expect(stored.rows.map((row) => row.source_url)).toEqual([large.sourceUrl]);
+  });
+
   it("keeps version rows unique across reruns and updates notes", async () => {
     const repo = createCompetitorRepo(pool!);
     const code = `test.competitor.${suffix}.versions`;

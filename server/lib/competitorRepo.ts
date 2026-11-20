@@ -378,6 +378,16 @@ export function createCompetitorRepo(pool: Pool): CompetitorWriteRepo & Competit
           [packageCode, asset.type, asset.sourceUrl, asset.localPath],
         );
       }
+      // Drop screenshot rows the current snapshot no longer references (e.g. the
+      // old small-size twin of an image now stored at full resolution).
+      const screenshotUrls = assets.filter((asset) => asset.type === "screenshot").map((asset) => asset.sourceUrl);
+      if (screenshotUrls.length > 0) {
+        await pool.query(
+          `DELETE FROM competitor_assets
+            WHERE package_code = $1 AND type = 'screenshot' AND source_url <> ALL($2::text[])`,
+          [packageCode, screenshotUrls],
+        );
+      }
     },
 
     async upsertVersions(packageCode, versions) {
