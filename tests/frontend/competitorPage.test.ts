@@ -325,7 +325,8 @@ describe("competitor report page", () => {
     const alphaSide = alphaRow.querySelector(".wx-row-side")!;
     expect(alphaSide.children[0]?.classList.contains("wx-iap-pill")).toBe(true);
     expect(alphaSide.children[1]?.classList.contains("wx-row-versions")).toBe(true);
-    expect(alphaRow.textContent).toContain("Alpha Source");
+    expect(alphaRow.querySelector(".wx-row-pkg")?.textContent).toBe("111");
+    expect(alphaRow.textContent).not.toContain("Alpha Source");
     expect(alphaRow.textContent).toContain("最早 2026-10-01");
     expect(alphaRow.textContent).toContain("最新 2026-11-10");
 

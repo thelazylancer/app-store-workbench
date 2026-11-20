@@ -639,8 +639,10 @@ input:focus-visible {
   overflow: hidden;
   max-width: 100%;
   color: var(--dim);
+  font-family: var(--mono);
   font-size: 12px;
   font-weight: 400;
+  font-variant-numeric: tabular-nums;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

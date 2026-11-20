@@ -143,7 +143,7 @@ function createHitRow(
     nameLine.append(pill);
   }
   nameCell.append(nameLine);
-  appendText(nameCell, "span", "wx-row-pkg", brief.displayName);
+  if (competitor.appleId !== null) appendText(nameCell, "span", "wx-row-pkg", String(competitor.appleId));
   row.append(nameCell);
 
   const codeCell = document.createElement("span");
