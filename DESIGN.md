@@ -140,7 +140,7 @@ components:
 
 **Creative North Star: "竞品气象台"**
 
-两页共用的一个世界：App Store 搜索页（`index.html` + `src/styles.css`）与竞品日报页（`competitor.html` + `src/competitor/competitor.css`）。整个工作台是一片平涂的空气色底（#E7EDF2），没有浮卡、没有灰上灰：所有分区靠一像素细规线分隔，所有深度靠墨色透明度薄涂表达，阴影和渐变为零。数据是唯一的主角——每一个数字、包码、日期都以 IBM Plex Mono 的 tabular-nums 等宽数字呈现，形成可纵向对齐读的「仪表读数层」；中文正文用 Noto Sans SC 安静铺底；Barlow Condensed 是唯一被放大的显示声部，只用于日期（搜索页甚至不加载它）。
+两页共用的一个世界：竞品日报是首页（`index.html` + `src/competitor/competitor.css`），App Store 搜索在 `search.html` + `src/styles.css`。`competitor.html` 只跳回首页。整个工作台是一片平涂的空气色底（#E7EDF2），没有浮卡、没有灰上灰：所有分区靠一像素细规线分隔，所有深度靠墨色透明度薄涂表达，阴影和渐变为零。数据是唯一的主角——每一个数字、包码、日期都以 IBM Plex Mono 的 tabular-nums 等宽数字呈现，形成可纵向对齐读的「仪表读数层」；中文正文用 Noto Sans SC 安静铺底；Barlow Condensed 是唯一被放大的显示声部，只用于日期（搜索页甚至不加载它）。
 
 两页同构的顶部导航壳（54px 高、1px 底规线、22×22 墨底预报标——两根空气柱加一根风暴蓝主柱、当前 tab `inset 0 -2px 0` 墨色下划线）把工作台钉成一个产品。favicon 用同一枚标。竞品页的脊柱是横贯全宽的 7 天预报栏：每日一格，柱高严格编码包数（`Math.round(count / max × 112px)`），昨日格放大成主格（flex 1.9），支持单日点击与两点式范围选中，窗口可用说明行右侧的 ‹ › 按钮整周平移；页首是 Barlow Condensed 48px 大日期 + 墨底「昨日」tag，其下恢复 mono 22px 统计行（异常 = 未命中 + 待补全合并口径），这是已批准 A 稿的壳对齐，取代了此前「删除统计条」的否决。异常统一归入页面底部的异常区，只在非空时渲染。
 

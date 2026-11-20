@@ -122,8 +122,8 @@ app.innerHTML = `
         <span>App 搜索工作台</span>
       </div>
       <nav class="wx-tabs" aria-label="主导航">
-        <a href="${import.meta.env.BASE_URL}competitor.html" aria-current="page">竞品</a>
-        <a href="${import.meta.env.BASE_URL}index.html">App Store 搜索</a>
+        <a href="${import.meta.env.BASE_URL}index.html" aria-current="page">竞品</a>
+        <a href="${import.meta.env.BASE_URL}search.html">App Store 搜索</a>
       </nav>
     </header>
 

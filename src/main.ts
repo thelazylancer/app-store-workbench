@@ -27,8 +27,8 @@ app.innerHTML = `
         <span>App 搜索工作台</span>
       </div>
       <nav class="wx-tabs" aria-label="主导航">
-        <a href="${import.meta.env.BASE_URL}competitor.html">竞品</a>
-        <a href="${import.meta.env.BASE_URL}index.html" aria-current="page">App Store 搜索</a>
+        <a href="${import.meta.env.BASE_URL}index.html">竞品</a>
+        <a href="${import.meta.env.BASE_URL}search.html" aria-current="page">App Store 搜索</a>
       </nav>
       <span class="wx-region" data-role="country-code" aria-label="当前商店区域">US</span>
     </header>

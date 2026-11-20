@@ -6,6 +6,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(process.cwd(), "index.html"),
+        search: resolve(process.cwd(), "search.html"),
         competitor: resolve(process.cwd(), "competitor.html"),
       },
     },

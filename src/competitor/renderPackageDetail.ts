@@ -437,7 +437,7 @@ function createMissedPanel(packageDetail: PackageDetail): HTMLElement {
   text.textContent = "未命中，无 App Store 详情可展示。";
   const link = document.createElement("a");
   link.className = "wx-button";
-  link.href = `${import.meta.env.BASE_URL}index.html?bundle=${encodeURIComponent(packageDetail.packageCode)}`;
+  link.href = `${import.meta.env.BASE_URL}search.html?bundle=${encodeURIComponent(packageDetail.packageCode)}`;
   link.textContent = "到 App Store 搜索中查询此 Bundle ID";
   placeholder.append(text, link);
   section.append(placeholder);

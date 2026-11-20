@@ -536,7 +536,7 @@ describe("competitor report page", () => {
     expect(detail?.querySelector(".identity-icon-missed")).not.toBeNull();
     expect(detail?.textContent).toContain("团队 A");
     expect(detail?.textContent).toContain("待下载");
-    expect(detail?.querySelector<HTMLAnchorElement>('a[href*="index.html?bundle=com.beta.s"]')).not.toBeNull();
+    expect(detail?.querySelector<HTMLAnchorElement>('a[href*="search.html?bundle=com.beta.s"]')).not.toBeNull();
   });
 
   it("renders skipped assets as a normal state instead of a failure", () => {
