@@ -156,7 +156,7 @@ function createIdentity(
       link.href = appStoreUrl;
       link.target = "_blank";
       link.rel = "noreferrer";
-      link.append("在 App Store 查看", svgIcon('<path d="M5 11L11 5M6 5h5v5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/>'));
+      link.append("App Store 查看", svgIcon('<path d="M5 11L11 5M6 5h5v5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/>'));
       links.append(link);
     }
     if (packageDetail.appleId !== null) {
@@ -165,7 +165,7 @@ function createIdentity(
       qimai.href = `https://www.qimai.cn/app/baseinfo/appid/${packageDetail.appleId}/country/us`;
       qimai.target = "_blank";
       qimai.rel = "noreferrer";
-      qimai.append("去七麦查看", svgIcon('<path d="M5 11L11 5M6 5h5v5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/>'));
+      qimai.append("七麦查看", svgIcon('<path d="M5 11L11 5M6 5h5v5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/>'));
       links.append(qimai);
     }
     if (links.childElementCount > 0) copy.append(links);

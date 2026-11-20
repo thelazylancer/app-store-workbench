@@ -189,11 +189,12 @@ describe("competitor query API", () => {
         packages: [{
           packageCode: "com.example.app", displayName: "iOS-Example", team: "Alpha",
           appVersion: "1.0", iconLocalPath: "2026-11-18/com.example.app/icon.png",
+          hasIap: true, versionCount: 3,
         }],
       }],
       missedPackages: [{
         packageCode: "com.example.miss", displayName: "iOS-Miss", team: "Alpha",
-        appVersion: null, iconLocalPath: null,
+        appVersion: null, iconLocalPath: null, hasIap: false, versionCount: 0,
       }],
       pendingPackages: [],
       timeline: [{

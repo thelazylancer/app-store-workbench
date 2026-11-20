@@ -107,6 +107,8 @@ export type PackageBrief = {
   team: string;
   appVersion: string | null;
   iconLocalPath: string | null;
+  hasIap: boolean;
+  versionCount: number;
 };
 
 export type SummaryCompetitor = {

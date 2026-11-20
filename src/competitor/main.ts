@@ -616,6 +616,8 @@ function exceptionEntries(): ExceptionEntry[] {
           team: pkg.team,
           appVersion: pkg.appVersion,
           iconLocalPath: pkg.iconLocalPath,
+          hasIap: Array.isArray(pkg.appStoreJson.iapItems) && pkg.appStoreJson.iapItems.length > 0,
+          versionCount: pkg.versions.length,
           reason: "pending",
           groupKey: state.groupBy === "team"
             ? pkg.team

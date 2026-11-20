@@ -103,6 +103,15 @@ function createHitRow(
   rangeDays: number,
   href: string,
 ): HTMLAnchorElement {
+  const brief = competitor.packages[0] ?? {
+    packageCode: "",
+    displayName: competitor.name,
+    team: "",
+    appVersion: null,
+    iconLocalPath: null,
+    hasIap: false,
+    versionCount: 0,
+  };
   const firstPackage = competitor.packages[0];
   const row = document.createElement("a");
   row.className = "wx-row";
@@ -140,7 +149,7 @@ function createHitRow(
       : firstPackage?.packageCode ?? "",
   );
   appendText(row, "span", "wx-row-meta", metaLine(
-    firstPackage ?? { packageCode: "", displayName: competitor.name, team: "", appVersion: null, iconLocalPath: null },
+    brief,
     facts,
     groupBy,
     dateKind,
@@ -149,7 +158,8 @@ function createHitRow(
 
   const side = document.createElement("span");
   side.className = "wx-row-side";
-  appendText(side, "span", "wx-badge wx-badge-hit", "命中");
+  appendText(side, "span", "wx-row-versions", `共 ${brief.versionCount} 个版本`);
+  if (brief.hasIap) appendText(side, "span", "wx-iap-pill", "内购");
   row.append(side);
   return row;
 }

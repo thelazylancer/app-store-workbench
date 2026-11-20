@@ -186,12 +186,15 @@ async function assetsByPackage(
 
 function packageBrief(row: PackageRowResult, assets: AssetRow[]): PackageBrief {
   const base = toPackageBase(row);
+  const { iapItems, versionHistory } = base.appStoreJson;
   return {
     packageCode: base.packageCode,
     displayName: base.displayName,
     team: base.team,
     appVersion: base.appVersion,
     iconLocalPath: assets.find((asset) => asset.type === "icon")?.localPath ?? null,
+    hasIap: Array.isArray(iapItems) && iapItems.length > 0,
+    versionCount: Array.isArray(versionHistory) ? versionHistory.length : 0,
   };
 }
 

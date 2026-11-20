@@ -378,12 +378,17 @@ describeDb("competitor repository writes", () => {
     await repo.upsertPackage({
       ...common, packageCode: codeA, team: "Team A", category: "Games",
       minimumOsVersion: "16.0", appVersion: "1.0", lookupStatus: "hit",
-      listingDate: summaryDate, appStoreJson: { appleId: 1001, name: "Shared App" },
+      listingDate: summaryDate,
+      appStoreJson: {
+        appleId: 1001, name: "Shared App",
+        iapItems: [{ name: "Pack", price: "$4.99" }],
+        versionHistory: [{ version: "1.0" }, { version: "0.9" }],
+      },
     });
     await repo.upsertPackage({
       ...common, packageCode: codeB, team: "Team A", category: "Games",
       minimumOsVersion: "17.0", appVersion: "2.0", lookupStatus: "hit",
-      appStoreJson: { appleId: 1001, name: "Shared App" },
+      appStoreJson: { appleId: 1001, name: "Shared App", iapItems: [], versionHistory: [] },
     });
     await repo.upsertPackage({
       ...common, packageCode: codeC, team: "Team A", category: null,
@@ -392,7 +397,8 @@ describeDb("competitor repository writes", () => {
     await repo.upsertPackage({
       ...common, packageCode: codeD, team: "Team B", category: "Games",
       minimumOsVersion: "16.0", appVersion: "3.0", lookupStatus: "hit",
-      listingDate: summaryDate, appStoreJson: { appleId: 2002, name: "Other App" },
+      listingDate: summaryDate,
+      appStoreJson: { appleId: 2002, name: "Other App", iapItems: [], versionHistory: [{ version: "3.0" }] },
     });
 
     const byTeam = await repo.getSummary(summaryDate, "first_ad", "team");
@@ -404,7 +410,13 @@ describeDb("competitor repository writes", () => {
     expect(teamA.competitors).toHaveLength(1);
     expect(teamA.competitors[0]).toMatchObject({ appleId: 1001, name: "Shared App", packageCount: 2 });
     expect(teamA.competitors[0]!.packages.map((item) => item.packageCode)).toEqual([codeA, codeB]);
+    expect(teamA.competitors[0]!.packages.map(({ hasIap, versionCount }) => ({ hasIap, versionCount }))).toEqual([
+      { hasIap: true, versionCount: 2 },
+      { hasIap: false, versionCount: 0 },
+    ]);
     expect(teamA.missedPackages.map((item) => item.packageCode)).toEqual([codeC]);
+    expect(teamA.missedPackages[0]).toMatchObject({ hasIap: false, versionCount: 0 });
+    expect(byTeam[1]!.competitors[0]!.packages[0]).toMatchObject({ hasIap: false, versionCount: 1 });
     expect(teamA.hitCount + teamA.missCount).toBe(teamA.packageCount);
     expect(teamA.timeline).toHaveLength(7);
     expect(teamA.timeline.at(-1)).toMatchObject({
@@ -492,7 +504,7 @@ describeDb("competitor repository writes", () => {
     });
     expect(group.pendingPackages).toEqual([{
       packageCode: pendingCode, displayName: "iOS-Range-Pending", team,
-      appVersion: null, iconLocalPath: iconPath,
+      appVersion: null, iconLocalPath: iconPath, hasIap: false, versionCount: 0,
     }]);
     expect(group.timeline).toEqual([
       { date: from, packageCount: 1, hitCount: 0, missCount: 0, batchStatus: null },

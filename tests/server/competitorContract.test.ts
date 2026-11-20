@@ -99,6 +99,8 @@ const group: SummaryGroup = {
       team: "Alpha",
       appVersion: "1.2.3",
       iconLocalPath: "2026-11-18/com.example.app/icon.png",
+      hasIap: true,
+      versionCount: 2,
     }],
   }],
   missedPackages: [],
