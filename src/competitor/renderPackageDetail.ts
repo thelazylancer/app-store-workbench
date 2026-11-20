@@ -636,6 +636,7 @@ export function renderPackageDetail(host: HTMLElement, options: DetailRenderOpti
     context.append(createPackageSwitcher(competitor, packageCode, packageStatus, onSelectPackage));
   }
   wrapper.append(context);
+  wrapper.append(createMetadata(packageDetail));
 
   if (packageDetail.fetchedAt.slice(0, 10) !== date) {
     const warning = document.createElement("p");
@@ -705,7 +706,6 @@ export function renderPackageDetail(host: HTMLElement, options: DetailRenderOpti
   }
 
   wrapper.append(createHistorySection(history, historyError, historyDates));
-  wrapper.append(createMetadata(packageDetail));
 
   host.append(wrapper);
 }
