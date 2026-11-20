@@ -1115,6 +1115,33 @@ input:focus-visible {
   padding-top: 8px;
 }
 
+.iap-section {
+  margin-top: 24px;
+}
+
+.iap-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0 36px;
+}
+
+.iap-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.iap-price {
+  flex: 0 0 auto;
+  color: var(--dim);
+  font-family: var(--mono);
+  white-space: nowrap;
+}
+
 .detail-section {
   display: block;
   padding-top: 16px;

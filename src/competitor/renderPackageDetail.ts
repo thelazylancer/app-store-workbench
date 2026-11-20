@@ -212,6 +212,49 @@ function createPackageSwitcher(
   return wrapper;
 }
 
+function createIapSection(json: Record<string, unknown>): HTMLElement {
+  const items = Array.isArray(json.iapItems)
+    ? (json.iapItems as Array<{ name?: unknown; price?: unknown }>)
+        .filter((item) => typeof item?.name === "string" && item.name.trim())
+        .map((item) => ({
+          name: String(item.name).trim(),
+          price: typeof item.price === "string" ? item.price.trim() : "",
+        }))
+    : [];
+
+  const section = document.createElement("section");
+  section.className = "detail-section iap-section";
+  const title = document.createElement("h3");
+  title.className = "detail-section-title";
+  title.textContent = items.length > 0 ? `内购（${items.length}）` : "内购";
+  section.append(title);
+
+  if (items.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "entry-empty";
+    empty.textContent = "当日快照未记录内购项";
+    section.append(empty);
+    return section;
+  }
+
+  const list = document.createElement("div");
+  list.className = "iap-list";
+  for (const item of items) {
+    const row = document.createElement("div");
+    row.className = "iap-row";
+    const name = document.createElement("span");
+    name.className = "iap-name";
+    name.textContent = item.name;
+    const price = document.createElement("span");
+    price.className = "iap-price";
+    price.textContent = item.price || "—";
+    row.append(name, price);
+    list.append(row);
+  }
+  section.append(list);
+  return section;
+}
+
 function createVersionHistory(versions: PackageDetail["versions"]): HTMLElement {
   const details = document.createElement("details");
   details.className = "version-history";
@@ -657,6 +700,7 @@ export function renderPackageDetail(host: HTMLElement, options: DetailRenderOpti
     columns.append(versionsSection);
     wrapper.append(columns);
 
+    wrapper.append(createIapSection(packageDetail.appStoreJson));
     wrapper.append(createScreenshotSection(name, packageDetail.screenshotLocalPaths));
   }
 

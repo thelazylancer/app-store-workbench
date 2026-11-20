@@ -39,7 +39,16 @@ function packageDetail(overrides: Partial<PackageDetail> & { packageCode: string
     enrichStatus: "ok",
     assetStatus: "ok",
     appleId: 111,
-    appStoreJson: { appleId: 111, trackName: "Alpha App", averageUserRating: 4.6, formattedPrice: "免费" },
+    appStoreJson: {
+      appleId: 111,
+      trackName: "Alpha App",
+      averageUserRating: 4.6,
+      formattedPrice: "免费",
+      iapItems: [
+        { name: "高级版", price: "$4.99" },
+        { name: "去广告", price: "$1.99" },
+      ],
+    },
     iconLocalPath: `${DATE}/com.alpha.ios/icon.png`,
     screenshotLocalPaths: [`${DATE}/com.alpha.ios/1.png`, `${DATE}/com.alpha.ios/2.png`],
     versions: [
@@ -419,6 +428,12 @@ describe("competitor report page", () => {
     expect(document.querySelector(".competitor-screenshot-grid img")?.getAttribute("src")).toContain(`/competitor-assets/${DATE}/com.alpha.ios/1.png`);
     expect(document.querySelector(".version-history")?.textContent).toContain("版本历史（当日可见）");
     expect(document.body.textContent).toContain("1.0.0");
+
+    expect(document.querySelector(".iap-section .detail-section-title")?.textContent).toBe("内购（2）");
+    const iapRows = document.querySelectorAll(".iap-row");
+    expect(iapRows).toHaveLength(2);
+    expect(iapRows[0]?.textContent).toContain("高级版");
+    expect(iapRows[0]?.textContent).toContain("$4.99");
 
     const missing = document.querySelectorAll(".history-row.is-missing");
     expect(missing.length).toBeGreaterThan(0);
