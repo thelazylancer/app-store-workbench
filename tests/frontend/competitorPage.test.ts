@@ -320,26 +320,27 @@ describe("competitor report page", () => {
 
     expect(alphaRow.querySelector(".wx-badge-hit")).toBeNull();
     expect(alphaRow.textContent).not.toContain("命中");
-    expect(alphaRow.querySelector(".wx-row-versions")?.textContent).toBe("3个版本");
+    expect(alphaRow.querySelector(".wx-row-versions")?.textContent).toBe("1个版本");
     expect(alphaRow.querySelector(".wx-iap-pill")?.textContent).toBe("内购");
     const alphaSide = alphaRow.querySelector(".wx-row-side")!;
     expect(alphaSide.children[0]?.classList.contains("wx-iap-pill")).toBe(true);
     expect(alphaSide.children[1]?.classList.contains("wx-row-versions")).toBe(true);
     expect(alphaRow.querySelector(".wx-row-pkg")?.textContent).toBe("111");
     expect(alphaRow.textContent).not.toContain("Alpha Source");
-    expect(alphaRow.textContent).toContain("最早 2026-10-01");
+    expect(alphaRow.textContent).toContain("最早 2026-11-10");
     expect(alphaRow.textContent).toContain("最新 2026-11-10");
 
     const gammaRow = document.querySelector<HTMLAnchorElement>('[data-competitor="apple:222"]')!;
-    expect(gammaRow.querySelector(".wx-row-versions")?.textContent).toBe("0个版本");
+    expect(gammaRow.querySelector(".wx-row-versions")?.textContent).toBe("1个版本");
     expect(gammaRow.querySelector(".wx-iap-pill")).toBeNull();
-    expect(gammaRow.textContent).not.toContain("最早");
-    expect(gammaRow.textContent).not.toContain("最新");
+    expect(gammaRow.textContent).toContain("最早 2026-11-10");
+    expect(gammaRow.textContent).toContain("最新 2026-11-10");
 
     const groups = Array.from(document.querySelectorAll(".wx-group-head"));
-    expect(groups[0]?.textContent).toContain("团队 A");
-    expect(groups[0]?.textContent).toContain("3 包");
-    expect(groups[0]?.textContent).toContain("命中 2 · 异常 3");
+    expect(groups).toHaveLength(1);
+    expect(groups[0]?.textContent).toContain(DATE);
+    expect(groups[0]?.textContent).toContain("4 包");
+    expect(groups[0]?.textContent).toContain("命中 3 · 异常 1");
     expect(document.querySelector(".wx-list-head")).toBeNull();
 
     const missedRow = document.querySelector<HTMLAnchorElement>('[data-role="exception-row"][data-reason="miss"]')!;
@@ -352,42 +353,23 @@ describe("competitor report page", () => {
     const icon = alphaRow.querySelector<HTMLImageElement>(".wx-row-icon")!;
     expect(icon.src).toContain(`/competitor-assets/${DATE}/com.alpha.ios/icon.png`);
 
-    expect(document.querySelector(".wx-day.is-main .wx-day-count")?.textContent).toBe("4");
+    expect(document.querySelector("h1")?.textContent).toBe("时间线");
+    expect(document.querySelector(".wx-date")).toBeNull();
+    expect(window.location.search).not.toContain("date=");
+    expect(document.querySelector('[data-role="window-caption"]')?.textContent).toBe(`${addDays(DATE, -13)} — ${DATE}`);
     expect(document.querySelector('[data-role="status"][data-value="hit"]')?.textContent).toBe("命中 3");
     expect(document.querySelector('[data-role="stat-total"]')?.textContent).toBe("4");
-    expect(document.querySelector('[data-role="stat-competitors"]')?.textContent).toBe("3");
+    expect(document.querySelector('[data-role="stat-competitors"]')?.textContent).toBe("2");
     expect(document.querySelector('[data-role="stat-hit"]')?.textContent).toBe("3");
-    expect(document.querySelector('[data-role="stat-exception"]')?.textContent).toBe("3");
-    expect(document.querySelector('[data-role="week-total"]')?.textContent).toContain("近 7 天合计 28 包");
+    expect(document.querySelector('[data-role="stat-exception"]')?.textContent).toBe("1");
     expect(document.querySelector('[data-role="batch-summary"]')?.textContent).toContain(`批次正常 · 批次 ${DATE}`);
-    expect(document.querySelectorAll(".wx-day")).toHaveLength(7);
-    expect(document.querySelectorAll(".wx-day.is-main")).toHaveLength(1);
+    expect(document.querySelectorAll('[data-role="timeline-day"]')).toHaveLength(1);
     expect(document.querySelector('[data-role="exceptions"]')).not.toBeNull();
 
-    const firstDay = () => document.querySelector<HTMLButtonElement>(".wx-day")?.dataset.date;
-    expect(firstDay()).toBe(addDays(DATE, -6));
-    document.querySelector<HTMLButtonElement>('[data-role="forecast-prev"]')!.click();
-    expect(firstDay()).toBe(addDays(DATE, -13));
-    expect(document.querySelector('[data-role="forecast-caption"]')?.textContent).toContain(`${addDays(DATE, -13).slice(5)} — ${addDays(DATE, -7).slice(5)}`);
-    await vi.waitFor(() => {
-      const urls = fetchMock.mock.calls.map(([input]) => String(input));
-      expect(urls.some((url) => url.includes(`start=${addDays(DATE, -13)}`) && url.includes(`end=${addDays(DATE, -7)}`))).toBe(true);
-    });
-    document.querySelector<HTMLButtonElement>('[data-role="forecast-next"]')!.click();
-    expect(firstDay()).toBe(addDays(DATE, -6));
-
     const requested = fetchMock.mock.calls.map(([input]) => String(input));
-    expect(requested.some((url) => url.includes("/api/competitor/summary?") && url.includes("date_kind=first_ad") && url.includes("group_by=team"))).toBe(true);
+    expect(requested.some((url) => url.includes("/api/competitor/summary"))).toBe(false);
+    expect(requested.some((url) => url.includes(`start=${addDays(DATE, -13)}`) && url.includes(`end=${DATE}`))).toBe(true);
     expect(requested.some((url) => url.includes(`/api/competitor/day/${DATE}?date_kind=first_ad`))).toBe(true);
-
-    const previousDate = addDays(DATE, -1);
-    document.querySelector<HTMLButtonElement>(`[data-role="forecast-day"][data-date="${previousDate}"]`)!.click();
-    await vi.waitFor(() => {
-      const urls = fetchMock.mock.calls.map(([input]) => String(input));
-      expect(urls.some((url) => url.includes("from=") && url.includes("to="))).toBe(true);
-    });
-    expect(window.location.search).toContain(`from=${previousDate}`);
-    expect(document.querySelectorAll(".wx-day.is-in-range")).toHaveLength(2);
   });
 
   it("keeps first-ad date kind while switching grouping", async () => {
@@ -402,14 +384,15 @@ describe("competitor report page", () => {
     expect(urlsBefore.some((url) => url.includes("date_kind=listing"))).toBe(false);
     expect(urlsBefore.some((url) => url.includes("date_kind=first_ad"))).toBe(true);
 
-    document.querySelector<HTMLButtonElement>('[data-role="group-by"][data-value="category"]')!.click();
-    await vi.waitFor(() => {
-      expect(document.body.textContent).toContain("游戏");
-    });
-    await vi.waitFor(() => {
-      const urls = fetchMock.mock.calls.map(([input]) => String(input));
-      expect(urls.some((url) => url.includes("date_kind=first_ad") && url.includes("group_by=category"))).toBe(true);
-    });
+    const callsBefore = fetchMock.mock.calls.length;
+    const category = document.querySelector<HTMLSelectElement>('[data-role="category-filter"]')!;
+    category.value = "游戏";
+    category.dispatchEvent(new Event("change", { bubbles: true }));
+    expect(fetchMock).toHaveBeenCalledTimes(callsBefore);
+    expect(document.body.textContent).toContain("游戏");
+    expect(document.querySelector('[data-competitor="apple:222"]')).toBeNull();
+    expect(document.querySelector('[data-competitor="apple:111"]')).not.toBeNull();
+    expect(window.location.search).toContain("category=%E6%B8%B8%E6%88%8F");
 
     document.querySelector<HTMLAnchorElement>('[data-competitor="apple:111"]')!.click();
     await vi.waitFor(() => {
@@ -628,47 +611,49 @@ describe("competitor report page", () => {
     await vi.waitFor(() => {
       expect(document.querySelector('[data-role="empty-day"]')).not.toBeNull();
     });
-    expect(document.body.textContent).toContain("这一天还没有快照");
+    expect(document.body.textContent).toContain("近 14 天没有快照");
     expect(document.querySelectorAll('[data-role="competitor-row"]')).toHaveLength(0);
   });
 
-  it("renders seven proportional forecast bars and turns a second click into a range", async () => {
-    const counts = [0, 1, 2, 4, 3, 2, 7];
-    const groups = listingGroups();
-    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+  it("shows the recent window with no date selected and filters to one day on demand", async () => {
+    const older = addDays(DATE, -1);
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
       const url = new URL(String(input), "http://localhost");
-      if (url.pathname === "/api/competitor/summary") return json(groups);
-      if (url.pathname.startsWith("/api/competitor/day/")) {
-        return json({ ...day, dateKind: "listing" });
+      if (url.pathname === "/api/competitor/days") {
+        return json({
+          days: [
+            { date: DATE, packageCount: 4, hitCount: 3, missCount: 1, batchStatus: "ok" },
+            { date: older, packageCount: 1, hitCount: 1, missCount: 0, batchStatus: "ok" },
+          ],
+        });
       }
-      return json({
-        days: counts.map((packageCount, index) => ({
-          date: addDays(DATE, index - 6),
-          packageCount,
-          hitCount: packageCount,
-          missCount: 0,
-          batchStatus: null,
-        })),
-      });
-    });
-    vi.stubGlobal("fetch", fetchMock);
-    await mountPage(`?date=${DATE}&date_kind=listing&group_by=team`);
+      if (url.pathname.startsWith("/api/competitor/day/")) {
+        const requested = decodeURIComponent(url.pathname.split("/").pop() ?? "");
+        return json(requested === older ? { ...day, date: older, packages: [gamma] } : day);
+      }
+      return json({ days: [] });
+    }));
+    await mountPage();
     await waitForRows();
 
-    const cells = Array.from(document.querySelectorAll<HTMLButtonElement>(".wx-day"));
-    expect(cells).toHaveLength(7);
-    expect(cells[0]?.querySelector<HTMLElement>(".wx-bar")?.style.height).toBe("0px");
-    expect(cells[3]?.querySelector<HTMLElement>(".wx-bar")?.style.height).toBe("64px");
-    expect(cells[6]?.querySelector<HTMLElement>(".wx-bar")?.style.height).toBe("112px");
-    expect(cells[6]?.classList.contains("is-main")).toBe(true);
+    const sections = () => document.querySelectorAll<HTMLElement>('[data-role="timeline-day"]');
+    expect(document.querySelector("h1")?.textContent).toBe("时间线");
+    expect(window.location.search).not.toContain("date=");
+    expect(sections()).toHaveLength(2);
+    expect(sections()[0]?.dataset.date).toBe(DATE);
+    expect(sections()[1]?.dataset.date).toBe(older);
 
-    cells[5]!.click();
-    await vi.waitFor(() => {
-      const urls = fetchMock.mock.calls.map(([input]) => String(input));
-      expect(urls.some((url) => url.includes("from=") && url.includes("to="))).toBe(true);
-    });
-    expect(document.querySelectorAll(".wx-day.is-in-range")).toHaveLength(2);
-    expect(window.location.search).toContain(`from=${addDays(DATE, -1)}`);
+    const input = document.querySelector<HTMLInputElement>('[data-role="date-filter"]')!;
+    input.value = older;
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    expect(sections()).toHaveLength(1);
+    expect(sections()[0]?.dataset.date).toBe(older);
+    expect(window.location.search).toContain(`date=${older}`);
+    expect(document.querySelector('[data-competitor="apple:111"]')).toBeNull();
+
+    document.querySelector<HTMLButtonElement>('[data-role="clear-date"]')!.click();
+    expect(sections()).toHaveLength(2);
+    expect(window.location.search).not.toContain("date=");
   });
 
   it("filters locally by hit or exception and maps legacy status=miss to exception", async () => {
@@ -715,23 +700,12 @@ describe("competitor report page", () => {
       screenshotLocalPaths: [],
       versions: [],
     });
-    const groups: SummaryGroup[] = [{
-      groupKey: "团队 A",
-      packageCount: 1,
-      hitCount: 0,
-      missCount: 0,
-      pendingCount: 1,
-      competitorCount: 0,
-      competitors: [],
-      missedPackages: [],
-      pendingPackages: [],
-      timeline: timeline([0, 0, 0, 0, 0, 0, 1]),
-    }];
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
       const url = new URL(String(input), "http://localhost");
-      if (url.pathname === "/api/competitor/summary") return json(groups);
       if (url.pathname.startsWith("/api/competitor/day/")) return json({ ...day, packages: [pending] });
-      return json({ days: [] });
+      return json({
+        days: [{ date: DATE, packageCount: 1, hitCount: 0, missCount: 0, batchStatus: "ok" }],
+      });
     }));
     await mountPage();
     await vi.waitFor(() => {

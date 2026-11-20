@@ -244,6 +244,36 @@ input:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
+.wx-window {
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.wx-select {
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--faint);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.wx-timeline-day .wx-group-name {
+  font-family: var(--date);
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+
+.wx-timeline-day + .wx-timeline-day {
+  margin-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
 /* ---------- stats strip ---------- */
 
 .wx-stats {
