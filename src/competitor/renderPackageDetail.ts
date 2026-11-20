@@ -2,16 +2,12 @@ import { competitorAssetUrl } from "../lib/competitorApi";
 import { createScreenshotLightbox } from "../lib/renderResults";
 import type {
   AssetStatus,
-  DateKind,
   LookupStatus,
   PackageDetail,
-  SnapshotEntry,
   SummaryCompetitor,
 } from "../../shared/competitorTypes";
-import {
-  DATE_KIND_LABEL,
-  formatShortDate,
-} from "./format";
+
+type IapEntry = { name: string; price: string };
 
 function svgIcon(paths: string, size = 14): SVGSVGElement {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -95,6 +91,25 @@ function safeExternalUrl(value: string | null): string | null {
   }
 }
 
+function dateOnly(value: string | null | undefined): string {
+  return value ? value.slice(0, 10) : "—";
+}
+
+function iapEntries(json: Record<string, unknown>): IapEntry[] {
+  if (!Array.isArray(json.iapItems)) return [];
+  return (json.iapItems as Array<{ name?: unknown; price?: unknown }>)
+    .filter((item) => typeof item?.name === "string" && item.name.trim())
+    .map((item) => ({
+      name: String(item.name).trim(),
+      price: typeof item.price === "string" ? item.price.trim() : "",
+    }));
+}
+
+function formatSize(bytes: unknown): string {
+  if (typeof bytes !== "number" || !Number.isFinite(bytes) || bytes < 0) return "—";
+  return `${(bytes / 1_000_000).toLocaleString("zh-CN", { maximumFractionDigits: 2 })} MB`;
+}
+
 function createIdentity(
   name: string,
   packageDetail: PackageDetail,
@@ -138,32 +153,10 @@ function createIdentity(
   titleRow.append(createBadge(status.kind, status.text));
   copy.append(titleRow);
 
-  const identityLine = document.createElement("p");
-  identityLine.className = "identity-line";
-  identityLine.textContent = [
-    packageDetail.packageCode,
-    packageDetail.team,
-    packageDetail.appleId !== null ? `appleId ${packageDetail.appleId}` : null,
-  ].filter(Boolean).join(" · ");
-  copy.append(identityLine);
-
-  const facts = document.createElement("p");
-  facts.className = "identity-line identity-facts";
-  const json = packageDetail.appStoreJson;
-  const price = jsonString(json, ["formattedPrice", "price"]);
-  const rating = jsonString(json, ["averageUserRating"]);
-  const iapCount = Array.isArray(json.iapItems) ? json.iapItems.length : 0;
-  facts.textContent = [
-    packageDetail.category ?? "未分类",
-    packageDetail.minimumOsVersion ? `最低 iOS ${packageDetail.minimumOsVersion}` : "未知 iOS 版本",
-    packageDetail.appVersion ? `当前版本 ${packageDetail.appVersion}` : "版本未知",
-    price,
-    rating ? `${rating} / 5` : null,
-    !isMissed && packageDetail.enrichStatus === "ok"
-      ? iapCount > 0 ? `内购 ${iapCount} 项` : "无内购"
-      : null,
-  ].filter(Boolean).join(" · ");
-  copy.append(facts);
+  const developer = document.createElement("p");
+  developer.className = "identity-developer";
+  developer.textContent = jsonString(packageDetail.appStoreJson, ["developer"]) ?? "—";
+  copy.append(developer);
 
   if (!isMissed && appStoreUrl) {
     const link = document.createElement("a");
@@ -179,61 +172,40 @@ function createIdentity(
   return surface;
 }
 
-function createPackageSwitcher(
-  competitor: SummaryCompetitor,
-  selected: string,
-  packageStatus: Map<string, LookupStatus>,
-  onSelectPackage: (code: string) => void,
-): HTMLElement {
-  const wrapper = document.createElement("div");
-  wrapper.className = "package-switcher";
-  const label = document.createElement("span");
-  label.className = "package-switcher-label";
-  label.textContent = `包（${competitor.packageCount}）`;
-  wrapper.append(label);
+function createMetricBar(packageDetail: PackageDetail, json: Record<string, unknown>): HTMLElement {
+  const versions = packageDetail.versions;
+  const latest = versions[0];
+  const earliest = versions[versions.length - 1];
+  const iapCount = iapEntries(json).length;
+  const metrics: Array<[string, string]> = [
+    ["APP ID", packageDetail.appleId !== null ? String(packageDetail.appleId) : "—"],
+    ["分类", packageDetail.category ?? "—"],
+    ["价格", jsonString(json, ["formattedPrice"]) ?? "—"],
+    ["内购", iapCount > 0 ? `${iapCount} 项` : "无"],
+    ["最近更新", latest ? dateOnly(latest.releasedAt) : "—"],
+    ["最早发布", earliest ? dateOnly(earliest.releasedAt) : dateOnly(packageDetail.listingDate)],
+  ];
 
-  const group = document.createElement("div");
-  group.className = "package-switcher-segment";
-  group.setAttribute("role", "group");
-  group.setAttribute("aria-label", "切换包");
-
-  for (const brief of competitor.packages) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = `package-chip${brief.packageCode === selected ? " is-active" : ""}`;
-    button.dataset.role = "package-switch";
-    button.dataset.package = brief.packageCode;
-    button.setAttribute("aria-pressed", String(brief.packageCode === selected));
-    button.title = brief.packageCode;
-
-    const dot = document.createElement("span");
-    const status = packageStatus.get(brief.packageCode);
-    dot.className = `status-dot ${
-      status === "bundle_not_found" ? "status-dot-miss" : status === "pending" ? "status-dot-pending" : "status-dot-hit"
-    }`;
-    dot.setAttribute("aria-hidden", "true");
+  const bar = document.createElement("div");
+  bar.className = "detail-metrics";
+  for (const [label, value] of metrics) {
+    const item = document.createElement("div");
+    item.className = "detail-metric";
+    item.dataset.role = "metric";
+    const key = document.createElement("span");
+    key.className = "detail-metric-label";
+    key.textContent = label;
     const text = document.createElement("span");
-    text.className = "package-chip-code";
-    text.textContent = brief.packageCode;
-    button.append(dot, text);
-    button.addEventListener("click", () => onSelectPackage(brief.packageCode));
-    group.append(button);
+    text.className = "detail-metric-value";
+    text.textContent = value;
+    item.append(key, text);
+    bar.append(item);
   }
-
-  wrapper.append(group);
-  return wrapper;
+  return bar;
 }
 
 function createIapSection(json: Record<string, unknown>): HTMLElement | null {
-  const items = Array.isArray(json.iapItems)
-    ? (json.iapItems as Array<{ name?: unknown; price?: unknown }>)
-        .filter((item) => typeof item?.name === "string" && item.name.trim())
-        .map((item) => ({
-          name: String(item.name).trim(),
-          price: typeof item.price === "string" ? item.price.trim() : "",
-        }))
-    : [];
-  // No IAP rows: the identity line already says 无内购, so skip the section.
+  const items = iapEntries(json);
   if (items.length === 0) return null;
 
   const section = document.createElement("section");
@@ -261,26 +233,57 @@ function createIapSection(json: Record<string, unknown>): HTMLElement | null {
   return section;
 }
 
+function createDescriptionSection(json: Record<string, unknown>): HTMLElement | null {
+  const description = jsonString(json, ["description"]);
+  if (!description) return null;
+
+  const section = document.createElement("section");
+  section.className = "detail-section description-section";
+  const title = document.createElement("h3");
+  title.className = "detail-section-title";
+  title.textContent = "应用描述";
+
+  const copy = document.createElement("div");
+  copy.className = "app-description-copy is-collapsed";
+  copy.textContent = description;
+
+  const toggle = document.createElement("button");
+  toggle.type = "button";
+  toggle.className = "detail-toggle";
+  toggle.dataset.role = "description-toggle";
+  toggle.textContent = "展开";
+  toggle.setAttribute("aria-expanded", "false");
+  toggle.hidden = true;
+  toggle.addEventListener("click", () => {
+    const collapsed = copy.classList.toggle("is-collapsed");
+    toggle.textContent = collapsed ? "展开" : "收起";
+    toggle.setAttribute("aria-expanded", String(!collapsed));
+  });
+
+  section.append(title, copy, toggle);
+  return section;
+}
+
 function createVersionHistory(versions: PackageDetail["versions"]): HTMLElement {
-  const details = document.createElement("details");
-  details.className = "version-history";
-  details.open = true;
-  const summary = document.createElement("summary");
-  summary.textContent = "版本历史（当日可见）";
-  details.append(summary);
+  const section = document.createElement("section");
+  section.className = "detail-section version-history-section";
+  const title = document.createElement("h3");
+  title.className = "detail-section-title";
+  title.textContent = "更新日志";
+  section.append(title);
 
   const list = document.createElement("div");
   list.className = "version-history-list";
   if (versions.length === 0) {
     const empty = document.createElement("p");
     empty.className = "entry-empty";
-    empty.textContent = "当日快照未记录版本历史";
+    empty.textContent = "暂无版本记录";
     list.append(empty);
   }
 
   versions.forEach((version, index) => {
     const item = document.createElement("article");
-    item.className = `version-history-item${index === 0 ? " is-current" : ""}`;
+    item.className = "version-history-item";
     const header = document.createElement("div");
     header.className = "version-history-header";
     const strong = document.createElement("strong");
@@ -293,7 +296,7 @@ function createVersionHistory(versions: PackageDetail["versions"]): HTMLElement 
     }
     const time = document.createElement("time");
     time.dateTime = version.releasedAt;
-    time.textContent = formatShortDate(version.releasedAt);
+    time.textContent = dateOnly(version.releasedAt);
     header.append(strong, time);
     item.append(header);
     if (version.notes) {
@@ -305,26 +308,20 @@ function createVersionHistory(versions: PackageDetail["versions"]): HTMLElement 
     list.append(item);
   });
 
-  details.append(list);
-  return details;
+  section.append(list);
+  return section;
 }
 
-function createScreenshotSection(name: string, paths: string[]): HTMLElement {
+function createScreenshotSection(name: string, paths: string[]): HTMLElement | null {
+  const urls = paths.map((path) => competitorAssetUrl(path)).filter((url): url is string => Boolean(url));
+  if (urls.length === 0) return null;
+
   const section = document.createElement("section");
   section.className = "detail-section";
   const title = document.createElement("h3");
   title.className = "detail-section-title";
-  title.textContent = `截图（${paths.length}）`;
+  title.textContent = `截图（${urls.length}）`;
   section.append(title);
-
-  const urls = paths.map((path) => competitorAssetUrl(path)).filter((url): url is string => Boolean(url));
-  if (urls.length === 0) {
-    const empty = document.createElement("p");
-    empty.className = "detail-placeholder";
-    empty.textContent = "该包当日没有可展示的截图";
-    section.append(empty);
-    return section;
-  }
 
   const grid = document.createElement("div");
   grid.className = "competitor-screenshot-grid";
@@ -358,81 +355,96 @@ function createScreenshotSection(name: string, paths: string[]): HTMLElement {
   return section;
 }
 
-function createHistorySection(
-  history: SnapshotEntry[] | null,
-  historyError: string | null,
-  dates: string[],
-): HTMLElement {
-  const details = document.createElement("details");
-  details.className = "version-history history-section";
-  details.open = true;
-  const summary = document.createElement("summary");
-  summary.textContent = "跨日历史（近 7 天）";
-  details.append(summary);
+function createBundleIdValue(bundleId: string): HTMLElement {
+  const wrap = document.createElement("span");
+  wrap.className = "copy-value";
+  const text = document.createElement("span");
+  text.className = "copy-value-text";
+  text.textContent = bundleId;
 
-  const list = document.createElement("div");
-  list.className = "version-history-list history-list";
-  if (historyError) {
-    const error = document.createElement("p");
-    error.className = "history-missing";
-    error.textContent = `跨日历史加载失败：${historyError}`;
-    list.append(error);
-  } else if (history === null) {
-    const loading = document.createElement("p");
-    loading.className = "entry-empty";
-    loading.textContent = "正在加载跨日历史…";
-    list.append(loading);
-  } else {
-    const byDate = new Map(history.map((entry) => [entry.targetDate, entry]));
-    for (const date of dates) {
-      const entry = byDate.get(date);
-      const row = document.createElement("div");
-      row.className = `history-row${entry ? "" : " is-missing"}`;
-      row.dataset.date = date;
-      const dateLabel = document.createElement("span");
-      dateLabel.className = "history-date";
-      dateLabel.textContent = date;
-      row.append(dateLabel);
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "detail-copy";
+  button.dataset.role = "bundle-copy";
+  button.textContent = "复制";
+  button.setAttribute("aria-label", "复制 Bundle ID");
+  button.addEventListener("click", () => {
+    const clipboard = navigator.clipboard;
+    if (!clipboard?.writeText) return;
+    void clipboard.writeText(bundleId).then(() => {
+      button.textContent = "已复制";
+      window.setTimeout(() => {
+        button.textContent = "复制";
+      }, 1200);
+    }).catch(() => undefined);
+  });
 
-      if (entry) {
-        const status = statusText(entry.lookupStatus);
-        row.append(createBadge(status.kind, status.kind === "hit" ? "命中" : status.kind === "miss" ? "未命中" : "待补全"));
-        const version = document.createElement("span");
-        version.className = "history-value";
-        version.textContent = entry.appVersion ? `v${entry.appVersion}` : "版本 —";
-        const category = document.createElement("span");
-        category.className = "history-value";
-        category.textContent = entry.category ?? "未分类";
-        row.append(version, category);
-      } else {
-        const missing = document.createElement("span");
-        missing.className = "history-missing";
-        missing.textContent = "当天未入库";
-        row.append(missing);
-      }
-      list.append(row);
-    }
-  }
+  wrap.append(text, button);
+  return wrap;
+}
 
-  details.append(list);
-  return details;
+function createPackageInfo(packageDetail: PackageDetail, json: Record<string, unknown>): HTMLElement {
+  const section = document.createElement("section");
+  section.className = "detail-section package-info";
+  const title = document.createElement("h3");
+  title.className = "detail-section-title";
+  title.textContent = "应用包信息";
+
+  const bundleId = jsonString(json, ["bundleId"]) ?? packageDetail.packageCode;
+  const latest = packageDetail.versions[0];
+  const rows: Array<[string, string | HTMLElement]> = [
+    ["开发者", jsonString(json, ["developer"]) ?? "—"],
+    ["发布日期", dateOnly(packageDetail.listingDate)],
+    ["更新日期", latest ? dateOnly(latest.releasedAt) : "—"],
+    ["Bundle ID", createBundleIdValue(bundleId)],
+    ["版本", packageDetail.appVersion ?? "—"],
+    ["大小", formatSize(json.fileSizeBytes)],
+    ["团队", packageDetail.team || "—"],
+    ["类目", packageDetail.category ?? "—"],
+    ["最低 iOS", packageDetail.minimumOsVersion ?? "—"],
+    ["源展示名", packageDetail.displayName || "—"],
+    ["图片状态", assetStatusLabel(packageDetail.assetStatus)],
+  ];
+
+  section.append(title, createInfoList(rows));
+  return section;
+}
+
+function createMissedPanel(packageDetail: PackageDetail): HTMLElement {
+  const section = document.createElement("section");
+  section.className = "detail-section package-info";
+  const title = document.createElement("h3");
+  title.className = "detail-section-title";
+  title.textContent = "源数据";
+  section.append(title, createInfoList([
+    ["团队", packageDetail.team || "—"],
+    ["类目", packageDetail.category ?? "—"],
+    ["最低 iOS", packageDetail.minimumOsVersion ?? "—"],
+    ["上架日期", packageDetail.listingDate ?? "—"],
+    ["下架日期", packageDetail.offlineDate ?? "—"],
+    ["图片状态", assetStatusLabel(packageDetail.assetStatus)],
+  ]));
+
+  const placeholder = document.createElement("div");
+  placeholder.className = "detail-placeholder-block";
+  const text = document.createElement("p");
+  text.textContent = "未命中，无 App Store 详情可展示。";
+  const link = document.createElement("a");
+  link.className = "wx-button";
+  link.href = `${import.meta.env.BASE_URL}index.html?bundle=${encodeURIComponent(packageDetail.packageCode)}`;
+  link.textContent = "到 App Store 搜索中查询此 Bundle ID";
+  placeholder.append(text, link);
+  section.append(placeholder);
+  return section;
 }
 
 export type DetailRenderOptions = {
   competitor: SummaryCompetitor;
   packageCode: string;
   packageDetail: PackageDetail | null;
-  date: string;
-  dateKind: DateKind;
-  rangeFrom?: string | null;
   groupName: string;
   loading: boolean;
   error: string | null;
-  history: SnapshotEntry[] | null;
-  historyError: string | null;
-  historyDates: string[];
-  packageStatus: Map<string, LookupStatus>;
-  onSelectPackage: (packageCode: string) => void;
   onRetry: () => void;
   onBack: () => void;
 };
@@ -446,21 +458,10 @@ export function renderPackageDetail(host: HTMLElement, options: DetailRenderOpti
     competitor,
     packageCode,
     packageDetail,
-    date,
-    dateKind,
     groupName,
     loading,
     error,
-    history,
-    historyError,
-    historyDates,
-    packageStatus,
-    onSelectPackage,
   } = options;
-
-  const contextTitleText = options.rangeFrom
-    ? `区间 ${options.rangeFrom} — ${date} · ${DATE_KIND_LABEL[dateKind]}口径`
-    : `快照 ${date} · ${DATE_KIND_LABEL[dateKind]}口径`;
 
   const wrapper = document.createElement("div");
   wrapper.className = "detail-view";
@@ -502,7 +503,7 @@ export function renderPackageDetail(host: HTMLElement, options: DetailRenderOpti
     const heading = document.createElement("h2");
     heading.textContent = "无法加载该竞品详情";
     const reason = document.createElement("p");
-    reason.textContent = `${packageCode} 在 ${date} 的快照请求失败：${error}`;
+    reason.textContent = `${packageCode} 详情请求失败：${error}`;
     const retry = document.createElement("button");
     retry.type = "button";
     retry.className = "wx-button";
@@ -518,11 +519,10 @@ export function renderPackageDetail(host: HTMLElement, options: DetailRenderOpti
   if (loading || !packageDetail) {
     const surface = document.createElement("section");
     surface.className = "identity-surface";
-    const missedStatus = packageStatus.get(packageCode) === "bundle_not_found";
     const placeholder = document.createElement("span");
-    placeholder.className = `identity-icon${missedStatus ? " identity-icon-missed" : " identity-icon-fallback"}`;
+    placeholder.className = "identity-icon identity-icon-fallback";
     placeholder.setAttribute("aria-hidden", "true");
-    placeholder.textContent = missedStatus ? "" : (competitor.name || "?").slice(0, 1).toUpperCase();
+    placeholder.textContent = (competitor.name || packageCode || "?").slice(0, 1).toUpperCase();
     surface.append(placeholder);
 
     const copy = document.createElement("div");
@@ -532,26 +532,9 @@ export function renderPackageDetail(host: HTMLElement, options: DetailRenderOpti
     const heading = document.createElement("h2");
     heading.textContent = competitor.name || packageCode;
     titleRow.append(heading, createBadge("neutral", "加载中"));
-    const line = document.createElement("p");
-    line.className = "identity-line";
-    line.textContent = packageCode;
-    copy.append(titleRow, line);
+    copy.append(titleRow);
     surface.append(copy);
     wrapper.append(surface);
-
-    const context = document.createElement("section");
-    context.className = "context-strip";
-    const contextTitle = document.createElement("p");
-    contextTitle.className = "context-title";
-    contextTitle.textContent = contextTitleText;
-    const contextPackage = document.createElement("p");
-    contextPackage.className = "context-package";
-    contextPackage.textContent = `包：${packageCode}`;
-    context.append(contextTitle, contextPackage);
-    if (competitor.packageCount > 1) {
-      context.append(createPackageSwitcher(competitor, packageCode, packageStatus, onSelectPackage));
-    }
-    wrapper.append(context);
 
     const skeleton = document.createElement("div");
     skeleton.className = "detail-skeleton";
@@ -576,78 +559,42 @@ export function renderPackageDetail(host: HTMLElement, options: DetailRenderOpti
 
   wrapper.append(createIdentity(name, packageDetail, isMissed, appStoreUrl));
 
-  const context = document.createElement("section");
-  context.className = "context-strip";
-  const contextTitle = document.createElement("p");
-  contextTitle.className = "context-title";
-  contextTitle.textContent = `快照 ${date} · ${DATE_KIND_LABEL[dateKind]}口径`;
-  context.append(contextTitle);
-  const contextPackage = document.createElement("p");
-  contextPackage.className = "context-package";
-  contextPackage.textContent = `包：${packageDetail.packageCode}`;
-  context.append(contextPackage);
-  if (competitor.packageCount > 1) {
-    context.append(createPackageSwitcher(competitor, packageCode, packageStatus, onSelectPackage));
-  }
-  wrapper.append(context);
-
   if (isMissed) {
-    const facts = createInfoList([
-      ["上架日期", packageDetail.listingDate ?? "—"],
-      ["下架日期", packageDetail.offlineDate ?? "—"],
-      ["团队", packageDetail.team],
-      ["类目", packageDetail.category ?? "—"],
-      ["最低 iOS", packageDetail.minimumOsVersion ?? "—"],
-      ["图片状态", "—"],
-    ]);
-    wrapper.append(facts);
-
-    const noDetails = document.createElement("section");
-    noDetails.className = "detail-placeholder detail-placeholder-block";
-    const noDetailsText = document.createElement("p");
-    noDetailsText.textContent = "未命中，无 App Store 详情可展示。";
-    const searchLink = document.createElement("a");
-    searchLink.className = "wx-button";
-    searchLink.href = `${import.meta.env.BASE_URL}index.html?bundle=${encodeURIComponent(packageDetail.packageCode)}`;
-    searchLink.textContent = "到 App Store 搜索中查询此 Bundle ID";
-    noDetails.append(noDetailsText, searchLink);
-    wrapper.append(noDetails);
-  } else {
-    const columns = document.createElement("div");
-    columns.className = "detail-columns";
-
-    const factsSection = document.createElement("section");
-    factsSection.className = "detail-section";
-    const factsTitle = document.createElement("h3");
-    factsTitle.className = "detail-section-title";
-    factsTitle.textContent = "当日快照";
-    const factRows: Array<[string, string | HTMLElement]> = [
-      ["上架日期", packageDetail.listingDate ?? "—"],
-      ["下架日期", packageDetail.offlineDate ?? "—"],
-      ["团队", packageDetail.team],
-      ["类目", packageDetail.category ?? "—"],
-      ["最低 iOS", packageDetail.minimumOsVersion ?? "—"],
-      ["当前版本", packageDetail.appVersion ?? "—"],
-      ["图片状态", assetStatusLabel(packageDetail.assetStatus)],
-    ];
-    if (packageDetail.enrichStatus !== "ok") {
-      factRows.push(["详情状态", createBadge("warn", "详情不完整")]);
-    }
-    factsSection.append(factsTitle, createInfoList(factRows));
-    columns.append(factsSection);
-
-    const versionsSection = document.createElement("section");
-    versionsSection.className = "detail-section";
-    versionsSection.append(createVersionHistory(packageDetail.versions));
-    columns.append(versionsSection);
-    wrapper.append(columns);
-
-    const iapSection = createIapSection(packageDetail.appStoreJson);
-    if (iapSection) wrapper.append(iapSection);
-    wrapper.append(createScreenshotSection(name, packageDetail.screenshotLocalPaths));
+    wrapper.append(createMissedPanel(packageDetail));
+    host.append(wrapper);
+    return;
   }
 
-  wrapper.append(createHistorySection(history, historyError, historyDates));
+  wrapper.append(createMetricBar(packageDetail, json));
+
+  const columns = document.createElement("div");
+  columns.className = "detail-columns";
+  const main = document.createElement("div");
+  main.className = "detail-main";
+  const aside = document.createElement("div");
+  aside.className = "detail-aside";
+
+  const screenshots = createScreenshotSection(name, packageDetail.screenshotLocalPaths);
+  if (screenshots) main.append(screenshots);
+  const iap = createIapSection(json);
+  if (iap) main.append(iap);
+  const description = createDescriptionSection(json);
+  if (description) main.append(description);
+  main.append(createVersionHistory(packageDetail.versions));
+  aside.append(createPackageInfo(packageDetail, json));
+  columns.append(main, aside);
+  wrapper.append(columns);
 
   host.append(wrapper);
+
+  // Measure after mount so the 12-line clamp can reveal the toggle only when needed.
+  host.querySelectorAll<HTMLElement>(".app-description-copy").forEach((copy) => {
+    const toggle = copy.parentElement?.querySelector<HTMLButtonElement>('[data-role="description-toggle"]');
+    if (!toggle) return;
+    const text = copy.textContent ?? "";
+    // shortcut: character count approximates 12 lines when layout is not measurable (jsdom).
+    if (text.length > 600 || text.split("\n").length > 12 || copy.scrollHeight > copy.clientHeight + 1) {
+      toggle.hidden = false;
+    }
+  });
 }

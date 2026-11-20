@@ -4,7 +4,6 @@ import {
   getCompetitorDay,
   getCompetitorDays,
   getCompetitorPackage,
-  getCompetitorPackageHistory,
   getCompetitorSummary,
   getCompetitorSummaryRange,
 } from "../lib/competitorApi";
@@ -16,7 +15,6 @@ import type {
   LookupStatus,
   PackageBrief,
   PackageDetail,
-  SnapshotEntry,
   SummaryCompetitor,
   SummaryGroup,
 } from "../../shared/competitorTypes";
@@ -113,8 +111,6 @@ let detailToken = 0;
 let detailLoading = false;
 let detailError: string | null = null;
 let detailPackage: PackageDetail | null = null;
-let detailHistory: SnapshotEntry[] | null = null;
-let detailHistoryError: string | null = null;
 let recentNote: string | null = null;
 let rangeNote: string | null = null;
 const collapsedGroups = new Set<string>();
@@ -797,10 +793,6 @@ function pickPackageCode(competitor: SummaryCompetitor): string {
     ?? "";
 }
 
-function historyDates(): string[] {
-  return Array.from({ length: 7 }, (_, index) => addDays(state.date, -index));
-}
-
 function renderDetailView(): void {
   detailView.hidden = state.view !== "detail";
   listView.hidden = state.view === "detail";
@@ -817,17 +809,9 @@ function renderDetailView(): void {
       competitor: { appleId: null, name: "", packageCount: 0, packages: [] },
       packageCode: state.packageCode ?? "",
       packageDetail: null,
-      date: state.date,
-      dateKind: state.dateKind,
-      rangeFrom: state.rangeFrom,
       groupName: "",
       loading: waitingForList,
       error: waitingForList ? null : result.dayMissing ? "该日期没有快照" : "未找到该竞品在当前分组中的数据",
-      history: null,
-      historyError: null,
-      historyDates: historyDates(),
-      packageStatus: new Map(),
-      onSelectPackage: () => undefined,
       onRetry: () => { void load(); },
       onBack: backToList,
     });
@@ -839,17 +823,9 @@ function renderDetailView(): void {
     competitor: context.competitor,
     packageCode,
     packageDetail: detailPackage,
-    date: state.date,
-    dateKind: state.dateKind,
-    rangeFrom: state.rangeFrom,
     groupName: context.groupName,
     loading: detailLoading,
     error: detailError,
-    history: detailHistory,
-    historyError: detailHistoryError,
-    historyDates: historyDates(),
-    packageStatus: packageStatusMap(),
-    onSelectPackage: selectPackage,
     onRetry: () => { void loadDetail(packageCode); },
     onBack: backToList,
   });
@@ -860,33 +836,17 @@ async function loadDetail(packageCode: string): Promise<void> {
   detailLoading = true;
   detailError = null;
   detailPackage = null;
-  detailHistory = null;
-  detailHistoryError = null;
   renderDetailView();
 
-  const dates = historyDates();
-  const from = dates[dates.length - 1] ?? state.date;
-  const [pkgResult, historyResult] = await Promise.allSettled([
-    getCompetitorPackage(packageCode),
-    getCompetitorPackageHistory(packageCode, from, state.date),
-  ]);
-  if (token !== detailToken) return;
-
+  try {
+    const pkg = await getCompetitorPackage(packageCode);
+    if (token !== detailToken) return;
+    detailPackage = pkg;
+  } catch (error) {
+    if (token !== detailToken) return;
+    detailError = error instanceof CompetitorApiError ? error.message : "详情请求失败";
+  }
   detailLoading = false;
-  if (pkgResult.status === "fulfilled") {
-    detailPackage = pkgResult.value;
-  } else {
-    detailError = pkgResult.reason instanceof CompetitorApiError
-      ? pkgResult.reason.message
-      : "详情请求失败";
-  }
-  if (historyResult.status === "fulfilled") {
-    detailHistory = historyResult.value;
-  } else {
-    detailHistoryError = historyResult.reason instanceof CompetitorApiError
-      ? historyResult.reason.message
-      : "请求失败";
-  }
   renderDetailView();
 }
 
@@ -896,15 +856,7 @@ function openDetail(key: string, packageCode: string): void {
   state.packageCode = packageCode || null;
   commit("push");
   detailPackage = null;
-  detailHistory = null;
-  detailHistoryError = null;
   renderListContent();
-  void loadDetail(packageCode);
-}
-
-function selectPackage(packageCode: string): void {
-  state.packageCode = packageCode;
-  commit("replace");
   void loadDetail(packageCode);
 }
 
@@ -925,8 +877,6 @@ async function load(): Promise<void> {
   recentNote = null;
   rangeNote = null;
   detailPackage = null;
-  detailHistory = null;
-  detailHistoryError = null;
   detailError = null;
   result = {
     day: null,

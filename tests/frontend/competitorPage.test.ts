@@ -2,9 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderPackageDetail } from "../../src/competitor/renderPackageDetail";
 import type {
   DayDetail,
-  LookupStatus,
   PackageDetail,
-  SnapshotEntry,
   SummaryGroup,
   TimelinePoint,
 } from "../../shared/competitorTypes";
@@ -42,6 +40,10 @@ function packageDetail(overrides: Partial<PackageDetail> & { packageCode: string
     appStoreJson: {
       appleId: 111,
       trackName: "Alpha App",
+      developer: "Alpha Studio",
+      bundleId: "com.alpha.ios",
+      fileSizeBytes: 3_750_000,
+      description: "Alpha 描述第一段。\n\nAlpha 描述第二段。",
       averageUserRating: 4.6,
       formattedPrice: "免费",
       iapItems: [
@@ -230,21 +232,6 @@ function listingGroups(): SummaryGroup[] {
   }];
 }
 
-function snapshots(packageCode: string): SnapshotEntry[] {
-  return [addDays(DATE, -2), DATE].map((date) => ({
-    targetDate: date,
-    team: "团队 A",
-    lookupStatus: "hit" as const,
-    enrichStatus: "ok" as const,
-    assetStatus: "ok" as const,
-    category: "游戏",
-    minimumOsVersion: "15.0",
-    appVersion: "1.0.0",
-    appStoreJson: {},
-    fetchedAt: `${date}T02:00:00.000Z`,
-  }));
-}
-
 function createFetchMock() {
   return vi.fn(async (input: string | URL | Request) => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
@@ -271,10 +258,6 @@ function createFetchMock() {
           batchStatus: "ok",
         })),
       });
-    }
-    if (path.endsWith("/history")) {
-      const packageCode = decodeURIComponent(path.split("/")[4] ?? "");
-      return json({ packageCode, snapshots: snapshots(packageCode) });
     }
     if (path.startsWith("/api/competitor/package/")) {
       const packageCode = decodeURIComponent(path.split("/")[4] ?? "");
@@ -404,12 +387,13 @@ describe("competitor report page", () => {
 
     document.querySelector<HTMLAnchorElement>('[data-competitor="apple:111"]')!.click();
     await vi.waitFor(() => {
-      expect(document.querySelector('[data-role="detail-view"]')?.textContent).toContain("上架日期口径");
+      expect(document.querySelector('[data-role="detail-view"]')?.hasAttribute("hidden")).toBe(false);
     });
-    expect(document.querySelector('[data-role="detail-view"]')?.textContent).not.toContain("投放日期口径");
+    expect(document.querySelector('[data-role="detail-view"]')?.textContent).not.toContain("日期口径");
+    expect(document.querySelector('[data-role="detail-view"]')?.textContent).not.toContain("快照");
   });
 
-  it("opens a hit package detail with screenshots, versions and missing history dates", async () => {
+  it("opens a hit package detail with the six-field metrics, description, update log and package info", async () => {
     const fetchMock = createFetchMock();
     vi.stubGlobal("fetch", fetchMock);
     await mountPage();
@@ -421,30 +405,85 @@ describe("competitor report page", () => {
       expect(document.querySelector(".competitor-screenshot-grid")).not.toBeNull();
     });
 
-    expect(document.querySelector(".identity-title-row h2")?.textContent).toBe("Alpha App");
-    expect(document.querySelector('[data-role="detail-view"]')?.textContent).toContain("投放日期口径");
-    expect(document.querySelector('[data-role="detail-view"]')?.textContent).not.toContain("上架日期口径");
-    expect(document.querySelectorAll(".competitor-screenshot-grid .screenshot")).toHaveLength(2);
-    expect(document.querySelector(".competitor-screenshot-grid img")?.getAttribute("src")).toContain(`/competitor-assets/${DATE}/com.alpha.ios/1.png`);
-    expect(document.querySelector(".version-history")?.textContent).toContain("版本历史（当日可见）");
-    expect(document.body.textContent).toContain("1.0.0");
+    const detail = document.querySelector<HTMLElement>('[data-role="detail-view"]')!;
 
-    expect(document.querySelector(".iap-section .detail-section-title")?.textContent).toBe("内购（2）");
-    const iapRows = document.querySelectorAll(".iap-row");
+    expect(detail.querySelector(".identity-title-row h2")?.textContent).toBe("Alpha App");
+    expect(detail.querySelector(".identity-developer")?.textContent).toBe("Alpha Studio");
+    const appStoreLink = detail.querySelector<HTMLAnchorElement>(".identity-link");
+    expect(appStoreLink?.textContent).toContain("在 App Store 查看");
+    expect(appStoreLink?.href).toContain("apps.apple.com/app/id111");
+
+    const metrics = Array.from(detail.querySelectorAll(".detail-metric"));
+    expect(metrics).toHaveLength(6);
+    expect(metrics[0]?.textContent).toContain("APP ID");
+    expect(metrics[0]?.textContent).toContain("111");
+    expect(metrics[1]?.textContent).toContain("游戏");
+    expect(metrics[2]?.textContent).toContain("免费");
+    expect(metrics[3]?.textContent).toContain("内购");
+    expect(metrics[3]?.textContent).toContain("2 项");
+    expect(metrics[4]?.textContent).toContain("最近更新");
+    expect(metrics[4]?.textContent).toContain("2026-11-10");
+    expect(metrics[5]?.textContent).toContain("最早发布");
+    expect(metrics[5]?.textContent).toContain("2026-11-10");
+
+    expect(detail.querySelector(".detail-section-title")?.textContent).toBe("截图（2）");
+    expect(detail.querySelectorAll(".competitor-screenshot-grid .screenshot")).toHaveLength(2);
+    expect(detail.querySelector(".competitor-screenshot-grid img")?.getAttribute("src")).toContain(`/competitor-assets/${DATE}/com.alpha.ios/1.png`);
+
+    expect(detail.querySelector(".iap-section .detail-section-title")?.textContent).toBe("内购（2）");
+    const iapRows = detail.querySelectorAll(".iap-row");
     expect(iapRows).toHaveLength(2);
     expect(iapRows[0]?.textContent).toContain("高级版");
     expect(iapRows[0]?.textContent).toContain("$4.99");
 
-    const missing = document.querySelectorAll(".history-row.is-missing");
-    expect(missing.length).toBeGreaterThan(0);
-    expect(missing[0]?.textContent).toContain("当天未入库");
+    expect(detail.querySelector(".description-section .detail-section-title")?.textContent).toBe("应用描述");
+    expect(detail.querySelector(".app-description-copy")?.textContent).toContain("Alpha 描述第一段。");
+    expect(detail.querySelector(".app-description-copy")?.textContent).toContain("Alpha 描述第二段。");
+    expect(detail.querySelector('[data-role="description-toggle"]')).not.toBeNull();
+
+    const log = detail.querySelector(".version-history-section");
+    expect(log?.querySelector(".detail-section-title")?.textContent).toBe("更新日志");
+    expect(log?.textContent).toContain("1.0.0");
+    expect(log?.textContent).toContain("当前");
+    expect(log?.textContent).toContain("2026-11-10");
+    expect(log?.textContent).toContain("修复若干问题");
+    expect(log?.querySelector("details")).toBeNull();
+
+    const packageInfo = detail.querySelector(".package-info");
+    const infoRows = Array.from(packageInfo?.querySelectorAll(".info-row") ?? []);
+    expect(infoRows).toHaveLength(11);
+    const infoText = packageInfo?.textContent ?? "";
+    expect(infoText).toContain("开发者");
+    expect(infoText).toContain("Alpha Studio");
+    expect(infoText).toContain("发布日期");
+    expect(infoText).toContain("2026-10-01");
+    expect(infoText).toContain("更新日期");
+    expect(infoText).toContain("2026-11-10");
+    expect(infoText).toContain("com.alpha.ios");
+    expect(infoText).toContain("1.0.0");
+    expect(infoText).toContain("3.75 MB");
+    expect(infoText).toContain("团队 A");
+    expect(infoText).toContain("游戏");
+    expect(infoText).toContain("15.0");
+    expect(infoText).toContain("源展示名");
+    expect(infoText).toContain("完整");
+    expect(packageInfo?.querySelector('[data-role="bundle-copy"]')).not.toBeNull();
+
+    const text = detail.textContent ?? "";
+    for (const removed of ["快照", "因投放日期", "包：", "可能不是", "昨日历史", "投放日期", "首百日期", "评分"]) {
+      expect(text).not.toContain(removed);
+    }
+
+    detail.querySelector<HTMLButtonElement>(".screenshot-trigger")!.click();
+    expect(document.querySelector<HTMLElement>(".screenshot-lightbox")?.hidden).toBe(false);
+    expect(document.querySelector(".screenshot-lightbox .lightbox-counter")?.textContent).toContain("2 张截图");
 
     const urls = fetchMock.mock.calls.map(([input]) => String(input));
     expect(urls.some((url) => url.includes("/api/competitor/package/com.alpha.ios"))).toBe(true);
-    expect(urls.some((url) => url.includes("/api/competitor/package/com.alpha.ios/history?"))).toBe(true);
+    expect(urls.some((url) => url.includes("/history?"))).toBe(false);
   });
 
-  it("shows a missed package detail without App Store screenshots or versions", async () => {
+  it("shows a missed package detail without metrics or App Store sections", async () => {
     vi.stubGlobal("fetch", createFetchMock());
     await mountPage();
     await waitForRows();
@@ -458,7 +497,13 @@ describe("competitor report page", () => {
     expect(detail?.textContent).toContain("App Store 未命中");
     expect(detail?.textContent).toContain("未命中，无 App Store 详情可展示。");
     expect(detail?.querySelector(".competitor-screenshot-grid")).toBeNull();
+    expect(detail?.querySelector(".detail-metrics")).toBeNull();
+    expect(detail?.querySelector(".iap-section")).toBeNull();
+    expect(detail?.querySelector(".description-section")).toBeNull();
+    expect(detail?.querySelector(".version-history-section")).toBeNull();
     expect(detail?.querySelector(".identity-icon-missed")).not.toBeNull();
+    expect(detail?.textContent).toContain("团队 A");
+    expect(detail?.textContent).toContain("待下载");
     expect(detail?.querySelector<HTMLAnchorElement>('a[href*="index.html?bundle=com.beta.s"]')).not.toBeNull();
   });
 
@@ -485,16 +530,9 @@ describe("competitor report page", () => {
         screenshotLocalPaths: [],
         versions: [],
       },
-      date: DATE,
-      dateKind: "first_ad",
       groupName: "团队 A",
       loading: false,
       error: null,
-      history: [],
-      historyError: null,
-      historyDates: [DATE],
-      packageStatus: new Map<string, LookupStatus>([["com.alpha.ios", "hit"]]),
-      onSelectPackage: () => undefined,
       onRetry: () => undefined,
       onBack: () => undefined,
     });
@@ -502,9 +540,10 @@ describe("competitor report page", () => {
     const text = host.textContent ?? "";
     expect(text).toContain("无需下载");
     expect(text).not.toContain("图片缺失");
+    expect(host.querySelector(".detail-metric:nth-child(6)")?.textContent).toContain("2026-10-01");
   });
 
-  it("shows 无内购 in the identity line and skips the empty IAP section", () => {
+  it("shows 无内购 in the metrics and skips the empty IAP section", () => {
     const host = document.createElement("div");
     document.body.append(host);
     renderPackageDetail(host, {
@@ -522,22 +561,17 @@ describe("competitor report page", () => {
       },
       packageCode: "com.gamma.ios",
       packageDetail: gamma,
-      date: DATE,
-      dateKind: "first_ad",
       groupName: "团队 B",
       loading: false,
       error: null,
-      history: [],
-      historyError: null,
-      historyDates: [DATE],
-      packageStatus: new Map<string, LookupStatus>([["com.gamma.ios", "hit"]]),
-      onSelectPackage: () => undefined,
       onRetry: () => undefined,
       onBack: () => undefined,
     });
 
-    expect(host.querySelector(".identity-facts")?.textContent).toContain("无内购");
-    expect(host.querySelector(".identity-line")?.textContent).toContain("appleId 222");
+    const metrics = Array.from(host.querySelectorAll(".detail-metric"));
+    expect(metrics).toHaveLength(6);
+    expect(metrics[0]?.textContent).toContain("222");
+    expect(metrics[3]?.textContent).toContain("无");
     expect(host.querySelector(".iap-section")).toBeNull();
   });
 
