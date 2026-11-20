@@ -74,7 +74,6 @@ function parseState(): PageState {
   const rawDate = params.get("date");
   const requestedDate = isDateString(rawDate) ? rawDate : yesterday;
   const date = requestedDate > yesterday ? yesterday : requestedDate;
-  const rawKind = params.get("date_kind");
   const rawGroup = params.get("group_by");
   const rawFrom = params.get("from");
   const rangeFrom = isDateString(rawFrom)
@@ -85,7 +84,7 @@ function parseState(): PageState {
   return {
     date,
     rangeFrom,
-    dateKind: rawKind === "listing" ? "listing" : "first_ad",
+    dateKind: "first_ad",
     groupBy: rawGroup === "category" || rawGroup === "ios_version" ? rawGroup : "team",
     status: parseStatus(params.get("status")),
     view: params.get("view") === "detail" ? "detail" : "list",
@@ -123,8 +122,8 @@ app.innerHTML = `
         <span>App 搜索工作台</span>
       </div>
       <nav class="wx-tabs" aria-label="主导航">
-        <a href="${import.meta.env.BASE_URL}index.html">App Store 搜索</a>
         <a href="${import.meta.env.BASE_URL}competitor.html" aria-current="page">竞品</a>
+        <a href="${import.meta.env.BASE_URL}index.html">App Store 搜索</a>
       </nav>
     </header>
 
@@ -136,13 +135,6 @@ app.innerHTML = `
           <span class="wx-tag" data-role="date-tag">昨日</span>
         </div>
         <div class="wx-controls">
-          <div class="wx-control">
-            <span class="wx-label">口径</span>
-            <div class="wx-seg" role="group" aria-label="日期口径">
-              <button type="button" data-role="date-kind" data-value="first_ad">投放日期</button>
-              <button type="button" data-role="date-kind" data-value="listing">上架日期</button>
-            </div>
-          </div>
           <div class="wx-control">
             <span class="wx-label">分组</span>
             <div class="wx-seg" role="group" aria-label="分组维度">
@@ -226,7 +218,6 @@ function urlStateParams(): URLSearchParams {
   const params = new URLSearchParams();
   params.set("date", state.date);
   if (state.rangeFrom) params.set("from", state.rangeFrom);
-  params.set("date_kind", state.dateKind);
   params.set("group_by", state.groupBy);
   params.set("status", state.status);
   return params;
@@ -304,11 +295,6 @@ function syncControls(): void {
 
   weekTotal.textContent = `近 7 天合计 ${weekDays.reduce((sum, day) => sum + day.packageCount, 0)} 包`;
 
-  app!.querySelectorAll<HTMLButtonElement>('[data-role="date-kind"]').forEach((button) => {
-    const active = button.dataset.value === state.dateKind;
-    button.classList.toggle("is-active", active);
-    button.setAttribute("aria-pressed", String(active));
-  });
   app!.querySelectorAll<HTMLButtonElement>('[data-role="group-by"]').forEach((button) => {
     const active = button.dataset.value === state.groupBy;
     button.classList.toggle("is-active", active);
@@ -702,10 +688,6 @@ function renderListContent(): void {
         ? "该区间没有符合条件的 iOS 竞品包"
         : "当天没有符合条件的 iOS 竞品包",
       actions: [
-        {
-          label: state.dateKind === "first_ad" ? "切到上架日期口径" : "切到投放日期口径",
-          role: "empty-switch-kind",
-        },
         { label: "查看前一天", role: "empty-prev-date" },
       ],
     }));
@@ -1016,12 +998,6 @@ function clearRange(): void {
   void load();
 }
 
-function setDateKind(dateKind: DateKind): void {
-  state.dateKind = dateKind;
-  commit("replace");
-  void load();
-}
-
 function setGroupBy(groupBy: GroupBy): void {
   if (state.groupBy === groupBy) return;
   state.groupBy = groupBy;
@@ -1061,9 +1037,6 @@ app.addEventListener("click", (event) => {
   if (!control) return;
 
   switch (control.dataset.role) {
-    case "date-kind":
-      setDateKind(control.dataset.value as DateKind);
-      break;
     case "group-by":
       setGroupBy(control.dataset.value as GroupBy);
       break;
@@ -1107,9 +1080,6 @@ app.addEventListener("click", (event) => {
     case "empty-prev-date":
       setDate(addDays(state.date, -1));
       break;
-    case "empty-switch-kind":
-      setDateKind(state.dateKind === "first_ad" ? "listing" : "first_ad");
-      break;
     case "empty-clear-filter":
       setStatus("all");
       break;
@@ -1148,4 +1118,5 @@ window.addEventListener("popstate", () => {
 
 syncControls();
 renderListContent();
+if (new URLSearchParams(window.location.search).has("date_kind")) commit("replace");
 void load();

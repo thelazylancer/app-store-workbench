@@ -390,16 +390,17 @@ describe("competitor report page", () => {
     expect(document.querySelectorAll(".wx-day.is-in-range")).toHaveLength(2);
   });
 
-  it("switches date kind and grouping and sends matching query parameters", async () => {
+  it("keeps first-ad date kind while switching grouping", async () => {
     const fetchMock = createFetchMock();
     vi.stubGlobal("fetch", fetchMock);
-    await mountPage();
+    await mountPage("?date_kind=listing");
     await waitForRows();
 
-    document.querySelector<HTMLButtonElement>('[data-role="date-kind"][data-value="listing"]')!.click();
-    await vi.waitFor(() => {
-      expect(document.body.textContent).toContain("上架口径组");
-    });
+    expect(document.querySelector('[data-role="date-kind"]')).toBeNull();
+    expect(document.querySelector(".wx-tabs a")?.textContent).toBe("竞品");
+    const urlsBefore = fetchMock.mock.calls.map(([input]) => String(input));
+    expect(urlsBefore.some((url) => url.includes("date_kind=listing"))).toBe(false);
+    expect(urlsBefore.some((url) => url.includes("date_kind=first_ad"))).toBe(true);
 
     document.querySelector<HTMLButtonElement>('[data-role="group-by"][data-value="category"]')!.click();
     await vi.waitFor(() => {
@@ -407,11 +408,8 @@ describe("competitor report page", () => {
     });
     await vi.waitFor(() => {
       const urls = fetchMock.mock.calls.map(([input]) => String(input));
-      expect(urls.some((url) => url.includes("date_kind=listing") && url.includes("group_by=category"))).toBe(true);
+      expect(urls.some((url) => url.includes("date_kind=first_ad") && url.includes("group_by=category"))).toBe(true);
     });
-
-    const urls = fetchMock.mock.calls.map(([input]) => String(input));
-    expect(urls.some((url) => url.includes("date_kind=listing") && url.includes("group_by=team"))).toBe(true);
 
     document.querySelector<HTMLAnchorElement>('[data-competitor="apple:111"]')!.click();
     await vi.waitFor(() => {
