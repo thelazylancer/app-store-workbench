@@ -1,25 +1,18 @@
-import express from "express";
-import { stat } from "node:fs/promises";
+import Fastify, { type FastifyInstance } from "fastify";
+import fastifyStatic from "@fastify/static";
 import path from "node:path";
-import { mapWithConcurrency } from "./lib/concurrency";
-import { createCompetitorRouter } from "./lib/competitorApi";
+import { brotliDecompressSync, gunzipSync, inflateSync } from "node:zlib";
+import { handleFrameworkError, registerErrorHandlers } from "./lib/fastifyErrors";
+import { parseExpressJson } from "./lib/expressJson";
+import { registerCompetitorRoutes } from "./routes/competitor";
+import { registerIpaDownloadRoutes } from "./routes/ipaDownload";
+import { registerSearchRoutes } from "./routes/search";
 import type { CompetitorQueryRepo } from "./lib/competitorRepo";
-import { classifyCandidates } from "./lib/matchResults";
 import type { IpaDownloadManager } from "./lib/ipaDownload";
-import { STORE_COUNTRIES } from "../shared/types";
-import type {
-  AppSearchQuery,
-  IapHints,
-  LookupCandidate,
-  MatchedApp,
-  SearchAppsRequest,
-  SearchAppsResponse,
-  SearchResult,
-  StoreCountry,
-} from "../shared/types";
+import type { IapHints, LookupCandidate, StoreCountry } from "../shared/types";
 import type { ProductPageDetails } from "./lib/productPage";
 
-type AppDependencies = {
+export type AppDependencies = {
   lookupAppById: (appleId: number, country: StoreCountry) => Promise<LookupCandidate | null>;
   lookupAppStore: (query: string, country: StoreCountry) => Promise<LookupCandidate[]>;
   lookupAppByBundleId: (bundleId: string, country: StoreCountry) => Promise<LookupCandidate | null>;
@@ -30,230 +23,70 @@ type AppDependencies = {
   competitorAssetsDir?: string;
 };
 
-const BUNDLE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,254}$/;
-const configuredSearchConcurrency = Number(process.env.SEARCH_CONCURRENCY);
-const SEARCH_CONCURRENCY = Number.isSafeInteger(configuredSearchConcurrency) && configuredSearchConcurrency > 0
-  ? configuredSearchConcurrency
-  : 3;
-
-function isSearchAppsRequest(value: unknown): value is SearchAppsRequest {
-  if (typeof value !== "object" || value === null) return false;
-  if ("queries" in value) {
-    return !("names" in value) && Array.isArray(value.queries) && value.queries.every(
-      (item: unknown) => {
-        if (typeof item !== "object" || item === null) return false;
-        const { name, bundleId } = item as { name?: unknown; bundleId?: unknown };
-        if (name !== undefined && typeof name !== "string") return false;
-        if (bundleId !== undefined && typeof bundleId !== "string") return false;
-        return (typeof name === "string" && name.trim().length > 0) ||
-          (typeof bundleId === "string" && bundleId.trim().length > 0);
-      },
-    );
+// express.json() inflates compressed bodies before parsing.
+function inflateBody(body: Buffer, encoding: unknown): Buffer {
+  switch (typeof encoding === "string" ? encoding.toLowerCase() : "") {
+    case "gzip": return gunzipSync(body);
+    case "deflate": return inflateSync(body);
+    case "br": return brotliDecompressSync(body);
+    default: return body;
   }
-  return "names" in value && Array.isArray(value.names) &&
-    value.names.every((item: unknown) => typeof item === "string");
 }
 
-function parseCountry(value: unknown): StoreCountry | null {
-  if (value === undefined) return "us";
-  if (typeof value !== "string") return null;
-  const country = value.toLowerCase();
-  return STORE_COUNTRIES.includes(country as StoreCountry) ? country as StoreCountry : null;
-}
-
-export function createApp(deps: AppDependencies) {
-  const app = express();
-
-  app.use(express.json());
-
-  app.use(
-    "/competitor-assets",
-    express.static(deps.competitorAssetsDir ?? path.resolve("data/competitor")),
-  );
-
-  app.use("/api/competitor", (_req, res, next) => {
-    if (!deps.competitorRepo) {
-      return res.status(503).json({ message: "Competitor data is unavailable" });
-    }
-    return next();
-  });
-  if (deps.competitorRepo) {
-    app.use("/api/competitor", createCompetitorRouter(deps.competitorRepo));
-  }
-
-  async function enrichApp(baseline: LookupCandidate, country: StoreCountry) {
-    const app: MatchedApp = {
-      ...baseline,
-      category: baseline.category ?? null,
-      versionHistory: baseline.versionHistory ?? [],
-      appStoreUrl: baseline.appStoreUrl.replace(
-        /^(https:\/\/apps\.apple\.com\/)[a-z]{2}\//i,
-        `$1${country}/`,
-      ),
-      iapItems: [],
-    };
-    let iapHints: IapHints;
-
-    try {
-      const pageUrl = new URL(app.appStoreUrl);
-      if (!Number.isSafeInteger(app.appleId) || !app.appleId || app.appleId <= 0
-        || pageUrl.protocol !== "https:" || pageUrl.hostname !== "apps.apple.com") {
-        return { app, iapHints: await deps.buildIapHints(null) };
-      }
-      pageUrl.searchParams.set("l", "en");
-      const productPage = await deps.fetchProductPageDetails(pageUrl.toString());
-      if (productPage.screenshotUrls.length > 0) app.screenshotUrls = productPage.screenshotUrls;
-      app.iapItems = productPage.iapItems;
-      if (productPage.versionHistory.length > 0) app.versionHistory = productPage.versionHistory;
-      iapHints = await deps.buildIapHints(country === "us" ? productPage.iapItems : null);
-    } catch {
-      iapHints = await deps.buildIapHints(null);
-    }
-
-    return { app, iapHints };
-  }
-
-  app.get("/api/app-details/:appleId", async (req, res) => {
-    const country = parseCountry(req.query.country);
-    const appleId = Number(req.params.appleId);
-    if (!country || !/^\d+$/.test(req.params.appleId) || !Number.isSafeInteger(appleId) || appleId <= 0) {
-      return res.status(400).json({ message: "A positive Apple ID and supported country are required" });
-    }
-    try {
-      const candidate = await deps.lookupAppById(appleId, country);
-      if (!candidate || candidate.appleId !== appleId) {
-        return res.status(404).json({ message: "App unavailable in this storefront" });
-      }
-      return res.json({ country, ...await enrichApp(candidate, country) });
-    } catch {
-      return res.status(502).json({ message: "App lookup failed" });
-    }
+export function createApp(deps: AppDependencies): FastifyInstance {
+  const app = Fastify({
+    logger: false,
+    bodyLimit: Number.MAX_SAFE_INTEGER, // parser-level limits below; whole-file bodies must not buffer
+    keepAliveTimeout: 5000,
+    routerOptions: { maxParamLength: 255, ignoreTrailingSlash: true, caseSensitive: false },
+    frameworkErrors: handleFrameworkError,
   });
 
-  app.post("/api/search-apps", async (req, res) => {
-    if (!isSearchAppsRequest(req.body)) {
-      return res.status(400).json({ message: "Supply queries with a nonblank name, a Bundle ID, or both, or names as an array of strings" });
-    }
-    const country = parseCountry(req.body.country);
-    if (!country) return res.status(400).json({ message: "Unsupported App Store country" });
+  registerErrorHandlers(app);
 
-    const queries: AppSearchQuery[] = req.body.queries ?? req.body.names?.map((name) => ({ name })) ?? [];
-    const results = await mapWithConcurrency(queries, SEARCH_CONCURRENCY, async ({ name: query, bundleId }) => {
-      const nameQuery = query ?? "";
-      const requestedBundleId = bundleId?.trim();
+  // express.json() limits only JSON bodies; all other content types are ignored.
+  app.addContentTypeParser(
+    "application/json",
+    { parseAs: "buffer", bodyLimit: 100 * 1024 },
+    (request, body, done) => {
       try {
-        let candidates: LookupCandidate[];
-        if (nameQuery.trim()) {
-          candidates = await deps.lookupAppStore(nameQuery, country);
-        } else {
-          const candidate = requestedBundleId
-            ? await deps.lookupAppByBundleId(requestedBundleId, country)
-            : null;
-          candidates = candidate ? [candidate] : [];
-        }
-        const result = classifyCandidates(nameQuery, candidates, requestedBundleId);
-
-        if (result.app) {
-          Object.assign(result, await enrichApp(result.app, country));
-        }
-        if (result.status === "no_match" && !requestedBundleId) {
-          result.message = `No App Store match found in ${country.toUpperCase()} store`;
-        }
-
-        return result;
-      } catch {
-        return {
-          query: nameQuery,
-          ...(requestedBundleId ? { requestedBundleId } : {}),
-          status: "search_failed",
-          app: null,
-          candidates: [],
-          alternates: [],
-          iapHints: null,
-          message: "Search failed",
-        } satisfies SearchResult;
+        const raw = Buffer.isBuffer(body) ? body : Buffer.from(body);
+        const inflated = inflateBody(raw, request.headers["content-encoding"]);
+        done(null, parseExpressJson(inflated.toString("utf8")));
+      } catch (error) {
+        const err = error as Error & { statusCode?: number };
+        err.statusCode = 400;
+        done(err);
       }
-    });
-
-    const body: SearchAppsResponse = { country, results };
-    return res.json(body);
+    },
+  );
+  // express.json() ignores non-JSON bodies. Drain them without buffering so a
+  // large body cannot grow memory; text/plain would otherwise hit Fastify's
+  // buffering default parser, so let both fall through to the wildcard.
+  app.removeContentTypeParser("text/plain");
+  app.addContentTypeParser("*", (_request, payload, done) => {
+    payload.resume();
+    payload.once("end", () => done(null, undefined));
+    payload.once("error", (error) => done(error));
   });
 
-  app.post("/api/ipa-download", (req, res) => {
-    if (!deps.ipaDownload) {
-      return res.status(503).json({ message: "IPA download is unavailable" });
+  // express.static 301s the bare directory to its slash form with a relative Location.
+  app.addHook("onRequest", (request, reply, done) => {
+    if ((request.raw.url ?? "").split("?")[0] === "/competitor-assets") {
+      reply.code(301).header("location", "/competitor-assets/").send();
+      return;
     }
-    const bundleId = typeof req.body?.bundleId === "string" ? req.body.bundleId.trim() : "";
-    if (!BUNDLE_ID_PATTERN.test(bundleId)) {
-      return res.status(400).json({ message: "A valid Bundle ID is required" });
-    }
-    return res.status(202).json(deps.ipaDownload.createJob(bundleId));
+    done();
   });
 
-  app.get("/api/ipa-download/:id", (req, res) => {
-    if (!deps.ipaDownload) {
-      return res.status(503).json({ message: "IPA download is unavailable" });
-    }
-    const job = deps.ipaDownload.getJob(req.params.id);
-    if (!job) {
-      return res.status(404).json({ message: "IPA download job not found" });
-    }
-    return res.json(job);
+  void app.register(fastifyStatic, {
+    root: deps.competitorAssetsDir ?? path.resolve("data/competitor"),
+    prefix: "/competitor-assets/",
   });
 
-  app.post("/api/ipa-download/:id/auth-code", async (req, res) => {
-    if (!deps.ipaDownload) {
-      return res.status(503).json({ message: "IPA download is unavailable" });
-    }
-    const code = typeof req.body?.code === "string" ? req.body.code.trim() : "";
-    if (!/^\d{6}$/.test(code)) {
-      return res.status(400).json({ message: "A 6-digit verification code is required" });
-    }
-    const job = deps.ipaDownload.getJob(req.params.id);
-    if (!job) {
-      return res.status(404).json({ message: "IPA download job not found" });
-    }
-    if (job.status !== "awaiting_auth_code") {
-      return res.status(409).json({ message: "This IPA download is not waiting for a verification code" });
-    }
-    const updated = await deps.ipaDownload.submitAuthCode(req.params.id, code);
-    if (!updated) {
-      return res.status(409).json({ message: "This IPA download is not waiting for a verification code" });
-    }
-    return res.status(202).json(updated);
-  });
-
-  app.delete("/api/ipa-download/:id", (req, res) => {
-    if (!deps.ipaDownload) {
-      return res.status(503).json({ message: "IPA download is unavailable" });
-    }
-    const existing = deps.ipaDownload.getJob(req.params.id);
-    if (!existing) {
-      return res.status(404).json({ message: "IPA download job not found" });
-    }
-    const cancelled = deps.ipaDownload.cancelJob(req.params.id);
-    if (!cancelled) {
-      return res.status(409).json({ message: "This IPA download has already finished" });
-    }
-    return res.status(202).json(cancelled);
-  });
-
-  app.get("/api/ipa-download/:id/file", async (req, res) => {
-    if (!deps.ipaDownload) {
-      return res.status(503).json({ message: "IPA download is unavailable" });
-    }
-    const job = deps.ipaDownload.getJob(req.params.id);
-    const filePath = job?.status === "done" ? deps.ipaDownload.getFilePath(req.params.id) : null;
-    if (!job || !filePath) {
-      return res.status(404).json({ message: "IPA file is not ready" });
-    }
-    try {
-      await stat(filePath);
-    } catch {
-      return res.status(404).json({ message: "IPA file is not available" });
-    }
-    return res.download(filePath, `${job.bundleId}.ipa`);
-  });
+  registerCompetitorRoutes(app, deps);
+  registerSearchRoutes(app, deps);
+  registerIpaDownloadRoutes(app, deps);
 
   return app;
 }

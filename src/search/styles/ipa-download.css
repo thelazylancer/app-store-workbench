@@ -1,0 +1,30 @@
+.wx-ipa-download {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.wx-ipa-download-status {
+  flex-basis: 100%;
+}
+
+.wx-ipa-auth-form {
+  display: grid;
+  gap: 16px;
+}
+
+.wx-ipa-auth-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.wx-ipa-auth-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}

@@ -1,0 +1,196 @@
+import { useState } from "react";
+import { Link } from "react-router";
+import { Badge } from "@astryxdesign/core";
+import type { PackageBrief, PackageDetail, SummaryCompetitor, SummaryGroup } from "../../shared/competitorTypes";
+import { competitorAssetUrl } from "../lib/competitorApi";
+import type { StatusFilter } from "./format";
+import { groupShown } from "./selectors";
+
+type ExceptionEntry = PackageBrief & { reason: "miss" | "pending" };
+
+export function competitorKey(competitor: SummaryCompetitor): string {
+  return competitor.appleId !== null
+    ? `apple:${competitor.appleId}`
+    : `pkg:${competitor.packages[0]?.packageCode ?? ""}`;
+}
+
+function packageLink(packageCode: string): string {
+  return `/package/${encodeURIComponent(packageCode)}`;
+}
+
+function RowIcon({
+  name,
+  localPath,
+  missed = false,
+}: {
+  name: string;
+  localPath?: string | null;
+  missed?: boolean;
+}) {
+  const [failed, setFailed] = useState(false);
+  const src = missed ? null : competitorAssetUrl(localPath);
+  if (missed || failed || !src) {
+    return (
+      <span
+        className={missed ? "wx-row-icon wx-row-icon-empty" : "wx-row-icon wx-row-icon-fallback"}
+        aria-hidden="true"
+      >
+        {missed ? null : name.slice(0, 1).toUpperCase() || "?"}
+      </span>
+    );
+  }
+  return (
+    <img
+      className="wx-row-icon"
+      src={src}
+      alt=""
+      loading="lazy"
+      decoding="async"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+function metaLine(brief: PackageBrief, facts: PackageDetail | undefined, rangeDays: number): string {
+  const bits: string[] = [];
+  if (facts?.category) bits.push(facts.category);
+  if (facts?.minimumOsVersion) bits.push(`iOS ${facts.minimumOsVersion}`);
+  if (facts?.appVersion ?? brief.appVersion) bits.push(`v${facts?.appVersion ?? brief.appVersion}`);
+  if (rangeDays === 1) {
+    bits.push(facts?.screenshotLocalPaths.length ? `${facts.screenshotLocalPaths.length} 张截图` : "");
+  }
+  return bits.filter(Boolean).join(" · ");
+}
+
+function HitRow({
+  competitor,
+  facts,
+  rangeDays,
+}: {
+  competitor: SummaryCompetitor;
+  facts: PackageDetail | undefined;
+  rangeDays: number;
+}) {
+  const firstPackage = competitor.packages[0];
+  const brief = firstPackage ?? {
+    packageCode: "",
+    displayName: competitor.name,
+    team: "",
+    appVersion: null,
+    iconLocalPath: null,
+    hasIap: false,
+    versionCount: 0,
+    earliestReleasedAt: null,
+    latestReleasedAt: null,
+  };
+  const code = firstPackage?.packageCode ?? "";
+  const dates = [
+    brief.earliestReleasedAt && `最早 ${brief.earliestReleasedAt}`,
+    brief.latestReleasedAt && `最新 ${brief.latestReleasedAt}`,
+  ].filter(Boolean);
+
+  return (
+    <Link
+      className="wx-row"
+      data-role="competitor-row"
+      data-competitor={competitorKey(competitor)}
+      data-package={code}
+      to={packageLink(code)}
+      aria-label={`查看 ${competitor.name} 的竞品详情，${competitor.packageCount} 个包`}
+    >
+      <RowIcon name={competitor.name} localPath={facts?.iconLocalPath ?? brief.iconLocalPath} />
+      <span className="wx-row-name">
+        <span className="wx-row-title">
+          <strong>{competitor.name}</strong>
+          {competitor.packageCount > 1 ? (
+            <span className="wx-count-pill" data-role="package-count">
+              {competitor.packageCount} 个包
+            </span>
+          ) : null}
+        </span>
+        {competitor.appleId !== null ? <span className="wx-row-pkg">{competitor.appleId}</span> : null}
+      </span>
+      <span className="wx-row-code">
+        <span className="wx-row-code-line">
+          {competitor.packageCount > 1 ? `${code} 等 ${competitor.packageCount} 个` : code}
+        </span>
+        {dates.length > 0 ? <span className="wx-row-dates">{dates.join(" · ")}</span> : null}
+      </span>
+      <span className="wx-row-meta">{metaLine(brief, facts, rangeDays)}</span>
+      <span className="wx-row-side">
+        {brief.hasIap ? <span className="wx-iap-pill">内购</span> : null}
+        <span className="wx-row-versions">{brief.versionCount}个版本</span>
+      </span>
+    </Link>
+  );
+}
+
+function ExceptionRow({ entry }: { entry: ExceptionEntry }) {
+  return (
+    <Link
+      className="wx-row wx-exception-row"
+      data-role="exception-row"
+      data-reason={entry.reason}
+      data-package={entry.packageCode}
+      data-competitor={`pkg:${entry.packageCode}`}
+      to={packageLink(entry.packageCode)}
+      aria-label={`查看 ${entry.displayName}，${entry.reason === "miss" ? "未命中 App Store" : "详情待补全"}`}
+    >
+      <RowIcon name={entry.displayName} localPath={entry.iconLocalPath} missed={entry.reason === "miss"} />
+      <span className="wx-row-name">{entry.displayName}</span>
+      <span className="wx-row-code">{entry.packageCode}</span>
+      <span className="wx-row-meta">{entry.appVersion ? `v${entry.appVersion}` : "—"}</span>
+      <span className="wx-row-side">
+        {entry.reason === "pending" ? <span className="wx-exception-strip" aria-hidden="true" /> : null}
+        <Badge
+          variant={entry.reason === "miss" ? "wx-miss" : "wx-pending"}
+          label={entry.reason === "miss" ? "App Store 未命中" : "待补全"}
+        />
+      </span>
+    </Link>
+  );
+}
+
+export function TeamBlock({
+  group,
+  packages,
+  status,
+  rangeDays,
+}: {
+  group: SummaryGroup;
+  packages: Map<string, PackageDetail>;
+  status: StatusFilter;
+  rangeDays: number;
+}) {
+  const hits = status === "exception"
+    ? []
+    : [...group.competitors].sort((a, b) => a.name.localeCompare(b.name, "zh"));
+  const exceptions: ExceptionEntry[] = status === "hit"
+    ? []
+    : [
+        ...group.missedPackages.map((brief) => ({ ...brief, reason: "miss" as const })),
+        ...group.pendingPackages.map((brief) => ({ ...brief, reason: "pending" as const })),
+      ].sort((a, b) => a.packageCode.localeCompare(b.packageCode));
+  const shown = groupShown(group, status);
+  if (shown === 0) return null;
+
+  return (
+    <section className="wx-team-block" data-team={group.groupKey} data-packages={shown}>
+      <div className="wx-team-line" data-role="team-line">
+        <span className="wx-team-name">{group.groupKey}</span>
+        <span className="wx-team-n">{shown} 包</span>
+      </div>
+      <div className="wx-rows">
+        {hits.map((competitor) => {
+          const facts = competitor.packages
+            .map((brief) => packages.get(brief.packageCode))
+            .find((detail) => detail !== undefined);
+          return <HitRow key={competitorKey(competitor)} competitor={competitor} facts={facts} rangeDays={rangeDays} />;
+        })}
+        {exceptions.map((entry) => (
+          <ExceptionRow key={entry.packageCode} entry={entry} />
+        ))}
+      </div>
+    </section>
+  );
+}

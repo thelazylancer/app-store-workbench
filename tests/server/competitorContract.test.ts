@@ -1,6 +1,6 @@
 import request from "supertest";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createApp } from "../../server/app";
+import { createTestApp } from "./createTestApp";
 import type { CompetitorQueryRepo } from "../../server/lib/competitorRepo";
 import {
   getCompetitorDay,
@@ -37,13 +37,13 @@ function emptyRepo(): CompetitorQueryRepo {
 }
 
 /**
- * Sends the browser client's relative fetch calls through the real Express
+ * Sends the browser client's relative fetch calls through the real Fastify
  * router, so a param-name or path mismatch fails here instead of in the page.
  */
-function stubFetchToApp(app: ReturnType<typeof createApp>): void {
+function stubFetchToApp(app: Awaited<ReturnType<typeof createTestApp>>): void {
   vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
     const url = new URL(String(input), "http://workbench.local");
-    const response = await request(app).get(`${url.pathname}${url.search}`);
+    const response = await request(app.server).get(`${url.pathname}${url.search}`);
     return new Response(JSON.stringify(response.body ?? null), {
       status: response.status,
       headers: { "content-type": "application/json" },
@@ -137,7 +137,7 @@ describe("competitor front-end/server contract", () => {
     repo.listDays = vi.fn(async () => [daySummary]);
     repo.getPackage = vi.fn(async () => pkg);
     repo.getPackageHistory = vi.fn(async () => [snapshot]);
-    stubFetchToApp(createApp({ ...baseDeps, competitorRepo: repo }));
+    stubFetchToApp(await createTestApp({ ...baseDeps, competitorRepo: repo }));
 
     await expect(getCompetitorSummary("2026-11-18", "listing", "ios_version")).resolves.toEqual([group]);
     expect(repo.getSummary).toHaveBeenLastCalledWith("2026-11-18", "listing", "ios_version");
@@ -165,7 +165,7 @@ describe("competitor front-end/server contract", () => {
     const repo = emptyRepo();
     repo.getPackage = vi.fn(async () => pkg);
     repo.getPackageHistory = vi.fn(async () => []);
-    stubFetchToApp(createApp({ ...baseDeps, competitorRepo: repo }));
+    stubFetchToApp(await createTestApp({ ...baseDeps, competitorRepo: repo }));
 
     await getCompetitorPackage("com.example_team.app-hd");
     expect(repo.getPackage).toHaveBeenLastCalledWith("com.example_team.app-hd");
@@ -175,12 +175,12 @@ describe("competitor front-end/server contract", () => {
   });
 
   it("maps the server's 404 and 503 responses to typed client errors", async () => {
-    stubFetchToApp(createApp({ ...baseDeps, competitorRepo: emptyRepo() }));
+    stubFetchToApp(await createTestApp({ ...baseDeps, competitorRepo: emptyRepo() }));
     await expect(getCompetitorDay("2026-11-18", "first_ad")).rejects.toMatchObject({ status: 404 });
     await expect(getCompetitorPackage("com.example.missing")).rejects.toMatchObject({ status: 404 });
 
     vi.unstubAllGlobals();
-    stubFetchToApp(createApp(baseDeps));
+    stubFetchToApp(await createTestApp(baseDeps));
     await expect(getCompetitorSummary("2026-11-18", "first_ad", "team")).rejects.toMatchObject({
       status: 503,
       message: expect.stringContaining("未配置数据库"),

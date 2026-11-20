@@ -1,0 +1,259 @@
+.inspector-body {
+  min-width: 0;
+  padding: 24px 0 32px 24px;
+}
+
+.inspector {
+  min-width: 0;
+  display: grid;
+  gap: 16px;
+}
+
+.query-context {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.query-label {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.query-label strong {
+  color: var(--color-text-primary);
+}
+
+.query-verdict {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-secondary);
+  font-family: var(--font-family-code);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+}
+
+.wx-inspector-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.wx-inspector-meta {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.wx-viewing-label {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.wx-inspector-heading-row {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.wx-app-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: color-mix(in srgb, var(--color-text-primary) 8%, transparent);
+}
+
+.wx-inspector-heading-copy {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.wx-inspector-heading-copy h3 {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.wx-developer {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.wx-fact-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.wx-fact-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 2px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-family: var(--font-family-code);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.wx-detail-section {
+  display: grid;
+  gap: 10px;
+}
+
+.wx-detail-section h4,
+.wx-detail-section h5 {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.wx-detail-section-subtle {
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.wx-info-list {
+  display: grid;
+}
+
+.wx-info-row {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 12px;
+  padding: 6px 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.wx-info-row:first-child {
+  border-top: 0;
+}
+
+.wx-info-row-label {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.wx-info-row-value {
+  min-width: 0;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.wx-identifier-text {
+  font-family: var(--font-family-code);
+  font-variant-numeric: tabular-nums;
+}
+
+.wx-inspector-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.primary-link,
+.secondary-link {
+  text-decoration: none;
+}
+
+.primary-link {
+  color: var(--color-text-accent);
+  font-weight: 600;
+}
+
+.secondary-link {
+  color: var(--color-text-secondary);
+}
+
+.primary-link:hover,
+.secondary-link:hover {
+  color: var(--color-text-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.wx-description-block {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
+
+.wx-description {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.wx-description.is-clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.wx-text-toggle {
+  min-height: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-text-accent);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.wx-text-toggle:hover {
+  background: transparent;
+  color: var(--color-text-primary);
+}
+
+@media (max-width: 840px) {
+  .inspector-body {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .wx-inspector-top {
+    display: grid;
+  }
+}
+
+@media (max-width: 640px) {
+  .wx-inspector-heading-row {
+    grid-template-columns: 56px minmax(0, 1fr);
+  }
+
+  .wx-app-icon {
+    width: 56px;
+    height: 56px;
+  }
+}

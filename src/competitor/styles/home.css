@@ -1,0 +1,214 @@
+/* 竞品日报 — page frame, controls, stats and states. */
+.wx-report {
+  width: min(1440px, 100%);
+  min-height: calc(100vh - 54px);
+  margin: 0 auto;
+  padding: 0 32px;
+  display: flex;
+  flex-direction: column;
+  color: var(--color-text-primary);
+}
+
+.wx-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px;
+  padding: 22px 0 18px;
+  flex-wrap: wrap;
+}
+
+.wx-title {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  min-width: 0;
+}
+
+.wx-title-h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.wx-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: flex-end;
+}
+
+.wx-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.wx-team-tabs {
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 0 16px;
+}
+
+.wx-stats {
+  display: flex;
+  align-items: center;
+  padding: 0 0 16px;
+}
+
+.wx-stat {
+  padding: 0 26px;
+  border-left: 1px solid var(--color-border);
+}
+
+.wx-stat:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.wx-stat-value {
+  display: block;
+  font-family: var(--font-family-code);
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.wx-stat-hit .wx-stat-value {
+  color: var(--color-text-info);
+}
+
+.wx-stat-exception .wx-stat-value {
+  color: var(--color-text-warning);
+}
+
+.wx-filter-note {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: 0 0 8px;
+}
+
+.wx-exception-banner {
+  margin: 0 0 10px;
+  padding: 8px 12px;
+  border-left: 1px solid var(--color-border-warning);
+  color: var(--color-text-warning);
+  font-size: 12px;
+}
+
+.wx-body {
+  flex: 1;
+  min-width: 0;
+  padding-top: 6px;
+}
+
+.wx-empty {
+  max-width: 760px;
+  padding: 30px 0 36px;
+  border-top: 1px solid var(--color-border);
+}
+
+.wx-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.wx-error {
+  max-width: 760px;
+  padding: 30px 0 36px;
+  border-top: 1px solid var(--color-border);
+}
+
+.wx-error-title {
+  margin: 0 0 10px;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.wx-error-reason {
+  font-family: var(--font-family-code);
+  font-size: 12px;
+}
+
+.wx-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.wx-skeleton-label {
+  margin: 0 0 8px;
+  color: var(--color-text-secondary);
+  font-family: var(--font-family-code);
+  font-size: 12px;
+}
+
+.wx-foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  margin-top: auto;
+  padding: 8px 0;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-family: var(--font-family-code);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.wx-foot-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.wx-batch-dot {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-text-primary);
+}
+
+@media (max-width: 1180px) {
+  .wx-report {
+    padding: 0 24px;
+  }
+
+  .wx-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .wx-controls {
+    width: 100%;
+  }
+}
+
+@media (max-width: 840px) {
+  .wx-report {
+    padding: 0 16px;
+  }
+
+  .wx-stats {
+    flex-wrap: wrap;
+    gap: 10px 0;
+  }
+
+  .wx-stat {
+    padding: 0 16px;
+  }
+}

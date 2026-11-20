@@ -1,6 +1,8 @@
 import type { DateKind, GroupBy } from "../../shared/competitorTypes";
+import type { StatusFilter } from "../lib/reportDate";
 
-export type StatusFilter = "all" | "hit" | "exception";
+export { addDays, daySpan, isDateString, todayUtc, yesterdayUtc } from "../lib/reportDate";
+export type { StatusFilter } from "../lib/reportDate";
 
 export const DATE_KIND_LABEL: Record<DateKind, string> = {
   first_ad: "投放日期",
@@ -14,34 +16,6 @@ export const GROUP_BY_LABEL: Record<GroupBy, string> = {
 };
 
 const WEEKDAY_LABEL = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
-
-export function todayUtc(now = new Date()): string {
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
-    .toISOString()
-    .slice(0, 10);
-}
-
-/** Default report date: yesterday in UTC, matching the backend sync target. */
-export function yesterdayUtc(now = new Date()): string {
-  return addDays(todayUtc(now), -1);
-}
-
-export function addDays(date: string, delta: number): string {
-  const value = new Date(`${date}T00:00:00Z`);
-  value.setUTCDate(value.getUTCDate() + delta);
-  return value.toISOString().slice(0, 10);
-}
-
-export function isDateString(value: string | null | undefined): value is string {
-  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const parsed = new Date(`${value}T00:00:00Z`);
-  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
-}
-
-/** Inclusive day span, e.g. 2026-11-01 → 2026-11-01 is 1. */
-export function daySpan(from: string, to: string): number {
-  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1;
-}
 
 export function formatMonthDay(value: string): string {
   return value.slice(5);

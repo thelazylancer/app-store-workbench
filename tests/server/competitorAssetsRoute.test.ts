@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import request from "supertest";
 import { afterEach, describe, expect, it } from "vitest";
-import { createApp } from "../../server/app";
+import { createTestApp } from "./createTestApp";
 
 const dirs: string[] = [];
 
@@ -20,7 +20,7 @@ afterEach(async () => {
 });
 
 function appFor(root: string) {
-  return createApp({
+  return createTestApp({
     lookupAppById: async () => null,
     lookupAppStore: async () => [],
     lookupAppByBundleId: async () => null,
@@ -36,13 +36,13 @@ describe("GET /competitor-assets", () => {
     const dir = path.join(root, "2026-11-18", "com.example.app");
     await mkdir(dir, { recursive: true });
     await writeFile(path.join(dir, "icon.png"), "icon-bytes");
-    const app = appFor(root);
+    const app = await appFor(root);
 
-    const icon = await request(app).get("/competitor-assets/2026-11-18/com.example.app/icon.png");
+    const icon = await request(app.server).get("/competitor-assets/2026-11-18/com.example.app/icon.png");
     expect(icon.status).toBe(200);
     expect(icon.body.toString()).toBe("icon-bytes");
 
-    expect((await request(app).get("/competitor-assets/2026-11-18/com.example.app/missing.png")).status).toBe(404);
-    expect((await request(app).get("/competitor-assets/%2e%2e/%2e%2e/package.json")).status).toBe(404);
+    expect((await request(app.server).get("/competitor-assets/2026-11-18/com.example.app/missing.png")).status).toBe(404);
+    expect((await request(app.server).get("/competitor-assets/%2e%2e/%2e%2e/package.json")).status).toBe(404);
   });
 });

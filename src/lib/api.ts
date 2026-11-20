@@ -36,7 +36,7 @@ export async function startIpaDownload(bundleId: string): Promise<IpaDownloadJob
     },
     body: JSON.stringify({ bundleId }),
   });
-  if (!response.ok) throw new Error("IPA download request failed");
+  if (!response.ok) throw Object.assign(new Error("IPA download request failed"), { status: response.status });
   return (await response.json()) as IpaDownloadJob;
 }
 

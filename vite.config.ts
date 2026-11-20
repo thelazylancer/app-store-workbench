@@ -1,16 +1,8 @@
-import { resolve } from "node:path";
+import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-  build: {
-    rollupOptions: {
-      input: {
-        main: resolve(process.cwd(), "index.html"),
-        search: resolve(process.cwd(), "search.html"),
-        competitor: resolve(process.cwd(), "competitor.html"),
-      },
-    },
-  },
+  plugins: [react()],
   test: {
     environment: "jsdom",
   },

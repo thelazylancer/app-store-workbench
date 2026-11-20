@@ -1,0 +1,162 @@
+.wx-search-page {
+  min-width: 0;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 32px;
+}
+
+.wx-workspace-grid {
+  min-width: 0;
+  display: grid;
+  gap: 0;
+}
+
+.wx-search-composer {
+  min-width: 0;
+}
+
+.wx-composer-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  min-height: 44px;
+  padding: 10px 0;
+  cursor: pointer;
+  list-style: none;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.wx-composer-summary::-webkit-details-marker {
+  display: none;
+}
+
+.wx-composer-context {
+  min-width: 0;
+  color: var(--color-text-secondary);
+  font-family: var(--font-family-code);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.wx-region {
+  color: var(--color-text-secondary);
+  font-family: var(--font-family-code);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.wx-composer-edit,
+.wx-composer-collapse {
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: var(--color-text-accent);
+  font-weight: 600;
+}
+
+.wx-search-composer[open] .wx-composer-edit {
+  display: none;
+}
+
+.wx-search-composer:not([open]) .wx-composer-collapse {
+  display: none;
+}
+
+.wx-rail-card {
+  display: grid;
+  gap: 12px;
+  padding: 16px 0;
+}
+
+.wx-composer-bar {
+  display: grid;
+  grid-template-columns: minmax(168px, 200px) minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+}
+
+.wx-query-inputs,
+.wx-query-rows {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.wx-query-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 8px;
+}
+
+.wx-query-row.has-remove {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 42px;
+}
+
+.wx-query-field {
+  min-width: 0;
+}
+
+.wx-query-add {
+  justify-self: start;
+}
+
+.wx-query-error {
+  margin: 0;
+  color: var(--color-text-error);
+  font-size: 12px;
+}
+
+.wx-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wx-query-remove {
+  width: 42px;
+}
+
+@media (max-width: 1180px) {
+  .wx-search-page {
+    padding: 24px;
+  }
+}
+
+@media (max-width: 959px) {
+  .wx-composer-bar {
+    grid-template-columns: minmax(148px, 168px) minmax(0, 1fr) auto;
+  }
+}
+
+@media (max-width: 840px) {
+  .wx-search-page {
+    padding: 16px;
+  }
+
+  .wx-composer-bar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .wx-query-row,
+  .wx-query-row.has-remove {
+    grid-template-columns: minmax(0, 1fr) 42px;
+  }
+
+  .wx-query-name-field,
+  .wx-query-row:not(.has-remove) .wx-query-bundle-field {
+    grid-column: 1 / -1;
+  }
+
+  .wx-actions {
+    flex-wrap: wrap;
+  }
+}

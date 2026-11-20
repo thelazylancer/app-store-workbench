@@ -1,0 +1,17 @@
+.wx-app-main {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 32px;
+}
+
+@media (max-width: 1180px) {
+  .wx-app-main {
+    padding: 24px;
+  }
+}
+
+@media (max-width: 840px) {
+  .wx-app-main {
+    padding: 16px;
+  }
+}

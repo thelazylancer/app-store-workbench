@@ -14,7 +14,7 @@ export function initMotion(root: ParentNode, mode: "empty" | "results" = "result
   const resultsSummary = root.querySelector(".results-summary");
   const rows = root.querySelectorAll(".result-row");
   const inspector = root.querySelector(".inspector");
-  const screenshots = root.querySelectorAll(".screenshot");
+  const screenshots = root.querySelectorAll(".wx-screenshot");
 
   if (filterBar && mode === "results") {
     gsap.fromTo(filterBar, { y: 3 }, { y: 0, duration: 0.14, ease: "power1.out", overwrite: "auto" });

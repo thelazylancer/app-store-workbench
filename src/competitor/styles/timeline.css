@@ -1,0 +1,48 @@
+/* 竞品日报 — one vertical spine, one immutable block per date. */
+.wx-tl-day {
+  position: relative;
+  margin: 0 0 8px 7px;
+  padding: 0 0 8px 18px;
+  border-left: 1px solid var(--color-border);
+}
+
+.wx-tl-date {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 14px 0 2px;
+}
+
+.wx-tl-date::before {
+  content: "";
+  position: absolute;
+  left: -4px;
+  width: 7px;
+  height: 7px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--color-text-primary);
+}
+
+.wx-tl-when {
+  font-family: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.wx-tl-n {
+  color: var(--color-text-secondary);
+  font-family: var(--font-family-code);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 840px) {
+  .wx-tl-day {
+    margin-left: 4px;
+    padding-left: 14px;
+  }
+}

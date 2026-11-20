@@ -1,6 +1,6 @@
 import request from "supertest";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createApp } from "../../server/app";
+import { createTestApp } from "./createTestApp";
 import type { CompetitorQueryRepo } from "../../server/lib/competitorRepo";
 import type { DateKind, DayDetail, PackageDetail } from "../../shared/competitorTypes";
 
@@ -58,7 +58,7 @@ describe("competitor query API", () => {
   });
 
   it("reports unavailability when no repository is configured", async () => {
-    const app = createApp(baseDeps);
+    const app = await createTestApp(baseDeps);
     for (const path of [
       "/api/competitor/days?start=2026-11-01&end=2026-11-18",
       "/api/competitor/summary?date=2026-11-18",
@@ -66,7 +66,7 @@ describe("competitor query API", () => {
       "/api/competitor/package/com.example.app",
       "/api/competitor/batch/2026-11-18",
     ]) {
-      const response = await request(app).get(path);
+      const response = await request(app.server).get(path);
       expect(response.status, path).toBe(503);
     }
   });
@@ -79,7 +79,7 @@ describe("competitor query API", () => {
     repo.getPackageHistory = vi.fn(repo.getPackageHistory);
     repo.getSummary = vi.fn(repo.getSummary);
     repo.getBatch = vi.fn(repo.getBatch);
-    const app = createApp({ ...baseDeps, competitorRepo: repo });
+    const app = await createTestApp({ ...baseDeps, competitorRepo: repo });
 
     for (const path of [
       "/api/competitor/days",
@@ -104,7 +104,7 @@ describe("competitor query API", () => {
       "/api/competitor/package/bad%20id",
       "/api/competitor/batch/2026-13-01",
     ]) {
-      expect((await request(app).get(path)).status, path).toBe(400);
+      expect((await request(app.server).get(path)).status, path).toBe(400);
     }
     expect(repo.listDays).not.toHaveBeenCalled();
     expect(repo.getDay).not.toHaveBeenCalled();
@@ -120,10 +120,10 @@ describe("competitor query API", () => {
       ...packageDetail(), displayName: dateKind === "listing" ? "Listed" : "Advertised",
     }));
     repo.getDay = getDay;
-    const app = createApp({ ...baseDeps, competitorRepo: repo });
+    const app = await createTestApp({ ...baseDeps, competitorRepo: repo });
 
-    const firstAd = await request(app).get("/api/competitor/day/2026-11-18");
-    const listing = await request(app).get("/api/competitor/day/2026-11-18?date_kind=listing");
+    const firstAd = await request(app.server).get("/api/competitor/day/2026-11-18");
+    const listing = await request(app.server).get("/api/competitor/day/2026-11-18?date_kind=listing");
 
     expect(getDay.mock.calls).toEqual([
       ["2026-11-18", "first_ad"],
@@ -140,28 +140,28 @@ describe("competitor query API", () => {
     const repo = emptyRepo();
     repo.listDays = async () => [];
     repo.getDay = async (date, dateKind) => day(date, dateKind);
-    const app = createApp({ ...baseDeps, competitorRepo: repo });
+    const app = await createTestApp({ ...baseDeps, competitorRepo: repo });
 
-    const days = await request(app).get("/api/competitor/days?start=2026-11-01&end=2026-11-18");
+    const days = await request(app.server).get("/api/competitor/days?start=2026-11-01&end=2026-11-18");
     expect(days.status).toBe(200);
     expect(days.body).toEqual({ days: [] });
 
-    const partialDay = await request(app).get("/api/competitor/day/2026-11-18");
+    const partialDay = await request(app.server).get("/api/competitor/day/2026-11-18");
     expect(partialDay.status).toBe(200);
     expect(partialDay.body.batch).toBeNull();
     expect(partialDay.body.packages).toHaveLength(1);
 
-    expect((await request(app).get("/api/competitor/package/com.example.missing")).status).toBe(404);
-    expect((await request(app).get("/api/competitor/batch/2026-11-18")).status).toBe(404);
+    expect((await request(app.server).get("/api/competitor/package/com.example.missing")).status).toBe(404);
+    expect((await request(app.server).get("/api/competitor/batch/2026-11-18")).status).toBe(404);
   });
 
   it("returns package assets and never exposes source credentials", async () => {
     vi.stubEnv("FIRST_DELIVERY_API_KEY", "super-secret-key");
     const repo = emptyRepo();
     repo.getPackage = async () => packageDetail();
-    const app = createApp({ ...baseDeps, competitorRepo: repo });
+    const app = await createTestApp({ ...baseDeps, competitorRepo: repo });
 
-    const response = await request(app).get("/api/competitor/package/com.example.app");
+    const response = await request(app.server).get("/api/competitor/package/com.example.app");
 
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({
@@ -205,16 +205,16 @@ describe("competitor query API", () => {
     };
     const repo = emptyRepo();
     repo.getSummary = vi.fn(async () => [group]);
-    const app = createApp({ ...baseDeps, competitorRepo: repo });
+    const app = await createTestApp({ ...baseDeps, competitorRepo: repo });
 
-    const defaults = await request(app).get("/api/competitor/summary?date=2026-11-18");
+    const defaults = await request(app.server).get("/api/competitor/summary?date=2026-11-18");
     expect(defaults.status).toBe(200);
     expect(defaults.body).toMatchObject({
       date: "2026-11-18", dateKind: "first_ad", groupBy: "team", pendingCount: 0, groups: [group],
     });
     expect(repo.getSummary).toHaveBeenNthCalledWith(1, "2026-11-18", "first_ad", "team");
 
-    const custom = await request(app)
+    const custom = await request(app.server)
       .get("/api/competitor/summary?date=2026-11-18&date_kind=listing&group_by=ios_version");
     expect(custom.status).toBe(200);
     expect(custom.body).toMatchObject({ dateKind: "listing", groupBy: "ios_version" });
@@ -224,9 +224,9 @@ describe("competitor query API", () => {
   it("supports inclusive from/to ranges and forwards them to the repository", async () => {
     const repo = emptyRepo();
     repo.getSummary = vi.fn(async () => []);
-    const app = createApp({ ...baseDeps, competitorRepo: repo });
+    const app = await createTestApp({ ...baseDeps, competitorRepo: repo });
 
-    const response = await request(app)
+    const response = await request(app.server)
       .get("/api/competitor/summary?from=2026-11-01&to=2026-11-18&date_kind=listing&group_by=category");
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({
@@ -235,7 +235,7 @@ describe("competitor query API", () => {
     });
     expect(repo.getSummary).toHaveBeenCalledWith("2026-11-18", "listing", "category", "2026-11-01");
 
-    const max = await request(app).get("/api/competitor/summary?from=2026-11-01&to=2026-12-01");
+    const max = await request(app.server).get("/api/competitor/summary?from=2026-11-01&to=2026-12-01");
     expect(max.status).toBe(200);
     expect(repo.getSummary).toHaveBeenLastCalledWith("2026-12-01", "first_ad", "team", "2026-11-01");
   });
@@ -255,9 +255,9 @@ describe("competitor query API", () => {
     });
     const repo = emptyRepo();
     repo.getSummary = vi.fn(async () => [group("Alpha", 1), group("Beta", 2)]);
-    const app = createApp({ ...baseDeps, competitorRepo: repo });
+    const app = await createTestApp({ ...baseDeps, competitorRepo: repo });
 
-    const response = await request(app).get("/api/competitor/summary?date=2026-11-18");
+    const response = await request(app.server).get("/api/competitor/summary?date=2026-11-18");
 
     expect(response.status).toBe(200);
     expect(response.body.pendingCount).toBe(3);
@@ -280,9 +280,9 @@ describe("competitor query API", () => {
         fetchedAt: "2026-11-18T02:00:00.000Z",
       },
     ]);
-    const app = createApp({ ...baseDeps, competitorRepo: repo });
+    const app = await createTestApp({ ...baseDeps, competitorRepo: repo });
 
-    const response = await request(app)
+    const response = await request(app.server)
       .get("/api/competitor/package/com.example.app/history?from=2026-11-17&to=2026-11-18");
     expect(response.status).toBe(200);
     expect(response.body.packageCode).toBe("com.example.app");
@@ -291,7 +291,7 @@ describe("competitor query API", () => {
     expect(repo.getPackageHistory).toHaveBeenCalledWith("com.example.app", "2026-11-17", "2026-11-18");
 
     repo.getPackageHistory = async () => [];
-    const empty = await request(app)
+    const empty = await request(app.server)
       .get("/api/competitor/package/com.example.app/history?from=2026-12-01&to=2026-12-02");
     expect(empty.status).toBe(200);
     expect(empty.body).toEqual({ packageCode: "com.example.app", snapshots: [] });
@@ -300,7 +300,7 @@ describe("competitor query API", () => {
   it("rejects malformed history ranges before querying", async () => {
     const repo = emptyRepo();
     repo.getPackageHistory = vi.fn(repo.getPackageHistory);
-    const app = createApp({ ...baseDeps, competitorRepo: repo });
+    const app = await createTestApp({ ...baseDeps, competitorRepo: repo });
 
     for (const path of [
       "/api/competitor/package/com.example.app/history",
@@ -309,7 +309,7 @@ describe("competitor query API", () => {
       "/api/competitor/package/com.example.app/history?from=2026-02-30&to=2026-03-01",
       "/api/competitor/package/-bad/history?from=2026-11-01&to=2026-11-18",
     ]) {
-      expect((await request(app).get(path)).status, path).toBe(400);
+      expect((await request(app.server).get(path)).status, path).toBe(400);
     }
     expect(repo.getPackageHistory).not.toHaveBeenCalled();
   });
@@ -317,9 +317,9 @@ describe("competitor query API", () => {
   it("hides repository failure details behind a generic 500", async () => {
     const repo = emptyRepo();
     repo.getPackage = async () => { throw new Error("password=leak"); };
-    const app = createApp({ ...baseDeps, competitorRepo: repo });
+    const app = await createTestApp({ ...baseDeps, competitorRepo: repo });
 
-    const response = await request(app).get("/api/competitor/package/com.example.app");
+    const response = await request(app.server).get("/api/competitor/package/com.example.app");
     expect(response.status).toBe(500);
     expect(response.body).toEqual({ message: "Competitor query failed" });
   });
