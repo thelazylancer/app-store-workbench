@@ -11,7 +11,6 @@ import type {
 import {
   DATE_KIND_LABEL,
   formatShortDate,
-  formatDateTime,
 } from "./format";
 
 function svgIcon(paths: string, size = 14): SVGSVGElement {
@@ -141,16 +140,29 @@ function createIdentity(
 
   const identityLine = document.createElement("p");
   identityLine.className = "identity-line";
-  identityLine.textContent = `${packageDetail.packageCode} · ${packageDetail.team}`;
+  identityLine.textContent = [
+    packageDetail.packageCode,
+    packageDetail.team,
+    packageDetail.appleId !== null ? `appleId ${packageDetail.appleId}` : null,
+  ].filter(Boolean).join(" · ");
   copy.append(identityLine);
 
   const facts = document.createElement("p");
   facts.className = "identity-line identity-facts";
+  const json = packageDetail.appStoreJson;
+  const price = jsonString(json, ["formattedPrice", "price"]);
+  const rating = jsonString(json, ["averageUserRating"]);
+  const iapCount = Array.isArray(json.iapItems) ? json.iapItems.length : 0;
   facts.textContent = [
     packageDetail.category ?? "未分类",
     packageDetail.minimumOsVersion ? `最低 iOS ${packageDetail.minimumOsVersion}` : "未知 iOS 版本",
     packageDetail.appVersion ? `当前版本 ${packageDetail.appVersion}` : "版本未知",
-  ].join(" · ");
+    price,
+    rating ? `${rating} / 5` : null,
+    !isMissed && packageDetail.enrichStatus === "ok"
+      ? iapCount > 0 ? `内购 ${iapCount} 项` : "无内购"
+      : null,
+  ].filter(Boolean).join(" · ");
   copy.append(facts);
 
   if (!isMissed && appStoreUrl) {
@@ -212,7 +224,7 @@ function createPackageSwitcher(
   return wrapper;
 }
 
-function createIapSection(json: Record<string, unknown>): HTMLElement {
+function createIapSection(json: Record<string, unknown>): HTMLElement | null {
   const items = Array.isArray(json.iapItems)
     ? (json.iapItems as Array<{ name?: unknown; price?: unknown }>)
         .filter((item) => typeof item?.name === "string" && item.name.trim())
@@ -221,21 +233,15 @@ function createIapSection(json: Record<string, unknown>): HTMLElement {
           price: typeof item.price === "string" ? item.price.trim() : "",
         }))
     : [];
+  // No IAP rows: the identity line already says 无内购, so skip the section.
+  if (items.length === 0) return null;
 
   const section = document.createElement("section");
   section.className = "detail-section iap-section";
   const title = document.createElement("h3");
   title.className = "detail-section-title";
-  title.textContent = items.length > 0 ? `内购（${items.length}）` : "内购";
+  title.textContent = `内购（${items.length}）`;
   section.append(title);
-
-  if (items.length === 0) {
-    const empty = document.createElement("p");
-    empty.className = "entry-empty";
-    empty.textContent = "当日快照未记录内购项";
-    section.append(empty);
-    return section;
-  }
 
   const list = document.createElement("div");
   list.className = "iap-list";
@@ -412,49 +418,6 @@ function createHistorySection(
   return details;
 }
 
-function createMetadata(packageDetail: PackageDetail): HTMLElement {
-  const section = document.createElement("section");
-  section.className = "detail-section";
-  const title = document.createElement("h3");
-  title.className = "detail-section-title";
-  title.textContent = "源数据 / App Store";
-  section.append(title);
-
-  const grid = document.createElement("div");
-  grid.className = "detail-meta-grid";
-
-  const source = createInfoList([
-    ["源展示名", packageDetail.displayName],
-    ["Bundle ID", packageDetail.packageCode],
-    ["抓取时间", formatDateTime(packageDetail.fetchedAt)],
-  ]);
-
-  const json = packageDetail.appStoreJson;
-  const price = jsonString(json, ["formattedPrice", "price"]);
-  const rating = jsonString(json, ["averageUserRating"]);
-  const storeUrl = safeExternalUrl(jsonString(json, ["trackViewUrl", "appStoreUrl"]))
-    ?? (packageDetail.appleId !== null ? `https://apps.apple.com/app/id${packageDetail.appleId}` : null);
-
-  const storeRows: Array<[string, string | HTMLElement]> = [
-    ["appleId", packageDetail.appleId !== null ? String(packageDetail.appleId) : "—"],
-    ["价格 / 评分", [price ?? "—", rating ? `${rating} / 5` : null].filter(Boolean).join(" · ")],
-  ];
-  if (storeUrl) {
-    const link = document.createElement("a");
-    link.className = "primary-link";
-    link.href = storeUrl;
-    link.target = "_blank";
-    link.rel = "noreferrer";
-    link.append("apps.apple.com", svgIcon('<path d="M5 11L11 5M6 5h5v5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/>', 12));
-    storeRows.push(["App Store", link]);
-  }
-  const store = createInfoList(storeRows);
-
-  grid.append(source, store);
-  section.append(grid);
-  return section;
-}
-
 export type DetailRenderOptions = {
   competitor: SummaryCompetitor;
   packageCode: string;
@@ -498,9 +461,6 @@ export function renderPackageDetail(host: HTMLElement, options: DetailRenderOpti
   const contextTitleText = options.rangeFrom
     ? `区间 ${options.rangeFrom} — ${date} · ${DATE_KIND_LABEL[dateKind]}口径`
     : `快照 ${date} · ${DATE_KIND_LABEL[dateKind]}口径`;
-  const contextReasonText = options.rangeFrom
-    ? `因在${DATE_KIND_LABEL[dateKind]} ${options.rangeFrom} — ${date} 区间出现。`
-    : `因${DATE_KIND_LABEL[dateKind]} = ${date} 出现在当日列表。`;
 
   const wrapper = document.createElement("div");
   wrapper.className = "detail-view";
@@ -584,13 +544,10 @@ export function renderPackageDetail(host: HTMLElement, options: DetailRenderOpti
     const contextTitle = document.createElement("p");
     contextTitle.className = "context-title";
     contextTitle.textContent = contextTitleText;
-    const contextReason = document.createElement("p");
-    contextReason.className = "context-reason";
-    contextReason.textContent = contextReasonText;
     const contextPackage = document.createElement("p");
     contextPackage.className = "context-package";
     contextPackage.textContent = `包：${packageCode}`;
-    context.append(contextTitle, contextReason, contextPackage);
+    context.append(contextTitle, contextPackage);
     if (competitor.packageCount > 1) {
       context.append(createPackageSwitcher(competitor, packageCode, packageStatus, onSelectPackage));
     }
@@ -624,10 +581,7 @@ export function renderPackageDetail(host: HTMLElement, options: DetailRenderOpti
   const contextTitle = document.createElement("p");
   contextTitle.className = "context-title";
   contextTitle.textContent = `快照 ${date} · ${DATE_KIND_LABEL[dateKind]}口径`;
-  const contextReason = document.createElement("p");
-  contextReason.className = "context-reason";
-  contextReason.textContent = `因${DATE_KIND_LABEL[dateKind]} = ${date} 出现在当日列表。`;
-  context.append(contextTitle, contextReason);
+  context.append(contextTitle);
   const contextPackage = document.createElement("p");
   contextPackage.className = "context-package";
   contextPackage.textContent = `包：${packageDetail.packageCode}`;
@@ -636,21 +590,10 @@ export function renderPackageDetail(host: HTMLElement, options: DetailRenderOpti
     context.append(createPackageSwitcher(competitor, packageCode, packageStatus, onSelectPackage));
   }
   wrapper.append(context);
-  wrapper.append(createMetadata(packageDetail));
-
-  if (packageDetail.fetchedAt.slice(0, 10) !== date) {
-    const warning = document.createElement("p");
-    warning.className = "snapshot-warning";
-    warning.dataset.role = "snapshot-warning";
-    warning.textContent = `该包主记录更新于 ${formatDateTime(packageDetail.fetchedAt)}，可能不是 ${date} 的原始快照。`;
-    wrapper.append(warning);
-  }
 
   if (isMissed) {
     const facts = createInfoList([
-      ["投放日期", packageDetail.firstAdDate],
       ["上架日期", packageDetail.listingDate ?? "—"],
-      ["首百日期", packageDetail.first100Date ?? "—"],
       ["下架日期", packageDetail.offlineDate ?? "—"],
       ["团队", packageDetail.team],
       ["类目", packageDetail.category ?? "—"],
@@ -679,9 +622,7 @@ export function renderPackageDetail(host: HTMLElement, options: DetailRenderOpti
     factsTitle.className = "detail-section-title";
     factsTitle.textContent = "当日快照";
     const factRows: Array<[string, string | HTMLElement]> = [
-      ["投放日期", packageDetail.firstAdDate],
       ["上架日期", packageDetail.listingDate ?? "—"],
-      ["首百日期", packageDetail.first100Date ?? "—"],
       ["下架日期", packageDetail.offlineDate ?? "—"],
       ["团队", packageDetail.team],
       ["类目", packageDetail.category ?? "—"],
@@ -701,7 +642,8 @@ export function renderPackageDetail(host: HTMLElement, options: DetailRenderOpti
     columns.append(versionsSection);
     wrapper.append(columns);
 
-    wrapper.append(createIapSection(packageDetail.appStoreJson));
+    const iapSection = createIapSection(packageDetail.appStoreJson);
+    if (iapSection) wrapper.append(iapSection);
     wrapper.append(createScreenshotSection(name, packageDetail.screenshotLocalPaths));
   }
 

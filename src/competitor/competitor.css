@@ -1083,14 +1083,6 @@ input:focus-visible {
   background: var(--amber);
 }
 
-.snapshot-warning {
-  margin: 0;
-  padding: 8px 0 8px 12px;
-  border-left: 1px solid var(--amber);
-  color: var(--amber-text);
-  font-size: 12px;
-}
-
 .detail-error {
   max-width: 720px;
   padding: 28px 0;
@@ -1380,12 +1372,6 @@ input:focus-visible {
   line-height: 1.5;
 }
 
-.detail-meta-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 28px;
-}
-
 .detail-skeleton {
   padding-top: 16px;
 }
@@ -1614,8 +1600,7 @@ body.is-lightbox-open {
     grid-row: 1;
   }
 
-  .detail-columns,
-  .detail-meta-grid {
+  .detail-columns {
     grid-template-columns: 1fr;
     gap: 16px;
   }

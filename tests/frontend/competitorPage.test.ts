@@ -504,6 +504,43 @@ describe("competitor report page", () => {
     expect(text).not.toContain("图片缺失");
   });
 
+  it("shows 无内购 in the identity line and skips the empty IAP section", () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    renderPackageDetail(host, {
+      competitor: {
+        appleId: 222,
+        name: "Gamma App",
+        packageCount: 1,
+        packages: [{
+          packageCode: "com.gamma.ios",
+          displayName: "Gamma Source",
+          team: "团队 B",
+          appVersion: "1.0.0",
+          iconLocalPath: gamma.iconLocalPath,
+        }],
+      },
+      packageCode: "com.gamma.ios",
+      packageDetail: gamma,
+      date: DATE,
+      dateKind: "first_ad",
+      groupName: "团队 B",
+      loading: false,
+      error: null,
+      history: [],
+      historyError: null,
+      historyDates: [DATE],
+      packageStatus: new Map<string, LookupStatus>([["com.gamma.ios", "hit"]]),
+      onSelectPackage: () => undefined,
+      onRetry: () => undefined,
+      onBack: () => undefined,
+    });
+
+    expect(host.querySelector(".identity-facts")?.textContent).toContain("无内购");
+    expect(host.querySelector(".identity-line")?.textContent).toContain("appleId 222");
+    expect(host.querySelector(".iap-section")).toBeNull();
+  });
+
   it("shows a specific empty state when the API reports no snapshot for the date", async () => {
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
       const url = String(input);
