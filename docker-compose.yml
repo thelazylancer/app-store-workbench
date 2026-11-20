@@ -35,6 +35,7 @@ services:
       # Competitor daily snapshot feature.
       DATABASE_URL: postgres://aurora:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/appstore_workbench
       FIRST_DELIVERY_API_URL: ${FIRST_DELIVERY_API_URL:-}
+      FIRST_DELIVERY_API_BASE_URL: ${FIRST_DELIVERY_API_BASE_URL:-}
       FIRST_DELIVERY_API_KEY: ${FIRST_DELIVERY_API_KEY:-}
       COMPETITOR_DATA_DIR: /app/data/competitor
       # Keep the emulator runtime/SAP asset cache on the persisted volume.

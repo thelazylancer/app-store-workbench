@@ -120,6 +120,18 @@ describe("fetchFirstDeliveryPackages", () => {
     expect(parsed.searchParams.get("start_day")).toBe("2026-11-18");
   });
 
+  it("falls back to the base URL when the URL env var is empty", async () => {
+    vi.stubEnv("FIRST_DELIVERY_API_URL", "");
+    vi.stubEnv("FIRST_DELIVERY_API_BASE_URL", "http://base.test:8001");
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(pageBody([]));
+
+    await fetchFirstDeliveryPackages("2026-11-18");
+
+    const parsed = new URL(String(vi.mocked(fetch).mock.calls[0]![0]));
+    expect(parsed.origin).toBe("http://base.test:8001");
+    expect(parsed.pathname).toBe("/api/v1/first-delivery-packages");
+  });
+
   it("rejects missing credentials and upstream failures without leaking them", async () => {
     vi.stubEnv("FIRST_DELIVERY_API_KEY", "");
     await expect(fetchFirstDeliveryPackages("2026-11-18"))

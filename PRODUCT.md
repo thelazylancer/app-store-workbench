@@ -55,7 +55,7 @@ web
 ## Evidence on Hand
 
 - `docs/PRD-competitor-app-store.md`：已确认的需求、数据表和 API 设计。
-- 内部首投包接口：`http://192.168.110.17:8001/api/v1/first-delivery-packages`
+- 内部首投包接口：`http://192.168.110.61:8001/api/v1/first-delivery-packages`
 - Apple iTunes Lookup：`https://itunes.apple.com/lookup?bundleId=...&country=...&entity=software`
 - 当前工程已实现 App Store 搜索、详情补全和 IPA 下载能力。
 

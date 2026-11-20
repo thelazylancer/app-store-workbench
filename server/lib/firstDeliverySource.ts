@@ -18,7 +18,7 @@ export type SourceBatch = {
   rows: SourcePackageRow[];
 };
 
-const DEFAULT_API_URL = "http://192.168.110.17:8001/api/v1/first-delivery-packages";
+const DEFAULT_API_URL = "http://192.168.110.61:8001/api/v1/first-delivery-packages";
 const REQUEST_TIMEOUT_MS = 30_000;
 const EXCLUDED_TEAM = "灵蜂";
 const PAGE_SIZE = 200;
@@ -104,9 +104,10 @@ async function fetchPage(
   const apiKey = process.env.FIRST_DELIVERY_API_KEY?.trim();
   if (!apiKey) throw new Error("FIRST_DELIVERY_API_KEY is not configured");
 
-  const baseUrl = process.env.FIRST_DELIVERY_API_URL
-    ?? process.env.FIRST_DELIVERY_API_BASE_URL
-    ?? DEFAULT_API_URL;
+  // Compose may inject empty strings for unset vars, so empty counts as missing.
+  const baseUrl = process.env.FIRST_DELIVERY_API_URL?.trim()
+    || process.env.FIRST_DELIVERY_API_BASE_URL?.trim()
+    || DEFAULT_API_URL;
   const url = new URL(endpoint(baseUrl));
   url.searchParams.set("start_day", targetDate);
   url.searchParams.set("end_day", targetDate);
