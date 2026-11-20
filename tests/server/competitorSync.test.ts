@@ -56,7 +56,7 @@ function fakeDownload() {
 
 describe("computeTargetDate", () => {
   it("returns yesterday in UTC regardless of local time", () => {
-    expect(computeTargetDate(new Date("2026-11-19T09:30:00+08:00"))).toBe("2026-11-18");
+    expect(computeTargetDate(new Date("2026-11-19T08:00:00+08:00"))).toBe("2026-11-18");
     expect(computeTargetDate(new Date("2026-01-01T00:00:00Z"))).toBe("2025-12-31");
   });
 });

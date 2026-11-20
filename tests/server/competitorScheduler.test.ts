@@ -1,3 +1,4 @@
+import cron from "node-cron";
 import { describe, expect, it, vi } from "vitest";
 import {
   computeTargetDate,
@@ -24,7 +25,7 @@ function fakeDeps(): CompetitorSyncDeps {
 
 describe("competitor scheduler", () => {
   it("computes the previous UTC day from a fixed clock", () => {
-    expect(computeTargetDate(new Date("2026-11-19T09:30:00+08:00"))).toBe("2026-11-18");
+    expect(computeTargetDate(new Date("2026-11-19T08:00:00+08:00"))).toBe("2026-11-18");
   });
 
   it("runs the sync entry point once with yesterday's target date", async () => {
@@ -34,7 +35,7 @@ describe("competitor scheduler", () => {
     }));
 
     await runScheduledCompetitorSync(deps, {
-      now: () => new Date("2026-11-19T01:30:00Z"),
+      now: () => new Date("2026-11-19T00:00:00Z"),
       run,
     });
 
@@ -48,7 +49,7 @@ describe("competitor scheduler", () => {
     const log = vi.fn();
 
     await expect(runScheduledCompetitorSync(deps, {
-      now: () => new Date("2026-11-19T01:30:00Z"),
+      now: () => new Date("2026-11-19T00:00:00Z"),
       run,
       log,
     })).resolves.toBeUndefined();
@@ -57,13 +58,15 @@ describe("competitor scheduler", () => {
     const retry = vi.fn(async () => ({
       targetDate: "2026-11-19", total: 0, hit: 0, missed: 0, failed: 0, status: "ok" as const,
     }));
-    await runScheduledCompetitorSync(deps, { now: () => new Date("2026-11-20T01:30:00Z"), run: retry, log });
+    await runScheduledCompetitorSync(deps, { now: () => new Date("2026-11-20T00:00:00Z"), run: retry, log });
     expect(retry).toHaveBeenCalledWith("2026-11-19", deps);
   });
 
-  it("registers the 09:30 Asia/Shanghai schedule", () => {
+  it("registers the 08:00 Asia/Shanghai schedule", () => {
+    const schedule = vi.spyOn(cron, "schedule");
     const task = startCompetitorScheduler(fakeDeps());
-    expect(task).toBeDefined();
+    expect(schedule).toHaveBeenCalledWith("0 8 * * *", expect.any(Function), { timezone: "Asia/Shanghai" });
     task.stop();
+    schedule.mockRestore();
   });
 });

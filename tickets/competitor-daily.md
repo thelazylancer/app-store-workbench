@@ -232,7 +232,7 @@ C-02 ─> C-12 每日定时任务（完整流水线就绪后上线：<── C-0
 
 **范围**（新建：`server/lib/competitorScheduler.ts`、`tests/server/competitorScheduler.test.ts`；扩展 `server/index.ts`、`.env.example`；依赖 `node-cron`）：
 
-- `startCompetitorScheduler(deps)`：`cron.schedule("30 9 * * *", run, { timezone: "Asia/Shanghai" })`；`run` = `syncCompetitorDay(computeTargetDate(now), deps)`。
+- `startCompetitorScheduler(deps)`：`cron.schedule("0 8 * * *", run, { timezone: "Asia/Shanghai" })`；`run` = `syncCompetitorDay(computeTargetDate(now), deps)`。
 - `server/index.ts`：`DATABASE_URL` 存在时启动迁移 + 调度器；任务异常记日志不上抛、不重启进程。
 - 服务器当天未运行导致的缺数由 `scripts/competitor-sync.ts --date` 回填（ARCH 风险 3），不在调度器内做补跑。
 

@@ -3,14 +3,14 @@
 依据：`docs/PRD-competitor-app-store.md`（第 9 节表结构、第 10 节 API 为最终决定）、`PRODUCT.md`。
 本文只做模块划分与接口设计，不含业务实现代码。
 
-已拍板决策（不再讨论替代方案）：本机 PostgreSQL（`DATABASE_URL`，端口 5433）；`package_code` 主键；索引只建 `first_ad_date / listing_date / target_date / team`；首版包含 `competitor_snapshots` 快照表（每天每包一条，缺记录按"当天未入库"处理）；node-cron 进程内调度（北京时间 09:30）；国家范围 us/cn/hk/tw/jp/sg/gb/au 只作后端抓取；源密钥只在 `.env`；vitest + supertest 测试。
+已拍板决策（不再讨论替代方案）：本机 PostgreSQL（`DATABASE_URL`，端口 5433）；`package_code` 主键；索引只建 `first_ad_date / listing_date / target_date / team`；首版包含 `competitor_snapshots` 快照表（每天每包一条，缺记录按"当天未入库"处理）；node-cron 进程内调度（北京时间 08:00）；国家范围 us/cn/hk/tw/jp/sg/gb/au 只作后端抓取；源密钥只在 `.env`；vitest + supertest 测试。
 
 ---
 
 ## 1. 数据流总览
 
 ```text
-每日 09:30 (Asia/Shanghai, node-cron)
+每日 08:00 (Asia/Shanghai, node-cron)
   └─ targetDate = 昨天 (UTC)
      └─ syncCompetitorDay(targetDate)            server/lib/competitorSync.ts
         ├─ fetchFirstDeliveryPackages(targetDate) server/lib/firstDeliverySource.ts
@@ -252,7 +252,7 @@ type AppDependencies = {
 
 ```ts
 export function startCompetitorScheduler(deps: CompetitorSyncDeps): void;
-// node-cron: cron.schedule("30 9 * * *", run, { timezone: "Asia/Shanghai" })
+// node-cron: cron.schedule("0 8 * * *", run, { timezone: "Asia/Shanghai" })
 // run = syncCompetitorDay(computeTargetDate(new Date()), deps)，异常只记日志
 ```
 
