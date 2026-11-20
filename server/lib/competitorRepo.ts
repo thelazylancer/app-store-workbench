@@ -184,6 +184,19 @@ async function assetsByPackage(
   return result;
 }
 
+function releaseRange(versionHistory: unknown) {
+  const dates = (Array.isArray(versionHistory) ? versionHistory : [])
+    .map((entry) => (typeof entry === "object" && entry !== null ? (entry as Record<string, unknown>).releasedAt : undefined))
+    .filter((value): value is string => typeof value === "string")
+    .map((value) => value.slice(0, 10))
+    .filter((value) => /^\d{4}-\d{2}-\d{2}$/.test(value))
+    .sort();
+  return {
+    earliestReleasedAt: dates[0] ?? null,
+    latestReleasedAt: dates.at(-1) ?? null,
+  };
+}
+
 function packageBrief(row: PackageRowResult, assets: AssetRow[]): PackageBrief {
   const base = toPackageBase(row);
   const { iapItems, versionHistory } = base.appStoreJson;
@@ -195,6 +208,7 @@ function packageBrief(row: PackageRowResult, assets: AssetRow[]): PackageBrief {
     iconLocalPath: assets.find((asset) => asset.type === "icon")?.localPath ?? null,
     hasIap: Array.isArray(iapItems) && iapItems.length > 0,
     versionCount: Array.isArray(versionHistory) ? versionHistory.length : 0,
+    ...releaseRange(versionHistory),
   };
 }
 

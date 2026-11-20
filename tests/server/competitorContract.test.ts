@@ -101,6 +101,8 @@ const group: SummaryGroup = {
       iconLocalPath: "2026-11-18/com.example.app/icon.png",
       hasIap: true,
       versionCount: 2,
+      earliestReleasedAt: null,
+      latestReleasedAt: null,
     }],
   }],
   missedPackages: [],

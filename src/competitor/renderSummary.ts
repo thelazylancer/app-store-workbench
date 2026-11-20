@@ -111,6 +111,8 @@ function createHitRow(
     iconLocalPath: null,
     hasIap: false,
     versionCount: 0,
+    earliestReleasedAt: null,
+    latestReleasedAt: null,
   };
   const firstPackage = competitor.packages[0];
   const row = document.createElement("a");
@@ -128,26 +130,38 @@ function createHitRow(
 
   const nameCell = document.createElement("span");
   nameCell.className = "wx-row-name";
+  const nameLine = document.createElement("span");
+  nameLine.className = "wx-row-title";
   const name = document.createElement("strong");
   name.textContent = competitor.name;
-  nameCell.append(name);
+  nameLine.append(name);
   if (competitor.packageCount > 1) {
     const pill = document.createElement("span");
     pill.className = "wx-count-pill";
     pill.dataset.role = "package-count";
     pill.textContent = `${competitor.packageCount} 个包`;
-    nameCell.append(pill);
+    nameLine.append(pill);
   }
+  nameCell.append(nameLine);
+  appendText(nameCell, "span", "wx-row-pkg", brief.displayName);
   row.append(nameCell);
 
+  const codeCell = document.createElement("span");
+  codeCell.className = "wx-row-code";
   appendText(
-    row,
+    codeCell,
     "span",
-    "wx-row-code",
+    "wx-row-code-line",
     competitor.packageCount > 1
       ? `${firstPackage?.packageCode ?? ""} 等 ${competitor.packageCount} 个`
       : firstPackage?.packageCode ?? "",
   );
+  const { earliestReleasedAt, latestReleasedAt } = brief;
+  if (earliestReleasedAt || latestReleasedAt) {
+    const dates = [earliestReleasedAt && `最早 ${earliestReleasedAt}`, latestReleasedAt && `最新 ${latestReleasedAt}`];
+    appendText(codeCell, "span", "wx-row-dates", dates.filter(Boolean).join(" · "));
+  }
+  row.append(codeCell);
   appendText(row, "span", "wx-row-meta", metaLine(
     brief,
     facts,
@@ -158,8 +172,8 @@ function createHitRow(
 
   const side = document.createElement("span");
   side.className = "wx-row-side";
-  appendText(side, "span", "wx-row-versions", `共 ${brief.versionCount} 个版本`);
   if (brief.hasIap) appendText(side, "span", "wx-iap-pill", "内购");
+  appendText(side, "span", "wx-row-versions", `${brief.versionCount}个版本`);
   row.append(side);
   return row;
 }

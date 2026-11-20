@@ -382,7 +382,10 @@ describeDb("competitor repository writes", () => {
       appStoreJson: {
         appleId: 1001, name: "Shared App",
         iapItems: [{ name: "Pack", price: "$4.99" }],
-        versionHistory: [{ version: "1.0" }, { version: "0.9" }],
+        versionHistory: [
+          { version: "1.0", releasedAt: "2026-11-02T00:00:00.000Z" },
+          { version: "0.9", releasedAt: "2026-10-01" },
+        ],
       },
     });
     await repo.upsertPackage({
@@ -414,9 +417,19 @@ describeDb("competitor repository writes", () => {
       { hasIap: true, versionCount: 2 },
       { hasIap: false, versionCount: 0 },
     ]);
+    expect(teamA.competitors[0]!.packages.map(({ earliestReleasedAt, latestReleasedAt }) => ({
+      earliestReleasedAt, latestReleasedAt,
+    }))).toEqual([
+      { earliestReleasedAt: "2026-10-01", latestReleasedAt: "2026-11-02" },
+      { earliestReleasedAt: null, latestReleasedAt: null },
+    ]);
     expect(teamA.missedPackages.map((item) => item.packageCode)).toEqual([codeC]);
-    expect(teamA.missedPackages[0]).toMatchObject({ hasIap: false, versionCount: 0 });
-    expect(byTeam[1]!.competitors[0]!.packages[0]).toMatchObject({ hasIap: false, versionCount: 1 });
+    expect(teamA.missedPackages[0]).toMatchObject({
+      hasIap: false, versionCount: 0, earliestReleasedAt: null, latestReleasedAt: null,
+    });
+    expect(byTeam[1]!.competitors[0]!.packages[0]).toMatchObject({
+      hasIap: false, versionCount: 1, earliestReleasedAt: null, latestReleasedAt: null,
+    });
     expect(teamA.hitCount + teamA.missCount).toBe(teamA.packageCount);
     expect(teamA.timeline).toHaveLength(7);
     expect(teamA.timeline.at(-1)).toMatchObject({
@@ -505,6 +518,7 @@ describeDb("competitor repository writes", () => {
     expect(group.pendingPackages).toEqual([{
       packageCode: pendingCode, displayName: "iOS-Range-Pending", team,
       appVersion: null, iconLocalPath: iconPath, hasIap: false, versionCount: 0,
+      earliestReleasedAt: null, latestReleasedAt: null,
     }]);
     expect(group.timeline).toEqual([
       { date: from, packageCount: 1, hitCount: 0, missCount: 0, batchStatus: null },

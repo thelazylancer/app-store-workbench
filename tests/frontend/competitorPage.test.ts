@@ -133,8 +133,8 @@ function teamGroups(): SummaryGroup[] {
         name: "Alpha App",
         packageCount: 2,
         packages: [
-          { packageCode: "com.alpha.ios", displayName: "Alpha Source", team: "团队 A", appVersion: "1.0.0", iconLocalPath: alpha.iconLocalPath, hasIap: true, versionCount: 3 },
-          { packageCode: "com.alpha.ios.hd", displayName: "Alpha HD", team: "团队 A", appVersion: "1.0.0", iconLocalPath: alphaHd.iconLocalPath, hasIap: false, versionCount: 1 },
+          { packageCode: "com.alpha.ios", displayName: "Alpha Source", team: "团队 A", appVersion: "1.0.0", iconLocalPath: alpha.iconLocalPath, hasIap: true, versionCount: 3, earliestReleasedAt: "2026-10-01", latestReleasedAt: "2026-11-10" },
+          { packageCode: "com.alpha.ios.hd", displayName: "Alpha HD", team: "团队 A", appVersion: "1.0.0", iconLocalPath: alphaHd.iconLocalPath, hasIap: false, versionCount: 1, earliestReleasedAt: null, latestReleasedAt: null },
         ],
       }],
       missedPackages: [{
@@ -145,6 +145,8 @@ function teamGroups(): SummaryGroup[] {
         iconLocalPath: null,
         hasIap: false,
         versionCount: 0,
+        earliestReleasedAt: null,
+        latestReleasedAt: null,
       }],
       pendingPackages: [],
       timeline: timeline(),
@@ -168,6 +170,8 @@ function teamGroups(): SummaryGroup[] {
           iconLocalPath: gamma.iconLocalPath,
           hasIap: false,
           versionCount: 0,
+          earliestReleasedAt: null,
+          latestReleasedAt: null,
         }],
       }],
       missedPackages: [],
@@ -191,18 +195,18 @@ function categoryGroups(): SummaryGroup[] {
         name: "Alpha App",
         packageCount: 2,
         packages: [
-          { packageCode: "com.alpha.ios", displayName: "Alpha Source", team: "团队 A", appVersion: "1.0.0", iconLocalPath: alpha.iconLocalPath, hasIap: true, versionCount: 3 },
-          { packageCode: "com.alpha.ios.hd", displayName: "Alpha HD", team: "团队 A", appVersion: "1.0.0", iconLocalPath: alphaHd.iconLocalPath, hasIap: false, versionCount: 1 },
+          { packageCode: "com.alpha.ios", displayName: "Alpha Source", team: "团队 A", appVersion: "1.0.0", iconLocalPath: alpha.iconLocalPath, hasIap: true, versionCount: 3, earliestReleasedAt: "2026-10-01", latestReleasedAt: "2026-11-10" },
+          { packageCode: "com.alpha.ios.hd", displayName: "Alpha HD", team: "团队 A", appVersion: "1.0.0", iconLocalPath: alphaHd.iconLocalPath, hasIap: false, versionCount: 1, earliestReleasedAt: null, latestReleasedAt: null },
         ],
       },
       {
         appleId: 222,
         name: "Gamma App",
         packageCount: 1,
-        packages: [{ packageCode: "com.gamma.ios", displayName: "Gamma Source", team: "团队 B", appVersion: "1.0.0", iconLocalPath: gamma.iconLocalPath, hasIap: false, versionCount: 0 }],
+        packages: [{ packageCode: "com.gamma.ios", displayName: "Gamma Source", team: "团队 B", appVersion: "1.0.0", iconLocalPath: gamma.iconLocalPath, hasIap: false, versionCount: 0, earliestReleasedAt: null, latestReleasedAt: null }],
       },
     ],
-    missedPackages: [{ packageCode: "com.beta.s", displayName: "Beta Source", team: "团队 A", appVersion: null, iconLocalPath: null, hasIap: false, versionCount: 0 }],
+    missedPackages: [{ packageCode: "com.beta.s", displayName: "Beta Source", team: "团队 A", appVersion: null, iconLocalPath: null, hasIap: false, versionCount: 0, earliestReleasedAt: null, latestReleasedAt: null }],
     pendingPackages: [],
     timeline: timeline(),
   }];
@@ -221,13 +225,13 @@ function listingGroups(): SummaryGroup[] {
         appleId: 111,
         name: "Alpha App",
         packageCount: 1,
-        packages: [{ packageCode: "com.alpha.ios", displayName: "Alpha Source", team: "团队 A", appVersion: "1.0.0", iconLocalPath: alpha.iconLocalPath, hasIap: true, versionCount: 3 }],
+        packages: [{ packageCode: "com.alpha.ios", displayName: "Alpha Source", team: "团队 A", appVersion: "1.0.0", iconLocalPath: alpha.iconLocalPath, hasIap: true, versionCount: 3, earliestReleasedAt: "2026-10-01", latestReleasedAt: "2026-11-10" }],
       },
       {
         appleId: 222,
         name: "Gamma App",
         packageCount: 1,
-        packages: [{ packageCode: "com.gamma.ios", displayName: "Gamma Source", team: "团队 B", appVersion: "1.0.0", iconLocalPath: gamma.iconLocalPath, hasIap: false, versionCount: 0 }],
+        packages: [{ packageCode: "com.gamma.ios", displayName: "Gamma Source", team: "团队 B", appVersion: "1.0.0", iconLocalPath: gamma.iconLocalPath, hasIap: false, versionCount: 0, earliestReleasedAt: null, latestReleasedAt: null }],
       },
     ],
     missedPackages: [],
@@ -316,12 +320,20 @@ describe("competitor report page", () => {
 
     expect(alphaRow.querySelector(".wx-badge-hit")).toBeNull();
     expect(alphaRow.textContent).not.toContain("命中");
-    expect(alphaRow.querySelector(".wx-row-versions")?.textContent).toBe("共 3 个版本");
+    expect(alphaRow.querySelector(".wx-row-versions")?.textContent).toBe("3个版本");
     expect(alphaRow.querySelector(".wx-iap-pill")?.textContent).toBe("内购");
+    const alphaSide = alphaRow.querySelector(".wx-row-side")!;
+    expect(alphaSide.children[0]?.classList.contains("wx-iap-pill")).toBe(true);
+    expect(alphaSide.children[1]?.classList.contains("wx-row-versions")).toBe(true);
+    expect(alphaRow.textContent).toContain("Alpha Source");
+    expect(alphaRow.textContent).toContain("最早 2026-10-01");
+    expect(alphaRow.textContent).toContain("最新 2026-11-10");
 
     const gammaRow = document.querySelector<HTMLAnchorElement>('[data-competitor="apple:222"]')!;
-    expect(gammaRow.querySelector(".wx-row-versions")?.textContent).toBe("共 0 个版本");
+    expect(gammaRow.querySelector(".wx-row-versions")?.textContent).toBe("0个版本");
     expect(gammaRow.querySelector(".wx-iap-pill")).toBeNull();
+    expect(gammaRow.textContent).not.toContain("最早");
+    expect(gammaRow.textContent).not.toContain("最新");
 
     const groups = Array.from(document.querySelectorAll(".wx-group-head"));
     expect(groups[0]?.textContent).toContain("团队 A");
@@ -333,6 +345,8 @@ describe("competitor report page", () => {
     expect(missedRow.textContent).toContain("Beta Source");
     expect(missedRow.textContent).toContain("com.beta.s");
     expect(missedRow.textContent).toContain("App Store 未命中");
+    expect(missedRow.textContent).not.toContain("最早");
+    expect(missedRow.textContent).not.toContain("最新");
 
     const icon = alphaRow.querySelector<HTMLImageElement>(".wx-row-icon")!;
     expect(icon.src).toContain(`/competitor-assets/${DATE}/com.alpha.ios/icon.png`);
@@ -542,6 +556,8 @@ describe("competitor report page", () => {
           iconLocalPath: alpha.iconLocalPath,
           hasIap: true,
           versionCount: 3,
+          earliestReleasedAt: "2026-10-01",
+          latestReleasedAt: "2026-11-10",
         }],
       },
       packageCode: "com.alpha.ios",
@@ -580,6 +596,8 @@ describe("competitor report page", () => {
           iconLocalPath: gamma.iconLocalPath,
           hasIap: false,
           versionCount: 0,
+          earliestReleasedAt: null,
+          latestReleasedAt: null,
         }],
       },
       packageCode: "com.gamma.ios",

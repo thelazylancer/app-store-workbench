@@ -109,6 +109,8 @@ export type PackageBrief = {
   iconLocalPath: string | null;
   hasIap: boolean;
   versionCount: number;
+  earliestReleasedAt: string | null;
+  latestReleasedAt: string | null;
 };
 
 export type SummaryCompetitor = {
