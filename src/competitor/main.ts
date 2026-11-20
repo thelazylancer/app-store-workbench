@@ -119,7 +119,7 @@ app.innerHTML = `
   <main class="wx-shell">
     <header class="wx-top">
       <div class="wx-brand">
-        <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><rect x="3" y="12" width="4" height="7" rx="1" fill="#2E6FA3"/><rect x="9" y="8" width="4" height="11" rx="1" fill="#2E6FA3"/><rect x="15" y="3" width="4" height="16" rx="1" fill="#2E6FA3"/></svg>
+        <svg width="22" height="22" viewBox="0 0 16 16" aria-hidden="true"><rect width="16" height="16" rx="2" fill="#1C2733"/><rect x="1" y="9" width="4" height="6" fill="#E7EDF2"/><rect x="6" y="6" width="4" height="9" fill="#E7EDF2"/><rect x="11" y="2" width="4" height="13" fill="#2E6FA3"/></svg>
         <span>App 搜索工作台</span>
       </div>
       <nav class="wx-tabs" aria-label="主导航">
