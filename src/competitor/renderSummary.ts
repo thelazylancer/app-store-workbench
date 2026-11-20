@@ -7,7 +7,7 @@ import type {
   SummaryCompetitor,
   SummaryGroup,
 } from "../../shared/competitorTypes";
-import { formatGroupName, type StatusFilter } from "./format";
+import type { StatusFilter } from "./format";
 
 export type ExceptionReason = "miss" | "pending";
 
@@ -22,20 +22,6 @@ export function competitorKey(competitor: SummaryCompetitor): string {
 
 export function packageCompetitorKey(packageCode: string): string {
   return `pkg:${packageCode}`;
-}
-
-function svgIcon(paths: string, viewBox = "0 0 16 16"): SVGSVGElement {
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("viewBox", viewBox);
-  svg.setAttribute("width", "16");
-  svg.setAttribute("height", "16");
-  svg.setAttribute("aria-hidden", "true");
-  svg.innerHTML = paths;
-  return svg;
-}
-
-function createChevron(): SVGSVGElement {
-  return svgIcon('<path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/>');
 }
 
 function createRowIcon(
@@ -217,140 +203,56 @@ function createExceptionRow(
   return row;
 }
 
-function createGroup(
+export function createTeamBlock(
   group: SummaryGroup,
   packages: Map<string, PackageDetail>,
-  groupBy: GroupBy,
-  dateKind: DateKind,
+  status: StatusFilter,
   rangeDays: number,
-  collapsed: boolean,
   buildDetailHref: (key: string, packageCode: string) => string,
-): HTMLElement {
-  const competitors = [...group.competitors].sort((a, b) => a.name.localeCompare(b.name));
-  const exceptionCount = group.missCount + group.pendingCount;
+): HTMLElement | null {
+  const hits = status === "exception"
+    ? []
+    : [...group.competitors].sort((a, b) => a.name.localeCompare(b.name, "zh"));
+  const exceptions: ExceptionEntry[] = status === "hit" ? [] : [
+    ...group.missedPackages.map((brief) => ({ ...brief, reason: "miss" as const, groupKey: group.groupKey })),
+    ...group.pendingPackages.map((brief) => ({ ...brief, reason: "pending" as const, groupKey: group.groupKey })),
+  ].sort((a, b) => a.packageCode.localeCompare(b.packageCode));
+  const shown = hits.reduce((sum, competitor) => sum + competitor.packageCount, 0) + exceptions.length;
+  if (shown === 0) return null;
 
   const section = document.createElement("section");
-  section.className = "wx-group";
-  section.dataset.group = group.groupKey;
+  section.className = "wx-team-block";
+  section.dataset.team = group.groupKey;
+  section.dataset.packages = String(shown);
 
-  const head = document.createElement("button");
-  head.type = "button";
-  head.className = "wx-group-head";
-  head.dataset.role = "group-toggle";
-  head.dataset.group = group.groupKey;
-  head.setAttribute("aria-expanded", String(!collapsed));
-
-  const chevron = document.createElement("span");
-  chevron.className = `wx-chevron${collapsed ? " is-collapsed" : ""}`;
-  chevron.append(createChevron());
-  head.append(chevron);
-
-  appendText(head, "span", "wx-group-name", formatGroupName(group.groupKey, groupBy));
-  appendText(head, "span", "wx-group-n", `${group.packageCount} 包`);
-  appendText(
-    head,
-    "span",
-    "wx-group-sum",
-    `命中 ${group.hitCount} · 异常 ${exceptionCount}`,
-  ).dataset.role = "group-counts";
-  section.append(head);
+  const line = document.createElement("div");
+  line.className = "wx-team-line";
+  appendText(line, "span", "wx-team-name", group.groupKey);
+  appendText(line, "span", "wx-team-n", `${shown} 包`);
+  section.append(line);
 
   const body = document.createElement("div");
   body.className = "wx-rows";
-  body.hidden = collapsed;
-
-  for (const competitor of competitors) {
+  for (const competitor of hits) {
     const firstPackage = competitor.packages[0]?.packageCode ?? "";
     const facts = competitor.packages
       .map((brief) => packages.get(brief.packageCode))
-      .find((detail) => Boolean(detail));
+      .find((detail) => detail !== undefined);
     body.append(createHitRow(
       competitor,
       facts,
-      groupBy,
-      dateKind,
+      "team",
+      "first_ad",
       rangeDays,
       buildDetailHref(competitorKey(competitor), firstPackage),
     ));
   }
-
-  if (competitors.length === 0) {
-    appendText(body, "p", "wx-group-empty", "该分组没有命中竞品。");
+  for (const entry of exceptions) {
+    body.append(createExceptionRow(
+      entry,
+      buildDetailHref(packageCompetitorKey(entry.packageCode), entry.packageCode),
+    ));
   }
   section.append(body);
   return section;
-}
-
-export type SummaryRenderOptions = {
-  groups: SummaryGroup[];
-  packages: Map<string, PackageDetail>;
-  dateKind: DateKind;
-  groupBy: GroupBy;
-  status: StatusFilter;
-  rangeDays: number;
-  collapsedGroups: Set<string>;
-  exceptions: ExceptionEntry[];
-  buildDetailHref: (key: string, packageCode: string) => string;
-};
-
-export function renderSummary(host: HTMLElement, options: SummaryRenderOptions): void {
-  host.replaceChildren();
-  const {
-    groups,
-    packages,
-    dateKind,
-    groupBy,
-    status,
-    rangeDays,
-    collapsedGroups,
-    exceptions,
-    buildDetailHref,
-  } = options;
-
-  if (status !== "exception") {
-    const ordered = [...groups].sort(
-      (a, b) => b.packageCount - a.packageCount || a.groupKey.localeCompare(b.groupKey),
-    );
-
-    for (const group of ordered) {
-      host.append(createGroup(
-        group,
-        packages,
-        groupBy,
-        dateKind,
-        rangeDays,
-        collapsedGroups.has(group.groupKey),
-        buildDetailHref,
-      ));
-    }
-  }
-
-  if (status !== "hit" && exceptions.length > 0) {
-    const section = document.createElement("section");
-    section.className = "wx-exceptions";
-    section.dataset.role = "exceptions";
-
-    const head = document.createElement("div");
-    head.className = "wx-exceptions-head";
-    const strip = document.createElement("span");
-    strip.className = "wx-strip";
-    strip.setAttribute("aria-hidden", "true");
-    head.append(strip);
-    appendText(head, "h2", "wx-exceptions-title", "异常");
-    appendText(
-      head,
-      "span",
-      "wx-exceptions-count",
-      `${exceptions.length} 个包 · 未命中 ${exceptions.filter((entry) => entry.reason === "miss").length} · 待补全 ${exceptions.filter((entry) => entry.reason === "pending").length}`,
-    );
-    section.append(head);
-
-    for (const entry of exceptions) {
-      section.append(createExceptionRow(
-        entry,
-        buildDetailHref(packageCompetitorKey(entry.packageCode), entry.packageCode),
-      ));
-    }
-    host.append(section);
-  }
 }

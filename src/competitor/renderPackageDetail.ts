@@ -478,7 +478,7 @@ export function renderPackageDetail(host: HTMLElement, options: DetailRenderOpti
   back.type = "button";
   back.className = "detail-back";
   back.dataset.role = "detail-back";
-  back.append(svgIcon('<path d="M9 4L5 8l4 4M5 8h7" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/>'), "返回时间线");
+  back.append(svgIcon('<path d="M9 4L5 8l4 4M5 8h7" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/>'), "返回竞品日报");
   back.addEventListener("click", options.onBack);
   top.append(back);
 
@@ -487,7 +487,7 @@ export function renderPackageDetail(host: HTMLElement, options: DetailRenderOpti
   const name = packageDetail?.displayName && packageDetail.lookupStatus === "bundle_not_found"
     ? packageDetail.displayName
     : competitor.name;
-  for (const [index, part] of ["时间线", groupName, name].filter(Boolean).entries()) {
+  for (const [index, part] of ["竞品日报", groupName, name].filter(Boolean).entries()) {
     if (index > 0) {
       const separator = document.createElement("span");
       separator.className = "breadcrumb-separator";

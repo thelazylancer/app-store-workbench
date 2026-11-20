@@ -7,7 +7,6 @@ import {
 } from "../lib/competitorApi";
 import type {
   DayDetail,
-  GroupBy,
   LookupStatus,
   PackageBrief,
   PackageDetail,
@@ -15,7 +14,6 @@ import type {
   SummaryGroup,
 } from "../../shared/competitorTypes";
 import {
-  addDays,
   isDateString,
   statusFilterLabel,
   yesterdayUtc,
@@ -23,9 +21,7 @@ import {
 } from "./format";
 import {
   competitorKey,
-  packageCompetitorKey,
-  renderSummary,
-  type ExceptionEntry,
+  createTeamBlock,
 } from "./renderSummary";
 import { renderPackageDetail } from "./renderPackageDetail";
 
@@ -39,8 +35,7 @@ type PageState = {
   packageCode: string | null;
 };
 
-const WINDOW_DAYS = 14;
-const TIMELINE_GROUP_BY: GroupBy = "category";
+const HISTORY_START = "2020-01-01";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("Missing #app root");
@@ -60,8 +55,8 @@ function parseDate(value: string | null): string | null {
 
 function parseState(): PageState {
   const params = new URLSearchParams(window.location.search);
-  const team = params.get("team");
   const category = params.get("category");
+  const team = params.get("team");
   return {
     date: parseDate(params.get("date")),
     team: team || null,
@@ -84,7 +79,6 @@ let detailError: string | null = null;
 let detailPackage: PackageDetail | null = null;
 let loaded: DayDetail[] = [];
 const missingDates = new Set<string>();
-const collapsedGroups = new Set<string>();
 
 app.innerHTML = `
   <main class="wx-shell">
@@ -102,23 +96,13 @@ app.innerHTML = `
     <section class="wx-report" data-role="list-view">
       <div class="wx-head">
         <div class="wx-title">
-          <h1>时间线</h1>
-          <span class="wx-window" data-role="window-caption"></span>
+          <h1>竞品日报</h1>
         </div>
         <div class="wx-controls">
-          <label class="wx-control">
-            <span class="wx-label">团队</span>
-            <select class="wx-select" data-role="team-filter" aria-label="按团队过滤"></select>
-          </label>
           <label class="wx-control">
             <span class="wx-label">类目</span>
             <select class="wx-select" data-role="category-filter" aria-label="按类目过滤"></select>
           </label>
-          <div class="wx-control">
-            <span class="wx-label">日期</span>
-            <input class="wx-select" type="date" data-role="date-filter" aria-label="按日期筛选" max="${yesterday}" />
-            <button type="button" class="wx-text-action" data-role="clear-date" hidden>清除</button>
-          </div>
           <div class="wx-control">
             <span class="wx-label">状态</span>
             <div class="wx-seg" role="group" aria-label="命中状态">
@@ -127,8 +111,16 @@ app.innerHTML = `
               <button type="button" data-role="status" data-value="exception">异常</button>
             </div>
           </div>
+          <label class="wx-control">
+            <span class="wx-label">日期</span>
+            <select class="wx-select wx-date-select" data-role="date-filter" aria-label="按日期筛选">
+              <option value="">全部日期</option>
+            </select>
+          </label>
         </div>
       </div>
+
+      <div class="wx-seg wx-team-tabs" data-role="team-tabs" role="group" aria-label="团队"></div>
 
       <div class="wx-stats">
         <div class="wx-stat"><b data-role="stat-total">0</b><span>包总数</span></div>
@@ -158,7 +150,6 @@ function requireElement<T extends Element>(selector: string): T {
 
 const listView = requireElement<HTMLElement>('[data-role="list-view"]');
 const detailView = requireElement<HTMLElement>('[data-role="detail-view"]');
-const windowCaption = requireElement<HTMLElement>('[data-role="window-caption"]');
 const batchSummary = requireElement<HTMLElement>('[data-role="batch-summary"]');
 const batchBanner = requireElement<HTMLElement>('[data-role="batch-banner"]');
 const statTotal = requireElement<HTMLElement>('[data-role="stat-total"]');
@@ -167,15 +158,10 @@ const statHit = requireElement<HTMLElement>('[data-role="stat-hit"]');
 const statException = requireElement<HTMLElement>('[data-role="stat-exception"]');
 const filterNote = requireElement<HTMLElement>('[data-role="filter-note"]');
 const reportBody = requireElement<HTMLElement>('[data-role="report-body"]');
-const teamSelect = requireElement<HTMLSelectElement>('[data-role="team-filter"]');
+const teamTabs = requireElement<HTMLElement>('[data-role="team-tabs"]');
 const categorySelect = requireElement<HTMLSelectElement>('[data-role="category-filter"]');
-const dateInput = requireElement<HTMLInputElement>('[data-role="date-filter"]');
-const clearDateButton = requireElement<HTMLButtonElement>('[data-role="clear-date"]');
+const dateInput = requireElement<HTMLSelectElement>('[data-role="date-filter"]');
 const detailHost = detailView;
-
-function windowStart(): string {
-  return addDays(yesterday, -(WINDOW_DAYS - 1));
-}
 
 function urlStateParams(): URLSearchParams {
   const params = new URLSearchParams();
@@ -254,61 +240,73 @@ function inScope(day: DayDetail): boolean {
   return state.date === null || day.date === state.date;
 }
 
+function inCategory(pkg: PackageDetail): boolean {
+  return !state.category || categoryOf(pkg) === state.category;
+}
+
 function matches(pkg: PackageDetail): boolean {
   if (state.team && pkg.team !== state.team) return false;
-  if (state.category && categoryOf(pkg) !== state.category) return false;
-  return true;
+  return inCategory(pkg);
 }
 
 function scopeDays(): DayDetail[] {
   return loaded.filter(inScope).sort((a, b) => b.date.localeCompare(a.date));
 }
 
-function toGroup(day: DayDetail, applyFilters: boolean): SummaryGroup {
-  const packages = day.packages.filter((pkg) => !applyFilters || matches(pkg));
-  const hits = packages.filter((pkg) => pkg.lookupStatus === "hit");
-  const missed = packages.filter((pkg) => pkg.lookupStatus === "bundle_not_found");
-  const pending = packages.filter((pkg) => pkg.lookupStatus === "pending");
-  const byKey = new Map<string, PackageDetail[]>();
-  for (const pkg of hits) {
-    const key = pkg.appleId !== null ? `apple:${pkg.appleId}` : `pkg:${pkg.packageCode}`;
-    const list = byKey.get(key) ?? [];
-    list.push(pkg);
-    byKey.set(key, list);
+function dedupedPackages(days: DayDetail[]): PackageDetail[] {
+  const byCode = new Map<string, PackageDetail>();
+  for (const day of [...days].sort((a, b) => a.date.localeCompare(b.date))) {
+    for (const pkg of day.packages) byCode.set(pkg.packageCode, pkg);
   }
-  const competitors: SummaryCompetitor[] = [...byKey.values()].map((list) => {
-    const sorted = [...list].sort((a, b) => a.packageCode.localeCompare(b.packageCode));
-    const first = sorted[0]!;
-    return {
-      appleId: first.appleId,
-      name: storeName(first),
-      packageCount: sorted.length,
-      packages: sorted.map(briefFrom),
-    };
-  });
-  return {
-    groupKey: day.date,
-    packageCount: packages.length,
-    hitCount: hits.length,
-    missCount: missed.length,
-    pendingCount: pending.length,
-    competitorCount: competitors.length,
-    competitors,
-    missedPackages: missed.map(briefFrom),
-    pendingPackages: pending.map(briefFrom),
-    timeline: [],
-  };
+  return [...byCode.values()];
 }
 
-function exceptionsOf(group: SummaryGroup): ExceptionEntry[] {
-  return [
-    ...group.missedPackages.map((brief) => ({ ...brief, reason: "miss" as const, groupKey: group.groupKey })),
-    ...group.pendingPackages.map((brief) => ({ ...brief, reason: "pending" as const, groupKey: group.groupKey })),
-  ].sort((a, b) => a.packageCode.localeCompare(b.packageCode));
+function groupsFrom(days: DayDetail[], applyFilters: boolean): SummaryGroup[] {
+  const packages = dedupedPackages(days).filter((pkg) => !applyFilters || matches(pkg));
+  const buckets = new Map<string, PackageDetail[]>();
+  for (const pkg of packages) {
+    const list = buckets.get(pkg.team) ?? [];
+    list.push(pkg);
+    buckets.set(pkg.team, list);
+  }
+  return [...buckets.entries()].map(([team, list]) => {
+    const hits = list.filter((pkg) => pkg.lookupStatus === "hit");
+    const missed = list.filter((pkg) => pkg.lookupStatus === "bundle_not_found");
+    const pending = list.filter((pkg) => pkg.lookupStatus === "pending");
+    const byKey = new Map<string, PackageDetail[]>();
+    for (const pkg of hits) {
+      const key = pkg.appleId !== null ? `apple:${pkg.appleId}` : `pkg:${pkg.packageCode}`;
+      const grouped = byKey.get(key) ?? [];
+      grouped.push(pkg);
+      byKey.set(key, grouped);
+    }
+    const competitors: SummaryCompetitor[] = [...byKey.values()].map((grouped) => {
+      const sorted = [...grouped].sort((a, b) => a.packageCode.localeCompare(b.packageCode));
+      const first = sorted[0]!;
+      return {
+        appleId: first.appleId,
+        name: storeName(first),
+        packageCount: sorted.length,
+        packages: sorted.map(briefFrom),
+      };
+    });
+    return {
+      groupKey: team,
+      packageCount: list.length,
+      hitCount: hits.length,
+      missCount: missed.length,
+      pendingCount: pending.length,
+      competitorCount: competitors.length,
+      competitors,
+      missedPackages: missed.map(briefFrom),
+      pendingPackages: pending.map(briefFrom),
+      timeline: [],
+    };
+  });
 }
 
 function scopedPackages(): PackageDetail[] {
-  return scopeDays().flatMap((day) => day.packages).filter(matches);
+  return dedupedPackages(scopeDays()).filter(matches);
 }
 
 function totals(): { total: number; competitors: number; hit: number; exception: number } {
@@ -347,14 +345,72 @@ function fillSelect(select: HTMLSelectElement, values: string[], current: string
   select.value = current ?? "";
 }
 
+function tabTeams(): string[] {
+  const counts = new Map<string, number>();
+  for (const pkg of dedupedPackages(scopeDays()).filter(inCategory)) {
+    counts.set(pkg.team, (counts.get(pkg.team) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "zh"))
+    .map(([team]) => team);
+}
+
+function renderTeamTabs(): void {
+  teamTabs.replaceChildren();
+  const items = ["", ...tabTeams()];
+  for (const team of items) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.role = "team-tab";
+    button.dataset.team = team;
+    button.textContent = team || "全部";
+    const active = (state.team ?? "") === team;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+    teamTabs.append(button);
+  }
+}
+
+function visibleOnDay(pkg: PackageDetail): boolean {
+  if (state.team && pkg.team !== state.team) return false;
+  if (!inCategory(pkg)) return false;
+  if (state.status === "hit") return pkg.lookupStatus === "hit";
+  if (state.status === "exception") return pkg.lookupStatus !== "hit";
+  return true;
+}
+
+function fillDateSelect(): void {
+  const counts = new Map<string, number>();
+  for (const day of loaded) {
+    const count = day.packages.filter(visibleOnDay).length;
+    if (count > 0) counts.set(day.date, count);
+  }
+  if (state.date && !counts.has(state.date)) counts.set(state.date, 0);
+  const dates = [...counts.keys()].sort((a, b) => b.localeCompare(a));
+  const signature = dates.map((date) => `${date}:${counts.get(date)}`).join("\0");
+  if (dateInput.dataset.options !== signature) {
+    dateInput.dataset.options = signature;
+    dateInput.replaceChildren();
+    const all = document.createElement("option");
+    all.value = "";
+    all.textContent = "全部日期";
+    dateInput.append(all);
+    for (const date of dates) {
+      const option = document.createElement("option");
+      option.value = date;
+      const count = counts.get(date) ?? 0;
+      option.textContent = count > 0 ? `${date} · ${count} 包` : date;
+      dateInput.append(option);
+    }
+  }
+  dateInput.value = state.date && [...dateInput.options].some((option) => option.value === state.date) ? state.date : "";
+}
+
 function syncControls(): void {
   const counts = totals();
   const hasData = !loading && scopedPackages().length > 0;
-  const optionPackages = scopeDays().flatMap((day) => day.packages);
-  windowCaption.textContent = state.date ?? `${windowStart()} — ${yesterday}`;
-  dateInput.value = state.date ?? "";
-  clearDateButton.hidden = state.date === null;
-  fillSelect(teamSelect, uniqueSorted(optionPackages.map((pkg) => pkg.team)), state.team);
+  const optionPackages = dedupedPackages(loaded);
+  fillDateSelect();
   fillSelect(categorySelect, uniqueSorted(optionPackages.map(categoryOf)), state.category);
 
   statTotal.textContent = String(counts.total);
@@ -380,11 +436,13 @@ function syncControls(): void {
     }
   });
 
-  const filtered = Boolean(state.team || state.category || state.status !== "all");
+  renderTeamTabs();
+
+  const filtered = Boolean(state.team || state.category || state.status !== "all" || state.date);
   filterNote.hidden = !filtered || !hasData;
   filterNote.replaceChildren();
   if (!filterNote.hidden) {
-    const bits = [state.team, state.category, state.status !== "all" ? statusFilterLabel(state.status) : null]
+    const bits = [state.team, state.date, state.category, state.status !== "all" ? statusFilterLabel(state.status) : null]
       .filter(Boolean);
     const shown = state.status === "hit" ? counts.hit : state.status === "exception" ? counts.exception : counts.total;
     filterNote.append(`当前为筛选结果 · ${bits.join(" · ")} · ${shown} 包`);
@@ -465,7 +523,7 @@ function renderError(message: string): HTMLElement {
   const reason = document.createElement("p");
   reason.textContent = state.date
     ? `无法获取 ${state.date} 的竞品快照`
-    : `无法获取 ${windowStart()} — ${yesterday} 的竞品数据`;
+    : "无法获取竞品数据";
   const detail = document.createElement("p");
   detail.className = "wx-error-reason";
   detail.textContent = message;
@@ -506,32 +564,34 @@ function buildDetailHref(key: string, packageCode: string): string {
   return `${window.location.pathname}?${params.toString()}`;
 }
 
-function packageMap(day: DayDetail): Map<string, PackageDetail> {
-  return new Map(day.packages.map((pkg) => [pkg.packageCode, pkg]));
-}
-
 function renderTimeline(): void {
   reportBody.replaceChildren();
+  const packages = new Map(scopedPackages().map((pkg) => [pkg.packageCode, pkg]));
+  const rangeDays = state.date ? 1 : 0;
   for (const day of scopeDays()) {
-    const group = toGroup(day, true);
-    if (group.packageCount === 0) continue;
-    const host = document.createElement("div");
-    host.className = "wx-timeline-day";
-    host.dataset.role = "timeline-day";
-    host.dataset.date = day.date;
-    renderSummary(host, {
-      groups: group.competitors.length > 0 ? [group] : [],
-      packages: packageMap(day),
-      dateKind: "first_ad",
-      groupBy: TIMELINE_GROUP_BY,
-      status: state.status,
-      rangeDays: 1,
-      collapsedGroups,
-      exceptions: exceptionsOf(group),
-      buildDetailHref,
-    });
-    if (host.childElementCount === 0) continue;
-    reportBody.append(host);
+    const groups = groupsFrom([day], true).sort(
+      (a, b) => b.packageCount - a.packageCount || a.groupKey.localeCompare(b.groupKey, "zh"),
+    );
+    const blocks = groups
+      .map((group) => createTeamBlock(group, packages, state.status, rangeDays, buildDetailHref))
+      .filter((block): block is HTMLElement => block !== null);
+    if (blocks.length === 0) continue;
+    const shown = blocks.reduce((sum, block) => sum + Number(block.dataset.packages ?? 0), 0);
+    const section = document.createElement("section");
+    section.className = "wx-tl-day";
+    section.dataset.role = "timeline-day";
+    section.dataset.date = day.date;
+    const head = document.createElement("div");
+    head.className = "wx-tl-date";
+    const when = document.createElement("span");
+    when.className = "wx-tl-when";
+    when.textContent = day.date;
+    const count = document.createElement("span");
+    count.className = "wx-tl-n";
+    count.textContent = `${shown} 包`;
+    head.append(when, count);
+    section.append(head, ...blocks);
+    reportBody.append(section);
   }
 }
 
@@ -567,13 +627,13 @@ function renderListContent(): void {
     const focused = state.date;
     reportBody.replaceChildren(createEmptyCard({
       role: "empty-day",
-      title: focused ? "这一天还没有快照" : `近 ${WINDOW_DAYS} 天没有快照`,
+      title: focused ? "这一天还没有快照" : "还没有快照",
       lines: [
         focused
           ? `${focused} 没有成功完成的批次。`
-          : `${windowStart()} — ${yesterday} 没有成功完成的批次。`,
+          : "还没有成功完成的批次。",
       ],
-      actions: focused ? [{ label: "回到时间线", role: "clear-date" }] : [{ label: "重试", role: "retry-load" }],
+      actions: focused ? [{ label: "看全部日期", role: "clear-date" }] : [{ label: "重试", role: "retry-load" }],
     }));
     return;
   }
@@ -590,8 +650,7 @@ function renderListContent(): void {
 }
 
 function findDetailContext(key: string): { competitor: SummaryCompetitor; groupName: string } | null {
-  for (const day of loaded) {
-    const group = toGroup(day, false);
+  for (const group of groupsFrom(loaded, false)) {
     const match = group.competitors.find((item) => competitorKey(item) === key);
     if (match) return { competitor: match, groupName: match.packages[0]?.team ?? "" };
     if (key.startsWith("pkg:")) {
@@ -714,9 +773,9 @@ function dateIsReady(date: string | null): boolean {
   return loaded.some((day) => day.date === date) || missingDates.has(date);
 }
 
-// shortcut: one request per day in the 14-day window; switch to a range payload when it includes each day's packages.
+// shortcut: one request per day that already has packages; switch to a range payload when it includes each day's packages.
 async function fetchWindow(): Promise<DayDetail[]> {
-  const summaries = await getCompetitorDays(windowStart(), yesterday);
+  const summaries = await getCompetitorDays(HISTORY_START, yesterday);
   const dates = [...new Set(summaries.filter((day) => day.packageCount > 0).map((day) => day.date))];
   const failures: unknown[] = [];
   const details = await Promise.all(dates.map(async (date) => {
@@ -807,9 +866,6 @@ function setDate(value: string): void {
   } else {
     void load();
   }
-  if (next) {
-    document.querySelector<HTMLElement>(`[data-role="timeline-day"][data-date="${next}"]`)?.scrollIntoView?.({ block: "start" });
-  }
 }
 
 function setTeam(team: string | null): void {
@@ -831,22 +887,21 @@ function setStatus(status: StatusFilter): void {
 }
 
 function clearFilters(): void {
+  const hadDate = state.date !== null;
   state.team = null;
   state.category = null;
   state.status = "all";
+  state.date = null;
   commit("replace");
-  renderListContent();
+  if (hadDate && !windowLoaded) void load();
+  else renderListContent();
 }
 
 app.addEventListener("change", (event) => {
   const target = event.target;
-  if (target instanceof HTMLSelectElement && target.dataset.role === "team-filter") {
-    setTeam(target.value || null);
-  } else if (target instanceof HTMLSelectElement && target.dataset.role === "category-filter") {
-    setCategory(target.value || null);
-  } else if (target instanceof HTMLInputElement && target.dataset.role === "date-filter") {
-    setDate(target.value);
-  }
+  if (!(target instanceof HTMLSelectElement)) return;
+  if (target.dataset.role === "category-filter") setCategory(target.value || null);
+  if (target.dataset.role === "date-filter") setDate(target.value);
 });
 
 app.addEventListener("click", (event) => {
@@ -859,17 +914,12 @@ app.addEventListener("click", (event) => {
     case "status":
       setStatus(control.dataset.value as StatusFilter);
       break;
+    case "team-tab":
+      setTeam(control.dataset.team || null);
+      break;
     case "clear-date":
       setDate("");
       break;
-    case "group-toggle": {
-      event.preventDefault();
-      const group = control.dataset.group ?? "";
-      if (collapsedGroups.has(group)) collapsedGroups.delete(group);
-      else collapsedGroups.add(group);
-      renderListContent();
-      break;
-    }
     case "competitor-row":
     case "exception-row":
       event.preventDefault();

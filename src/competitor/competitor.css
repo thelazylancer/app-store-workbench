@@ -261,17 +261,73 @@ input:focus-visible {
   font-size: 13px;
 }
 
-.wx-timeline-day .wx-group-name {
+.wx-date-select {
+  min-width: 188px;
+  font-variant-numeric: tabular-nums;
+}
+
+.wx-team-tabs {
+  flex-wrap: wrap;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 0 16px;
+}
+
+.wx-team-tabs button.is-active:hover {
+  color: var(--air);
+}
+
+.wx-tl-day {
+  position: relative;
+  margin: 0 0 8px 7px;
+  padding: 0 0 8px 18px;
+  border-left: 1px solid var(--line);
+}
+
+.wx-tl-date {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 14px 0 2px;
+}
+
+.wx-tl-date::before {
+  content: "";
+  position: absolute;
+  left: -4px;
+  width: 7px;
+  height: 7px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--ink);
+}
+
+.wx-tl-when {
   font-family: var(--date);
   font-size: 28px;
   font-weight: 600;
   line-height: 1;
-  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
 }
 
-.wx-timeline-day + .wx-timeline-day {
-  margin-top: 8px;
-  border-top: 1px solid var(--line);
+.wx-tl-n,
+.wx-team-n {
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.wx-team-line {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 0 2px;
+}
+
+.wx-team-name {
+  font-size: 14px;
+  font-weight: 700;
 }
 
 /* ---------- stats strip ---------- */

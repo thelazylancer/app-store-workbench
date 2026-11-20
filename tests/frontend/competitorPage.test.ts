@@ -336,11 +336,13 @@ describe("competitor report page", () => {
     expect(gammaRow.textContent).toContain("最早 2026-11-10");
     expect(gammaRow.textContent).toContain("最新 2026-11-10");
 
-    const groups = Array.from(document.querySelectorAll(".wx-group-head"));
-    expect(groups).toHaveLength(1);
-    expect(groups[0]?.textContent).toContain(DATE);
-    expect(groups[0]?.textContent).toContain("4 包");
-    expect(groups[0]?.textContent).toContain("命中 3 · 异常 1");
+    const teams = Array.from(document.querySelectorAll(".wx-team-line"));
+    expect(teams[0]?.tagName).toBe("DIV");
+    expect(teams[0]?.textContent).toContain("团队 A");
+    expect(teams[0]?.textContent).toContain("3 包");
+    expect(teams[0]?.textContent).not.toContain("命中");
+    expect(teams[1]?.textContent).toContain("团队 B");
+    expect(document.querySelector(".wx-group-head")).toBeNull();
     expect(document.querySelector(".wx-list-head")).toBeNull();
 
     const missedRow = document.querySelector<HTMLAnchorElement>('[data-role="exception-row"][data-reason="miss"]')!;
@@ -353,22 +355,38 @@ describe("competitor report page", () => {
     const icon = alphaRow.querySelector<HTMLImageElement>(".wx-row-icon")!;
     expect(icon.src).toContain(`/competitor-assets/${DATE}/com.alpha.ios/icon.png`);
 
-    expect(document.querySelector("h1")?.textContent).toBe("时间线");
+    expect(document.querySelector("h1")?.textContent).toBe("竞品日报");
     expect(document.querySelector(".wx-date")).toBeNull();
     expect(window.location.search).not.toContain("date=");
-    expect(document.querySelector('[data-role="window-caption"]')?.textContent).toBe(`${addDays(DATE, -13)} — ${DATE}`);
+    expect(document.querySelector('[data-role="window-caption"]')).toBeNull();
+    expect(document.querySelector('[data-role="indicator"]')).toBeNull();
+    const timeline = document.querySelectorAll('[data-role="timeline-day"]');
+    expect(timeline).toHaveLength(1);
+    expect(timeline[0]?.getAttribute("data-date")).toBe(DATE);
+    expect(document.querySelector(".wx-tl-date")?.tagName).toBe("DIV");
+    expect(document.querySelector(".wx-tl-date")?.textContent).toContain("4 包");
+    const tabs = Array.from(document.querySelectorAll('[data-role="team-tab"]'));
+    expect(tabs.map((tab) => tab.textContent)).toEqual(["全部", "团队 A", "团队 B"]);
+    expect(document.querySelector('[data-role="team-tab"].is-active')?.textContent).toBe("全部");
     expect(document.querySelector('[data-role="status"][data-value="hit"]')?.textContent).toBe("命中 3");
     expect(document.querySelector('[data-role="stat-total"]')?.textContent).toBe("4");
     expect(document.querySelector('[data-role="stat-competitors"]')?.textContent).toBe("2");
     expect(document.querySelector('[data-role="stat-hit"]')?.textContent).toBe("3");
     expect(document.querySelector('[data-role="stat-exception"]')?.textContent).toBe("1");
     expect(document.querySelector('[data-role="batch-summary"]')?.textContent).toContain(`批次正常 · 批次 ${DATE}`);
-    expect(document.querySelectorAll('[data-role="timeline-day"]')).toHaveLength(1);
-    expect(document.querySelector('[data-role="exceptions"]')).not.toBeNull();
+    expect(document.querySelector('[data-role="group-by"]')).toBeNull();
+    expect(document.querySelector('[data-role="exceptions"]')).toBeNull();
+    expect(document.querySelector(".wx-team-block")?.contains(missedRow)).toBe(true);
+
+    document.querySelector<HTMLButtonElement>('[data-role="team-tab"][data-team="团队 B"]')!.click();
+    expect(document.querySelector('[data-competitor="apple:111"]')).toBeNull();
+    expect(document.querySelector('[data-competitor="apple:222"]')).not.toBeNull();
+    expect(document.querySelector(".wx-team-line")?.textContent).toContain("团队 B");
+    expect(new URLSearchParams(window.location.search).get("team")).toBe("团队 B");
 
     const requested = fetchMock.mock.calls.map(([input]) => String(input));
     expect(requested.some((url) => url.includes("/api/competitor/summary"))).toBe(false);
-    expect(requested.some((url) => url.includes(`start=${addDays(DATE, -13)}`) && url.includes(`end=${DATE}`))).toBe(true);
+    expect(requested.some((url) => url.includes("start=2020-01-01") && url.includes(`end=${DATE}`))).toBe(true);
     expect(requested.some((url) => url.includes(`/api/competitor/day/${DATE}?date_kind=first_ad`))).toBe(true);
   });
 
@@ -611,7 +629,7 @@ describe("competitor report page", () => {
     await vi.waitFor(() => {
       expect(document.querySelector('[data-role="empty-day"]')).not.toBeNull();
     });
-    expect(document.body.textContent).toContain("近 14 天没有快照");
+    expect(document.body.textContent).toContain("还没有快照");
     expect(document.querySelectorAll('[data-role="competitor-row"]')).toHaveLength(0);
   });
 
@@ -636,24 +654,30 @@ describe("competitor report page", () => {
     await mountPage();
     await waitForRows();
 
-    const sections = () => document.querySelectorAll<HTMLElement>('[data-role="timeline-day"]');
-    expect(document.querySelector("h1")?.textContent).toBe("时间线");
+    const days = () => Array.from(document.querySelectorAll<HTMLElement>('[data-role="timeline-day"]'));
+    expect(document.querySelector("h1")?.textContent).toBe("竞品日报");
+    expect(document.querySelector(".wx-team-line")?.textContent).toContain("团队");
     expect(window.location.search).not.toContain("date=");
-    expect(sections()).toHaveLength(2);
-    expect(sections()[0]?.dataset.date).toBe(DATE);
-    expect(sections()[1]?.dataset.date).toBe(older);
+    expect(days().map((day) => day.dataset.date)).toEqual([DATE, older]);
+    expect(document.querySelector('[data-role="indicator"]')).toBeNull();
 
-    const input = document.querySelector<HTMLInputElement>('[data-role="date-filter"]')!;
-    input.value = older;
-    input.dispatchEvent(new Event("change", { bubbles: true }));
-    expect(sections()).toHaveLength(1);
-    expect(sections()[0]?.dataset.date).toBe(older);
+    const dateInput = document.querySelector<HTMLSelectElement>('[data-role="date-filter"]')!;
+    expect(dateInput.tagName).toBe("SELECT");
+    expect(dateInput.options[0]?.textContent).toBe("全部日期");
+    expect([...dateInput.options].map((option) => option.value)).toEqual(["", DATE, older]);
+    expect(dateInput.options[1]?.textContent).toContain("4 包");
+    dateInput.value = older;
+    dateInput.dispatchEvent(new Event("change", { bubbles: true }));
+    expect(days().map((day) => day.dataset.date)).toEqual([older]);
     expect(window.location.search).toContain(`date=${older}`);
     expect(document.querySelector('[data-competitor="apple:111"]')).toBeNull();
+    expect(document.querySelector(".wx-team-line")?.textContent).toContain("团队 B");
 
-    document.querySelector<HTMLButtonElement>('[data-role="clear-date"]')!.click();
-    expect(sections()).toHaveLength(2);
+    dateInput.value = "";
+    dateInput.dispatchEvent(new Event("change", { bubbles: true }));
+    expect(days().map((day) => day.dataset.date)).toEqual([DATE, older]);
     expect(window.location.search).not.toContain("date=");
+    expect(document.querySelector('[data-competitor="apple:111"]')).not.toBeNull();
   });
 
   it("filters locally by hit or exception and maps legacy status=miss to exception", async () => {
@@ -667,6 +691,9 @@ describe("competitor report page", () => {
     expect(document.querySelector('[data-competitor="apple:111"]')).toBeNull();
     expect(document.querySelector('[data-role="exception-row"][data-reason="miss"]')).not.toBeNull();
     expect(document.querySelector(".wx-group-head")).toBeNull();
+    expect(document.querySelector(".wx-team-line")?.textContent).toContain("团队 A");
+    expect(document.querySelector(".wx-team-line")?.textContent).toContain("1 包");
+    expect(document.querySelector('[data-role="exceptions"]')).toBeNull();
     expect(window.location.search).toContain("status=exception");
     expect(fetchMock).toHaveBeenCalledTimes(callsBefore);
 
