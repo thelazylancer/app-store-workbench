@@ -409,9 +409,14 @@ describe("competitor report page", () => {
 
     expect(detail.querySelector(".identity-title-row h2")?.textContent).toBe("Alpha App");
     expect(detail.querySelector(".identity-developer")?.textContent).toBe("Alpha Studio");
-    const appStoreLink = detail.querySelector<HTMLAnchorElement>(".identity-link");
-    expect(appStoreLink?.textContent).toContain("在 App Store 查看");
-    expect(appStoreLink?.href).toContain("apps.apple.com/app/id111");
+    const identityLinks = detail.querySelectorAll<HTMLAnchorElement>(".identity-links .identity-link");
+    expect(identityLinks).toHaveLength(2);
+    expect(identityLinks[0]?.textContent).toContain("在 App Store 查看");
+    expect(identityLinks[0]?.href).toContain("apps.apple.com/app/id111");
+    expect(identityLinks[1]?.textContent).toContain("去七麦查看");
+    expect(identityLinks[1]?.href).toBe("https://www.qimai.cn/app/baseinfo/appid/111/country/us");
+    expect(detail.querySelector('[data-role="app-id-copy"]')).not.toBeNull();
+    expect(detail.textContent).not.toContain("App Store 已命中");
 
     const metrics = Array.from(detail.querySelectorAll(".detail-metric"));
     expect(metrics).toHaveLength(6);
@@ -490,11 +495,12 @@ describe("competitor report page", () => {
 
     document.querySelector<HTMLAnchorElement>('[data-role="exception-row"][data-reason="miss"]')!.click();
     await vi.waitFor(() => {
-      expect(document.querySelector('[data-role="detail-view"]')?.textContent).toContain("App Store 未命中");
+      expect(document.querySelector('[data-role="detail-view"]')?.textContent).toContain("未命中，无 App Store 详情可展示。");
     });
 
     const detail = document.querySelector('[data-role="detail-view"]');
-    expect(detail?.textContent).toContain("App Store 未命中");
+    expect(detail?.querySelector(".identity-links")).toBeNull();
+    expect(detail?.textContent).not.toContain("去七麦查看");
     expect(detail?.textContent).toContain("未命中，无 App Store 详情可展示。");
     expect(detail?.querySelector(".competitor-screenshot-grid")).toBeNull();
     expect(detail?.querySelector(".detail-metrics")).toBeNull();

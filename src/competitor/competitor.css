@@ -963,8 +963,15 @@ input:focus-visible {
   font-size: 13px;
 }
 
-.identity-link {
+.identity-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-top: 12px;
+}
+
+.identity-link {
+  margin-top: 0;
 }
 
 .status-badge {

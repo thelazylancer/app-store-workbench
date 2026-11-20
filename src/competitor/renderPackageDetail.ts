@@ -2,7 +2,6 @@ import { competitorAssetUrl } from "../lib/competitorApi";
 import { createScreenshotLightbox } from "../lib/renderResults";
 import type {
   AssetStatus,
-  LookupStatus,
   PackageDetail,
   SummaryCompetitor,
 } from "../../shared/competitorTypes";
@@ -61,14 +60,6 @@ function assetStatusLabel(status: AssetStatus): string {
     case "pending": return "待下载";
     case "skipped": return "无需下载";
     default: return "未知";
-  }
-}
-
-function statusText(status: LookupStatus): { kind: "hit" | "miss" | "neutral"; text: string } {
-  switch (status) {
-    case "hit": return { kind: "hit", text: "App Store 已命中" };
-    case "bundle_not_found": return { kind: "miss", text: "App Store 未命中" };
-    default: return { kind: "neutral", text: "待补全" };
   }
 }
 
@@ -149,8 +140,6 @@ function createIdentity(
   const heading = document.createElement("h2");
   heading.textContent = name;
   titleRow.append(heading);
-  const status = statusText(packageDetail.lookupStatus);
-  titleRow.append(createBadge(status.kind, status.text));
   copy.append(titleRow);
 
   const developer = document.createElement("p");
@@ -158,14 +147,28 @@ function createIdentity(
   developer.textContent = jsonString(packageDetail.appStoreJson, ["developer"]) ?? "—";
   copy.append(developer);
 
-  if (!isMissed && appStoreUrl) {
-    const link = document.createElement("a");
-    link.className = "wx-button identity-link";
-    link.href = appStoreUrl;
-    link.target = "_blank";
-    link.rel = "noreferrer";
-    link.append("在 App Store 查看", svgIcon('<path d="M5 11L11 5M6 5h5v5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/>'));
-    copy.append(link);
+  if (!isMissed) {
+    const links = document.createElement("div");
+    links.className = "identity-links";
+    if (appStoreUrl) {
+      const link = document.createElement("a");
+      link.className = "wx-button identity-link";
+      link.href = appStoreUrl;
+      link.target = "_blank";
+      link.rel = "noreferrer";
+      link.append("在 App Store 查看", svgIcon('<path d="M5 11L11 5M6 5h5v5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/>'));
+      links.append(link);
+    }
+    if (packageDetail.appleId !== null) {
+      const qimai = document.createElement("a");
+      qimai.className = "wx-button identity-link";
+      qimai.href = `https://www.qimai.cn/app/baseinfo/appid/${packageDetail.appleId}/country/us`;
+      qimai.target = "_blank";
+      qimai.rel = "noreferrer";
+      qimai.append("去七麦查看", svgIcon('<path d="M5 11L11 5M6 5h5v5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/>'));
+      links.append(qimai);
+    }
+    if (links.childElementCount > 0) copy.append(links);
   }
 
   surface.append(copy);
@@ -177,8 +180,10 @@ function createMetricBar(packageDetail: PackageDetail, json: Record<string, unkn
   const latest = versions[0];
   const earliest = versions[versions.length - 1];
   const iapCount = iapEntries(json).length;
-  const metrics: Array<[string, string]> = [
-    ["APP ID", packageDetail.appleId !== null ? String(packageDetail.appleId) : "—"],
+  const metrics: Array<[string, string | HTMLElement]> = [
+    ["APP ID", packageDetail.appleId !== null
+      ? createCopyValue(String(packageDetail.appleId), "APP ID", "app-id-copy")
+      : "—"],
     ["分类", packageDetail.category ?? "—"],
     ["价格", jsonString(json, ["formattedPrice"]) ?? "—"],
     ["内购", iapCount > 0 ? `${iapCount} 项` : "无"],
@@ -197,7 +202,8 @@ function createMetricBar(packageDetail: PackageDetail, json: Record<string, unkn
     key.textContent = label;
     const text = document.createElement("span");
     text.className = "detail-metric-value";
-    text.textContent = value;
+    if (value instanceof HTMLElement) text.append(value);
+    else text.textContent = value;
     item.append(key, text);
     bar.append(item);
   }
@@ -355,23 +361,23 @@ function createScreenshotSection(name: string, paths: string[]): HTMLElement | n
   return section;
 }
 
-function createBundleIdValue(bundleId: string): HTMLElement {
+function createCopyValue(value: string, label: string, role: string): HTMLElement {
   const wrap = document.createElement("span");
   wrap.className = "copy-value";
   const text = document.createElement("span");
   text.className = "copy-value-text";
-  text.textContent = bundleId;
+  text.textContent = value;
 
   const button = document.createElement("button");
   button.type = "button";
   button.className = "detail-copy";
-  button.dataset.role = "bundle-copy";
+  button.dataset.role = role;
   button.textContent = "复制";
-  button.setAttribute("aria-label", "复制 Bundle ID");
+  button.setAttribute("aria-label", `复制 ${label}`);
   button.addEventListener("click", () => {
     const clipboard = navigator.clipboard;
     if (!clipboard?.writeText) return;
-    void clipboard.writeText(bundleId).then(() => {
+    void clipboard.writeText(value).then(() => {
       button.textContent = "已复制";
       window.setTimeout(() => {
         button.textContent = "复制";
@@ -396,7 +402,7 @@ function createPackageInfo(packageDetail: PackageDetail, json: Record<string, un
     ["开发者", jsonString(json, ["developer"]) ?? "—"],
     ["发布日期", dateOnly(packageDetail.listingDate)],
     ["更新日期", latest ? dateOnly(latest.releasedAt) : "—"],
-    ["Bundle ID", createBundleIdValue(bundleId)],
+    ["Bundle ID", createCopyValue(bundleId, "Bundle ID", "bundle-copy")],
     ["版本", packageDetail.appVersion ?? "—"],
     ["大小", formatSize(json.fileSizeBytes)],
     ["团队", packageDetail.team || "—"],
