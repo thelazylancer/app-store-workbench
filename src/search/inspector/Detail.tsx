@@ -116,7 +116,7 @@ export function Detail({
               返回候选
             </button>
           ) : null}
-          {app.bundleId ? <IpaDownload bundleId={app.bundleId} /> : null}
+          {app.bundleId ? <IpaDownload bundleId={app.bundleId} appName={app.name} /> : null}
           {inspectionState && onRetry ? (
             <button type="button" className="wx-secondary-button" data-role="detail-retry" onClick={onRetry}>
               重新查看详情
