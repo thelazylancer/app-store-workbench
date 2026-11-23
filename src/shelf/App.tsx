@@ -1,6 +1,6 @@
 import { Selector, Text } from "@astryxdesign/core";
 import { useEffect, useState } from "react";
-import type { ShelfTrendResponse, ShelfTrendWeek } from "../../shared/shelfTypes";
+import type { ShelfTrendResponse } from "../../shared/shelfTypes";
 import { useDocumentTitle } from "../app/useDocumentTitle";
 import { addDays, todayUtc } from "../lib/reportDate";
 import { ShelfApiError, getShelfTrend } from "../lib/shelfApi";
@@ -21,29 +21,6 @@ function errorMessage(error: unknown): string {
 function initialRange(): { from: string; to: string } {
   const to = todayUtc();
   return { from: addDays(to, -90), to };
-}
-
-/** Monday of the UTC week that contains `date`. */
-function mondayOf(date: string): string {
-  const weekday = (new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7;
-  return addDays(date, -weekday);
-}
-
-/** Every Monday week in [from, to], so a quiet window still shows its full axis. */
-function fillWeeks(weeks: ShelfTrendWeek[], from: string, to: string): ShelfTrendWeek[] {
-  const byStart = new Map(weeks.map((week) => [week.weekStart, week]));
-  const filled: ShelfTrendWeek[] = [];
-  for (let start = mondayOf(from); start <= to; start = addDays(start, 7)) {
-    filled.push(byStart.get(start) ?? {
-      weekStart: start,
-      weekEnd: addDays(start, 6),
-      packageCount: 0,
-      groups: [],
-      teams: [],
-      distributions: { category: [], ios_version: [], iap: [] },
-    });
-  }
-  return filled;
 }
 
 export function ShelfTrendPage() {
@@ -95,7 +72,6 @@ export function ShelfTrendPage() {
   const metricTeams = [...new Set((trend?.teamWeekStats ?? []).map((row) => row.team))]
     .sort((left, right) => left.localeCompare(right, "zh"));
   const metricStats = trend?.teamWeekStats.filter((row) => metricTeam === null || row.team === metricTeam) ?? [];
-  const metricWeeks = trend ? fillWeeks(trend.weeks, range.from, range.to) : [];
   const teamOptions = [
     { value: "", label: "全部" },
     ...teams.map((team) => ({ value: team, label: teamLabel(team) })),
@@ -210,7 +186,7 @@ export function ShelfTrendPage() {
                 </ul>
               </div>
               <MetricsBoard
-                weeks={metricWeeks}
+                weeks={trend.weeks}
                 stats={metricStats}
                 teams={trend.teams}
                 onSelect={setSelection}

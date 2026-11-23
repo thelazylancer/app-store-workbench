@@ -131,12 +131,11 @@ describe("React shelf trend page", () => {
       },
     ]);
 
-    // Every metric chart spans the whole range, including weeks without data.
-    const metricLabels = [...document.querySelectorAll('[data-role="metric-row"]')].map((row) =>
-      [...row.querySelectorAll<HTMLElement>(".wx-chart-labels .wx-chart-slot")].map((slot) => slot.textContent));
-    expect(new Set(metricLabels.map((slots) => slots.length)).size).toBe(1);
-    expect(metricLabels[0]!.length).toBeGreaterThanOrEqual(13); // a 90-day window
-    for (const slots of metricLabels) expect(slots).toEqual(metricLabels[0]);
+    // Same week axis as the charts above: only weeks that have data.
+    const metricWeekStarts = [...document.querySelectorAll('[data-role="metric-row"]')].map((row) =>
+      [...row.querySelectorAll<HTMLElement>(".wx-chart-labels .wx-chart-slot span:first-child")]
+        .map((span) => span.textContent));
+    expect(metricWeekStarts).toEqual(Array(4).fill(WEEKS.map((week) => week.weekStart)));
 
     const labels = document.querySelector('[data-role="weekly-chart"] .wx-chart-labels')?.textContent ?? "";
     expect(labels).toContain("2026-11-09");
