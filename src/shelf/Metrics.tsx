@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import { teamLabel } from "../lib/teamLabel";
 import "./styles/metrics.css";
 import type { ShelfTeamWeekStats, ShelfTrendWeek } from "../../shared/shelfTypes";
@@ -54,8 +53,8 @@ export function MetricsBoard({ weeks, stats, teams, onSelect }: MetricsBoardProp
   const { tip, bind } = useChartTip();
   const series = [...new Set(stats.map((row) => row.team))]
     .sort((left, right) => left.localeCompare(right, "zh"));
-  // Wider slots keep one value label per bar readable when many teams are shown.
-  const slotWidth = Math.min(220, Math.max(92, 24 + series.length * 26));
+  // Same 72px bar group as the weekly chart; labels only when they fit.
+  const showValues = series.length <= 4;
   const byWeek = new Map<string, Map<string, ShelfTeamWeekStats>>();
   for (const row of stats) {
     let week = byWeek.get(row.weekStart);
@@ -68,10 +67,7 @@ export function MetricsBoard({ weeks, stats, teams, onSelect }: MetricsBoardProp
 
   return (
     <div className="wx-chart-scroll wx-dist-scroll" ref={scroll.ref} tabIndex={scroll.tabIndex}>
-      <div
-        className="wx-chart-canvas wx-dist-canvas"
-        style={{ "--wx-chart-slot-w": `${slotWidth}px` } as CSSProperties}
-      >
+      <div className="wx-chart-canvas wx-dist-canvas">
         {METRICS.map((metric) => (
           <MetricRow
             key={metric.key}
@@ -83,6 +79,7 @@ export function MetricsBoard({ weeks, stats, teams, onSelect }: MetricsBoardProp
             tip={tip}
             bind={bind}
             onSelect={onSelect}
+            showValues={showValues}
           />
         ))}
       </div>
@@ -99,9 +96,10 @@ type MetricRowProps = {
   tip: ChartTipState;
   bind: ReturnType<typeof useChartTip>["bind"];
   onSelect: (selection: ShelfSelection) => void;
+  showValues: boolean;
 };
 
-function MetricRow({ metric, weeks, series, allTeams, byWeek, tip, bind, onSelect }: MetricRowProps) {
+function MetricRow({ metric, weeks, series, allTeams, byWeek, tip, bind, onSelect, showValues }: MetricRowProps) {
   const value = (weekStart: string, team: string) => byWeek.get(weekStart)?.get(team)?.[metric.key];
   const values = weeks.flatMap((week) =>
     series
@@ -178,9 +176,11 @@ function MetricRow({ metric, weeks, series, allTeams, byWeek, tip, bind, onSelec
                       label: "",
                     })}
                   >
-                    <span className="wx-metric-value" data-role="metric-value">
-                      {formatMetric(entry)}
-                    </span>
+                    {showValues ? (
+                      <span className="wx-metric-value" data-role="metric-value">
+                        {formatMetric(entry)}
+                      </span>
+                    ) : null}
                   </button>
                 );
               })}

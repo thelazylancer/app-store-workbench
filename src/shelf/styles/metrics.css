@@ -56,23 +56,26 @@
   border-top-color: var(--color-border-emphasized);
 }
 
+/* Matches .wx-chart-bar-wrap in the weekly chart, so bar gaps are identical. */
 .wx-metric-track {
   position: relative;
-  width: 100%;
+  width: 72px;
+  max-width: 100%;
   height: 100%;
+  margin: 0 auto;
 }
 
-/* Same bar as the distribution rows: centred in its slot, capped so it never gets chunky. */
+/* Same 2px gap as the weekly chart's bar group; the group itself is 72px. */
 .wx-metric-bar {
   position: absolute;
   z-index: 1;
   margin: 0;
-  padding: 0;
-  max-width: 18px;
+  padding: 0 1px;
   min-height: 1px;
   transform: translateX(-50%);
   border: 0;
   border-radius: 3px 3px 0 0;
+  background-clip: content-box;
   background-image: linear-gradient(to top, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.22));
   cursor: pointer;
   transition: filter 120ms ease-out;
@@ -89,6 +92,12 @@
 
 .wx-metric-negative {
   border-radius: 0 0 3px 3px;
+}
+
+@media (max-width: 840px) {
+  .wx-metric-track {
+    width: 64px;
+  }
 }
 
 /* Week labels line up with the plot area, past the sticky y-axis. */

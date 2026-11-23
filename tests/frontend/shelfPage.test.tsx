@@ -86,7 +86,6 @@ describe("React shelf trend page", () => {
     const metricRows = [...document.querySelectorAll<HTMLElement>('[data-role="metric-row"]')].map((row) => ({
       metric: row.dataset.metric,
       title: row.querySelector(".wx-dist-title")?.textContent,
-      weeks: row.querySelectorAll(".wx-chart-labels .wx-chart-slot").length,
       ticks: [...row.querySelectorAll('[data-role="metric-tick"]')].map((tick) => tick.textContent),
       values: [...row.querySelectorAll('[data-role="metric-value"]')].map((value) => value.textContent),
       bars: [...row.querySelectorAll<HTMLElement>('[data-role="metric-bar"]')].map((bar) => ({
@@ -99,7 +98,6 @@ describe("React shelf trend page", () => {
       {
         metric: "avgVersionCount",
         title: "平均每包版本数",
-        weeks: 2,
         ticks: ["0", "1", "2", "3"],
         values: ["2.5", "3"],
         bars: [
@@ -110,7 +108,6 @@ describe("React shelf trend page", () => {
       {
         metric: "avgVersionGapDays",
         title: "平均版本间隔（天）",
-        weeks: 2,
         ticks: ["0", "2", "4", "6", "8"],
         values: ["7"],
         bars: [{ week: WEEKS[0]!.weekStart, team: "团队 A", value: "7" }],
@@ -118,7 +115,6 @@ describe("React shelf trend page", () => {
       {
         metric: "avgLatestVersionToAdDays",
         title: "最新版本→投放（天）",
-        weeks: 2,
         ticks: ["0", "5", "10", "15"],
         values: ["3.5", "12"],
         bars: [
@@ -129,12 +125,18 @@ describe("React shelf trend page", () => {
       {
         metric: "avgAdToOfflineDays",
         title: "投放→下架（天）",
-        weeks: 2,
         ticks: ["0", "1", "2", "3", "4"],
         values: ["4"],
         bars: [{ week: WEEKS[1]!.weekStart, team: "团队 B", value: "4" }],
       },
     ]);
+
+    // Every metric chart spans the whole range, including weeks without data.
+    const metricLabels = [...document.querySelectorAll('[data-role="metric-row"]')].map((row) =>
+      [...row.querySelectorAll<HTMLElement>(".wx-chart-labels .wx-chart-slot")].map((slot) => slot.textContent));
+    expect(new Set(metricLabels.map((slots) => slots.length)).size).toBe(1);
+    expect(metricLabels[0]!.length).toBeGreaterThanOrEqual(13); // a 90-day window
+    for (const slots of metricLabels) expect(slots).toEqual(metricLabels[0]);
 
     const labels = document.querySelector('[data-role="weekly-chart"] .wx-chart-labels')?.textContent ?? "";
     expect(labels).toContain("2026-11-09");
