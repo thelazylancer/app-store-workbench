@@ -176,19 +176,22 @@ export function ShelfTrendPage() {
             <section className="wx-shelf-section" aria-labelledby="shelf-teams-title">
               <div className="wx-shelf-block-head">
                 <h2 id="shelf-teams-title" className="wx-shelf-h2">版本与投放（按团队）</h2>
-                <div className="wx-shelf-filter">
-                  <Text type="supporting" as="span">团队</Text>
-                  <Selector
-                    label="查看团队"
-                    isLabelHidden
-                    size="sm"
-                    options={[{ value: "", label: "全部团队" },
-                      ...metricTeams.map((team) => ({ value: team, label: teamLabel(team) }))]}
-                    value={metricTeam ?? ""}
-                    onChange={(value) => setMetricTeam(value || null)}
-                    data-role="metric-team-filter"
-                  />
-                </div>
+                <ul className="wx-team-chips" data-role="metric-team-chips" aria-label="按团队筛选版本图表">
+                  {metricTeams.map((name) => (
+                    <li key={name}>
+                      <button
+                        type="button"
+                        className={`wx-team-chip ${teamClass(name, teams)}`}
+                        aria-pressed={metricTeam === name}
+                        data-role="metric-team-chip"
+                        data-team={name}
+                        onClick={() => setMetricTeam(metricTeam === name ? null : name)}
+                      >
+                        {teamLabel(name)}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
               </div>
               <MetricsBoard
                 weeks={trend.weeks}

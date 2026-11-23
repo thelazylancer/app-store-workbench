@@ -15,8 +15,9 @@ describe("React shelf version charts", () => {
     renderPage();
     await waitForTeamSegments(2);
 
-    fireEvent.click(screen.getByRole("combobox", { name: "查看团队" }));
-    fireEvent.click(await screen.findByRole("option", { name: "团队 A" }));
+    const chip = (team: string) =>
+      document.querySelector<HTMLElement>(`[data-role="metric-team-chip"][data-team="${team}"]`)!;
+    fireEvent.click(chip("团队 A"));
 
     await waitFor(() => {
       expect(document.querySelectorAll('[data-role="metric-bar"]')).toHaveLength(3);
@@ -33,8 +34,8 @@ describe("React shelf version charts", () => {
     expect([...document.querySelectorAll('[data-role="metric-row"] .wx-dist-legend-label')]
       .map((label) => label.textContent)).toEqual(["团队 A", "团队 A", "团队 A"]);
 
-    fireEvent.click(screen.getByRole("combobox", { name: "查看团队" }));
-    fireEvent.click(await screen.findByRole("option", { name: "全部团队" }));
+    expect(chip("团队 A").getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(chip("团队 A"));
     await waitFor(() => {
       expect(document.querySelectorAll('[data-role="metric-bar"]')).toHaveLength(6);
     });
