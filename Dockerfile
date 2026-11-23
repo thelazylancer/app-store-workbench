@@ -1,10 +1,8 @@
-# syntax=docker/dockerfile:1
-
 FROM node:24-alpine AS build
 WORKDIR /app
 RUN apk add --no-cache git
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm npm ci
 COPY . .
 RUN npm run build
 
@@ -27,18 +25,20 @@ COPY deploy/vendor/ipatool-authcode-linux-amd64 /usr/local/bin/ipatool-bin
 RUN chmod +x /usr/local/bin/ipatool-bin
 COPY deploy/ipatool-wrapper.sh /usr/local/bin/ipatool
 RUN chmod +x /usr/local/bin/ipatool
-COPY package.json package-lock.json ./
-RUN npm ci --include=dev
-COPY tsconfig.json ./
-COPY server ./server
-COPY shared ./shared
-COPY scripts ./scripts
+COPY --chown=1000:1000 package.json package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev \
+  && chown -R 1000:1000 /app/node_modules
+COPY --chown=1000:1000 tsconfig.json ./
+COPY --chown=1000:1000 server ./server
+COPY --chown=1000:1000 shared ./shared
+COPY --chown=1000:1000 scripts ./scripts
 ENV IPATOOL_BIN=/usr/local/bin/ipatool
 ENV DOWNLOADS_DIR=/app/downloads
 ENV HOME=/home/app
 ENV SSL_CERT_FILE=/usr/local/share/apple-ca-bundle.pem
+# Only the empty dirs need chown now; the copies already carry uid 1000.
 RUN mkdir -p /app/downloads /home/app \
-  && chown -R 1000:1000 /app /home/app
+  && chown 1000:1000 /app /app/downloads /home/app
 USER 1000:1000
 EXPOSE 3001
 CMD ["./node_modules/.bin/tsx", "server/index.ts"]
