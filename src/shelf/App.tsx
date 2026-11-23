@@ -32,6 +32,8 @@ export function ShelfTrendPage() {
   const [trendError, setTrendError] = useState<string | null>(null);
   const [trendReload, setTrendReload] = useState(0);
   const [selection, setSelection] = useState<ShelfSelection | null>(null);
+  // Local to the version charts: narrows which teams those four rows show.
+  const [metricTeam, setMetricTeam] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -52,6 +54,10 @@ export function ShelfTrendPage() {
     };
   }, [range, filters.team, trendReload]);
 
+  useEffect(() => {
+    if (metricTeam && !trend?.teamWeekStats.some((row) => row.team === metricTeam)) setMetricTeam(null);
+  }, [trend, metricTeam]);
+
   const retry = () => setTrendReload((value) => value + 1);
   const showAllTeams = () => update({ team: null });
 
@@ -64,6 +70,11 @@ export function ShelfTrendPage() {
   const total = trend?.totals.packageCount;
 
   const teams = [...(trend?.teams ?? [])].sort((left, right) => left.localeCompare(right, "zh"));
+  const metricTeams = [...new Set((trend?.teamWeekStats ?? []).map((row) => row.team))]
+    .sort((left, right) => left.localeCompare(right, "zh"));
+  const metricStats = trend
+    ? trend.teamWeekStats.filter((row) => metricTeam === null || row.team === metricTeam)
+    : [];
   const teamOptions = [
     { value: "", label: "全部" },
     ...teams.map((team) => ({ value: team, label: teamLabel(team) })),
@@ -165,10 +176,23 @@ export function ShelfTrendPage() {
             <section className="wx-shelf-section" aria-labelledby="shelf-teams-title">
               <div className="wx-shelf-block-head">
                 <h2 id="shelf-teams-title" className="wx-shelf-h2">版本与投放（按团队）</h2>
+                <div className="wx-shelf-filter">
+                  <Text type="supporting" as="span">团队</Text>
+                  <Selector
+                    label="查看团队"
+                    isLabelHidden
+                    size="sm"
+                    options={[{ value: "", label: "全部团队" },
+                      ...metricTeams.map((team) => ({ value: team, label: teamLabel(team) }))]}
+                    value={metricTeam ?? ""}
+                    onChange={(value) => setMetricTeam(value || null)}
+                    data-role="metric-team-filter"
+                  />
+                </div>
               </div>
               <MetricsBoard
                 weeks={trend.weeks}
-                stats={trend.teamWeekStats}
+                stats={metricStats}
                 teams={trend.teams}
                 onSelect={setSelection}
               />

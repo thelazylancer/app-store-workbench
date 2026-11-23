@@ -1,4 +1,6 @@
+import type { CSSProperties } from "react";
 import { teamLabel } from "../lib/teamLabel";
+import "./styles/metrics.css";
 import type { ShelfTeamWeekStats, ShelfTrendWeek } from "../../shared/shelfTypes";
 import type { ShelfSelection } from "./selection";
 import {
@@ -19,6 +21,26 @@ const METRICS: { key: MetricKey; title: string }[] = [
   { key: "avgAdToOfflineDays", title: "投放→下架（天）" },
 ];
 
+/** Compact label: one decimal below 100, whole numbers above. */
+function formatMetric(value: number): string {
+  return Math.abs(value) >= 100 ? String(Math.round(value)) : value.toFixed(1).replace(/\.0$/, "");
+}
+
+/** Rounds the domain to 1/2/5 x 10^n so ticks land on readable values. */
+function metricTicks(values: number[]): { min: number; max: number; ticks: number[] } {
+  const low = Math.min(0, ...values);
+  const high = Math.max(0, ...values);
+  const rawStep = (high - low || 1) / 4;
+  const magnitude = 10 ** Math.floor(Math.log10(rawStep));
+  const norm = rawStep / magnitude;
+  const step = (norm <= 1.2 ? 1 : norm <= 2.5 ? 2 : norm <= 6 ? 5 : 10) * magnitude;
+  const min = Math.floor(low / step) * step;
+  const max = Math.max(step, Math.ceil(high / step) * step);
+  const ticks: number[] = [];
+  for (let tick = min; tick <= max + step / 1000; tick += step) ticks.push(Number(tick.toFixed(6)));
+  return { min, max, ticks };
+}
+
 type MetricsBoardProps = {
   weeks: ShelfTrendWeek[];
   stats: ShelfTeamWeekStats[];
@@ -32,6 +54,8 @@ export function MetricsBoard({ weeks, stats, teams, onSelect }: MetricsBoardProp
   const { tip, bind } = useChartTip();
   const series = [...new Set(stats.map((row) => row.team))]
     .sort((left, right) => left.localeCompare(right, "zh"));
+  // Wider slots keep one value label per bar readable when many teams are shown.
+  const slotWidth = Math.min(220, Math.max(92, 24 + series.length * 26));
   const byWeek = new Map<string, Map<string, ShelfTeamWeekStats>>();
   for (const row of stats) {
     let week = byWeek.get(row.weekStart);
@@ -44,7 +68,10 @@ export function MetricsBoard({ weeks, stats, teams, onSelect }: MetricsBoardProp
 
   return (
     <div className="wx-chart-scroll wx-dist-scroll" ref={scroll.ref} tabIndex={scroll.tabIndex}>
-      <div className="wx-chart-canvas wx-dist-canvas">
+      <div
+        className="wx-chart-canvas wx-dist-canvas"
+        style={{ "--wx-chart-slot-w": `${slotWidth}px` } as CSSProperties}
+      >
         {METRICS.map((metric) => (
           <MetricRow
             key={metric.key}
@@ -85,10 +112,10 @@ function MetricRow({ metric, weeks, series, allTeams, byWeek, tip, bind, onSelec
   }
   if (values.length === 0) return null;
   // Absent values are skipped, not zeroed; a negative metric keeps a zero baseline.
-  const max = Math.max(1e-9, ...values);
-  const min = Math.min(0, ...values);
+  const { min, max, ticks } = metricTicks(values);
   const span = max - min;
-  const zeroPct = ((0 - min) / span) * 100;
+  const percent = (value: number) => ((value - min) / span) * 100;
+  const zeroPct = percent(0);
 
   return (
     <div className="wx-metric-row" data-role="metric-row" data-metric={metric.key}>
@@ -104,14 +131,35 @@ function MetricRow({ metric, weeks, series, allTeams, byWeek, tip, bind, onSelec
         </ul>
       </div>
       <div className="wx-chart-plot wx-metric-plot">
-        {min < 0 ? <span className="wx-metric-zero" style={{ bottom: `${zeroPct}%` }} aria-hidden="true" /> : null}
+        <div className="wx-metric-axis" aria-hidden="true">
+          {ticks.map((tick) => (
+            <span
+              key={tick}
+              className="wx-metric-tick"
+              data-role="metric-tick"
+              data-tick={tick}
+              style={{ bottom: `${percent(tick)}%` }}
+            >
+              {formatMetric(tick)}
+            </span>
+          ))}
+        </div>
+        <div className="wx-metric-area">
+        {ticks.map((tick) => (
+          <span
+            key={tick}
+            className={`wx-metric-grid${tick === 0 ? " wx-metric-grid-zero" : ""}`}
+            style={{ bottom: `${percent(tick)}%` }}
+            aria-hidden="true"
+          />
+        ))}
         {weeks.map((week) => (
           <div className="wx-chart-slot" key={week.weekStart}>
             <div className="wx-metric-track">
               {series.map((team, index) => {
                 const value = byWeek.get(week.weekStart)?.get(team)?.[metric.key];
                 if (typeof value !== "number") return null;
-                const valuePct = ((value - min) / span) * 100;
+                const valuePct = percent(value);
                 const tipId = `${metric.key}:${week.weekStart}:${team}`;
                 return (
                   <button
@@ -140,7 +188,11 @@ function MetricRow({ metric, weeks, series, allTeams, byWeek, tip, bind, onSelec
                       topKeys: [],
                       label: "",
                     })}
-                  />
+                  >
+                    <span className="wx-metric-value" data-role="metric-value">
+                      {formatMetric(value)}
+                    </span>
+                  </button>
                 );
               })}
             </div>
@@ -149,6 +201,7 @@ function MetricRow({ metric, weeks, series, allTeams, byWeek, tip, bind, onSelec
             ))}
           </div>
         ))}
+        </div>
       </div>
     </div>
   );

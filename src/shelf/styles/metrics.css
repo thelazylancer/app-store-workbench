@@ -1,0 +1,108 @@
+/* Version/launch metrics: one chart per metric, one bar per team per week. */
+.wx-metric-row {
+  margin-bottom: 20px;
+}
+
+.wx-metric-row:last-child {
+  margin-bottom: 0;
+}
+
+/* Padding leaves room for the value labels above the tallest bar. */
+.wx-chart-plot.wx-metric-plot {
+  height: 120px;
+  padding-top: 20px;
+}
+
+/* Sticky so the scale stays visible while the weeks scroll sideways. */
+.wx-metric-axis {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  flex: 0 0 44px;
+  height: 100%;
+  background: var(--color-background-body);
+  color: var(--color-text-secondary);
+  font-family: var(--font-family-code);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.wx-metric-tick {
+  position: absolute;
+  right: 6px;
+  line-height: 1;
+  white-space: nowrap;
+  transform: translateY(50%);
+}
+
+.wx-metric-area {
+  position: relative;
+  flex: 0 0 auto;
+  height: 100%;
+  display: flex;
+  align-items: stretch;
+}
+
+.wx-metric-grid {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 0;
+  border-top: 1px solid var(--color-border);
+  pointer-events: none;
+}
+
+.wx-metric-grid-zero {
+  border-top-color: var(--color-border-emphasized);
+}
+
+.wx-metric-track {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* padding + content-box clip keeps a 2px gap between team bars without shrinking the hit area. */
+.wx-metric-bar {
+  position: absolute;
+  z-index: 1;
+  margin: 0;
+  padding: 0 1px;
+  border: 0;
+  border-radius: 2px 2px 0 0;
+  background-clip: content-box;
+  cursor: pointer;
+  transition: filter 120ms ease-out;
+}
+
+.wx-metric-bar:hover {
+  filter: brightness(0.9);
+}
+
+.wx-metric-bar:focus-visible {
+  outline: var(--focus-outline-width) solid var(--focus-outline-color);
+  outline-offset: 1px;
+}
+
+.wx-metric-negative {
+  border-radius: 0 0 2px 2px;
+}
+
+.wx-metric-value {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 3px);
+  transform: translateX(-50%);
+  color: var(--color-text-secondary);
+  font-family: var(--font-family-code);
+  font-size: 9px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.wx-metric-negative .wx-metric-value {
+  bottom: auto;
+  top: calc(100% + 3px);
+}

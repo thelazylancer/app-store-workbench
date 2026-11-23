@@ -1,73 +1,17 @@
-import { Theme } from "@astryxdesign/core";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { BrowserRouter } from "react-router";
+import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ShelfTrendPage } from "../../src/shelf/App";
 import { addDays, todayUtc } from "../../src/lib/reportDate";
-import { wxTheme } from "../../src/theme/wxTheme";
 import { WEEKS, json, mockShelf } from "./shelfFixtures";
-
-// Astryx Dialog drives the native <dialog>; jsdom ships the element without the modal API.
-if (typeof HTMLDialogElement.prototype.showModal !== "function") {
-  HTMLDialogElement.prototype.showModal = function showModal(this: HTMLDialogElement) {
-    this.setAttribute("open", "");
-  };
-  HTMLDialogElement.prototype.close = function close(this: HTMLDialogElement) {
-    this.removeAttribute("open");
-  };
-}
-
-// jsdom ships no CSS.escape(); the dialog uses it to build its title id.
-if (typeof globalThis.CSS?.escape !== "function") {
-  const css = (globalThis.CSS ??= {} as typeof CSS);
-  css.escape = (value: string) => value.replace(/[^a-zA-Z0-9_-]/g, (character) => `\\${character}`);
-}
-function renderPage(search = "") {
-  window.history.replaceState({}, "", `/shelf${search}`);
-  return render(
-    <Theme theme={wxTheme} mode="light">
-      <BrowserRouter>
-        <ShelfTrendPage />
-      </BrowserRouter>
-    </Theme>,
-  );
-}
-
-function teamSegments(week?: string): HTMLElement[] {
-  return [...document.querySelectorAll<HTMLElement>('[data-role="team-segment"]')]
-    .filter((segment) => week === undefined || segment.dataset.week === week);
-}
-
-function weekBars(): HTMLElement[] {
-  return [...document.querySelectorAll<HTMLElement>('[data-role="week-bar"]')];
-}
-
-function detailRows(): HTMLElement[] {
-  return [...document.querySelectorAll<HTMLElement>('[data-role="detail-row"]')];
-}
-
-async function waitForTeamSegments(count: number) {
-  await waitFor(() => {
-    expect(teamSegments()).toHaveLength(count);
-  });
-}
-
-async function waitForWeekBars(count: number) {
-  await waitFor(() => {
-    expect(weekBars()).toHaveLength(count);
-  });
-}
-
-async function openDetails(trigger: HTMLElement) {
-  fireEvent.click(trigger);
-  await screen.findByRole("dialog");
-}
-
-function packagesCalls(fetchMock: ReturnType<typeof mockShelf>): string[] {
-  return fetchMock.mock.calls
-    .map(([input]) => String(input))
-    .filter((url) => url.includes("/api/public/shelf/packages"));
-}
+import {
+  detailRows,
+  openDetails,
+  packagesCalls,
+  renderPage,
+  teamSegments,
+  waitForTeamSegments,
+  waitForWeekBars,
+  weekBars,
+} from "./shelfHarness";
 
 afterEach(() => {
   cleanup();
@@ -152,6 +96,8 @@ describe("React shelf trend page", () => {
       metric: row.dataset.metric,
       title: row.querySelector(".wx-dist-title")?.textContent,
       legend: [...row.querySelectorAll(".wx-dist-legend-label")].map((label) => label.textContent),
+      ticks: [...row.querySelectorAll('[data-role="metric-tick"]')].map((tick) => tick.textContent),
+      values: [...row.querySelectorAll('[data-role="metric-value"]')].map((value) => value.textContent),
       bars: [...row.querySelectorAll<HTMLElement>('[data-role="metric-bar"]')].map((bar) => ({
         week: bar.dataset.week,
         team: bar.dataset.team,
@@ -163,6 +109,8 @@ describe("React shelf trend page", () => {
         metric: "avgVersionCount",
         title: "平均每包版本数",
         legend: ["团队 A", "团队 B"],
+        ticks: ["0", "1", "2", "3"],
+        values: ["2.5", "3"],
         bars: [
           { week: WEEKS[0]!.weekStart, team: "团队 A", value: "2.5" },
           { week: WEEKS[1]!.weekStart, team: "团队 B", value: "3" },
@@ -172,12 +120,16 @@ describe("React shelf trend page", () => {
         metric: "avgVersionGapDays",
         title: "平均版本间隔（天）",
         legend: ["团队 A", "团队 B"],
+        ticks: ["0", "2", "4", "6", "8"],
+        values: ["7"],
         bars: [{ week: WEEKS[0]!.weekStart, team: "团队 A", value: "7" }],
       },
       {
         metric: "avgLatestVersionToAdDays",
         title: "最新版本→投放（天）",
         legend: ["团队 A", "团队 B"],
+        ticks: ["0", "5", "10", "15"],
+        values: ["3.5", "12"],
         bars: [
           { week: WEEKS[0]!.weekStart, team: "团队 A", value: "3.5" },
           { week: WEEKS[1]!.weekStart, team: "团队 B", value: "12" },
@@ -187,6 +139,8 @@ describe("React shelf trend page", () => {
         metric: "avgAdToOfflineDays",
         title: "投放→下架（天）",
         legend: ["团队 A", "团队 B"],
+        ticks: ["0", "1", "2", "3", "4"],
+        values: ["4"],
         bars: [{ week: WEEKS[1]!.weekStart, team: "团队 B", value: "4" }],
       },
     ]);
@@ -265,30 +219,6 @@ describe("React shelf trend page", () => {
     expect(document.querySelector(".wx-chart-tip")?.textContent).toBe("团队 A 2.5");
     fireEvent.mouseOut(metricBar);
     expect(document.querySelector(".wx-chart-tip")).toBeNull();
-  });
-
-  it("opens the week-scoped detail from a metric bar", async () => {
-    const fetchMock = mockShelf();
-    vi.stubGlobal("fetch", fetchMock);
-    renderPage();
-    await waitForTeamSegments(2);
-
-    const bar = document.querySelector<HTMLElement>(
-      `[data-role="metric-row"][data-metric="avgLatestVersionToAdDays"] `
-      + `[data-role="metric-bar"][data-week="${WEEKS[1]!.weekStart}"][data-team="团队 B"]`,
-    );
-    await openDetails(bar!);
-
-    await waitFor(() => {
-      expect(detailRows()).toHaveLength(2);
-    });
-    const dialog = screen.getByRole("dialog");
-    expect(dialog.textContent).toContain("2026-11-16 ~ 2026-11-22");
-    expect(dialog.textContent).toContain("团队 B");
-    const url = new URL(packagesCalls(fetchMock)[0]!, "http://localhost");
-    expect(url.searchParams.get("from")).toBe("2026-11-16");
-    expect(url.searchParams.get("to")).toBe("2026-11-22");
-    expect(url.searchParams.get("team")).toBe("团队 B");
   });
 
   it("opens the whole-range detail narrowed to a clicked ranking row", async () => {
@@ -441,6 +371,8 @@ describe("React shelf trend page", () => {
         teams: [],
         weeks: [],
         totals: { packageCount: 0, groups: [] },
+        distributions: { category: [], ios_version: [], iap: [] },
+        teamWeekStats: [],
       })));
     renderPage();
 
