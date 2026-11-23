@@ -1,6 +1,6 @@
 import { Selector, Text } from "@astryxdesign/core";
 import { useEffect, useState } from "react";
-import type { ShelfTrendResponse } from "../../shared/shelfTypes";
+import type { ShelfTeamStats, ShelfTrendResponse } from "../../shared/shelfTypes";
 import { useDocumentTitle } from "../app/useDocumentTitle";
 import { addDays, todayUtc } from "../lib/reportDate";
 import { ShelfApiError, getShelfTrend } from "../lib/shelfApi";
@@ -20,6 +20,50 @@ function errorMessage(error: unknown): string {
 function initialRange(): { from: string; to: string } {
   const to = todayUtc();
   return { from: addDays(to, -90), to };
+}
+
+function dayCell(value: number | null): string {
+  return value === null ? "—" : value.toFixed(1);
+}
+
+/** Per-team version cadence and launch timings; mirrors the trend's team filter. */
+function TeamStatsTable({ stats }: { stats: ShelfTeamStats[] }) {
+  return (
+    <>
+      <div className="wx-stats-wrap">
+        <table className="wx-stats-table" data-role="team-stats">
+          <thead>
+            <tr>
+              <th scope="col">团队</th>
+              <th scope="col">包数</th>
+              <th scope="col">版本数</th>
+              <th scope="col">有版本</th>
+              <th scope="col">平均版本间隔（天）</th>
+              <th scope="col">最新版本→投放（天）</th>
+              <th scope="col">投放→下架（天）</th>
+            </tr>
+          </thead>
+          <tbody>
+            {stats.map((row) => (
+              <tr key={row.team} data-role="team-stats-row" data-team={row.team}>
+                <th scope="row">{teamLabel(row.team)}</th>
+                <td>{row.packageCount}</td>
+                <td>{row.versionCount}</td>
+                <td>{row.versionedPackages}/{row.packageCount}</td>
+                <td>{dayCell(row.avgVersionGapDays)}</td>
+                <td>{dayCell(row.avgLatestVersionToAdDays)}</td>
+                <td>{dayCell(row.avgAdToOfflineDays)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="wx-stats-note">
+        版本数据来自 App Store 版本历史；「最新版本→投放」为负数表示投放后仍有版本更新；
+        「投放→下架」只统计已有下架日期的包。
+      </p>
+    </>
+  );
 }
 
 export function ShelfTrendPage() {
@@ -159,6 +203,13 @@ export function ShelfTrendPage() {
                 team={filters.team}
                 onSelect={setSelection}
               />
+            </section>
+
+            <section className="wx-shelf-section" aria-labelledby="shelf-teams-title">
+              <div className="wx-shelf-block-head">
+                <h2 id="shelf-teams-title" className="wx-shelf-h2">团队版本与投放</h2>
+              </div>
+              <TeamStatsTable stats={trend.teamStats} />
             </section>
           </>
         ) : null}

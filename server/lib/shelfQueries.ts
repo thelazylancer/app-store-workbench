@@ -7,6 +7,7 @@ import type {
   ShelfIosBucket,
   ShelfPackageRow,
   ShelfPackagesResponse,
+  ShelfTeamStats,
   ShelfTrendResponse,
   ShelfTrendTotals,
   ShelfTrendWeek,
@@ -40,6 +41,18 @@ type TrendAggregateRow = {
   minimum_os_version: string | null;
   iap_has: boolean;
   n: number;
+};
+
+type TeamStatsRow = {
+  team: string;
+  package_count: number;
+  versioned_packages: number;
+  version_count: number;
+  avg_version_count: number | null;
+  avg_gap_days: number | null;
+  avg_latest_to_ad_days: number | null;
+  offline_packages: number;
+  avg_ad_to_offline_days: number | null;
 };
 
 type PackageDetailRow = {
@@ -80,6 +93,53 @@ const TEAMS_SQL = `
   SELECT DISTINCT team
     FROM competitor_packages
    WHERE target_date BETWEEN $1::date AND $2::date
+   ORDER BY team`;
+
+// Version timings per team. A package's mean interval is (last - first) / (n - 1),
+// which avoids window functions; float casts keep pg from returning numeric strings.
+const TEAM_STATS_SQL = `
+  WITH pkg_versions AS (
+    SELECT package_code,
+           count(DISTINCT version) AS version_count,
+           count(DISTINCT released_at::date) AS release_dates,
+           min(released_at::date) AS first_release,
+           max(released_at::date) AS last_release
+      FROM competitor_versions
+     GROUP BY package_code
+  ),
+  pkg_stats AS (
+    SELECT p.team,
+           p.offline_date,
+           COALESCE(pv.version_count, 0) AS version_count,
+           COALESCE(pv.release_dates, 0) AS release_dates,
+           CASE
+             WHEN pv.release_dates > 1
+             THEN (pv.last_release - pv.first_release)::float8 / (pv.release_dates - 1)
+           END AS gap_days,
+           CASE
+             WHEN pv.last_release IS NOT NULL
+             THEN (p.first_ad_date - pv.last_release)::int
+           END AS latest_to_ad_days,
+           CASE
+             WHEN p.offline_date IS NOT NULL
+             THEN (p.offline_date - p.first_ad_date)::int
+           END AS ad_to_offline_days
+      FROM competitor_packages p
+      LEFT JOIN pkg_versions pv ON pv.package_code = p.package_code
+     WHERE p.target_date BETWEEN $1::date AND $2::date
+       AND ($3::text IS NULL OR p.team = $3)
+  )
+  SELECT team,
+         count(*)::int AS package_count,
+         count(*) FILTER (WHERE version_count > 0)::int AS versioned_packages,
+         COALESCE(sum(version_count), 0)::int AS version_count,
+         avg(version_count) FILTER (WHERE version_count > 0)::float8 AS avg_version_count,
+         avg(gap_days)::float8 AS avg_gap_days,
+         avg(latest_to_ad_days)::float8 AS avg_latest_to_ad_days,
+         count(*) FILTER (WHERE offline_date IS NOT NULL)::int AS offline_packages,
+         avg(ad_to_offline_days)::float8 AS avg_ad_to_offline_days
+    FROM pkg_stats
+   GROUP BY team
    ORDER BY team`;
 
 const COUNT_SQL = `
@@ -222,11 +282,23 @@ function foldTrend(rows: TrendAggregateRow[], groupBy: ShelfGroupBy): {
 export function createShelfQueries(pool: Pool): ShelfQueryRepo {
   return {
     async getShelfTrend({ from, to, team, groupBy }) {
-      const [teamResult, trendResult] = await Promise.all([
+      const [teamResult, trendResult, statsResult] = await Promise.all([
         pool.query<{ team: string }>(TEAMS_SQL, [from, to]),
         pool.query<TrendAggregateRow>(TREND_SQL, [from, to, team]),
+        pool.query<TeamStatsRow>(TEAM_STATS_SQL, [from, to, team]),
       ]);
       const folded = foldTrend(trendResult.rows, groupBy);
+      const teamStats: ShelfTeamStats[] = statsResult.rows.map((row) => ({
+        team: row.team,
+        packageCount: row.package_count,
+        versionedPackages: row.versioned_packages,
+        versionCount: row.version_count,
+        avgVersionCount: row.avg_version_count,
+        avgVersionGapDays: row.avg_gap_days,
+        avgLatestVersionToAdDays: row.avg_latest_to_ad_days,
+        offlinePackages: row.offline_packages,
+        avgAdToOfflineDays: row.avg_ad_to_offline_days,
+      }));
 
       return {
         from,
@@ -234,6 +306,7 @@ export function createShelfQueries(pool: Pool): ShelfQueryRepo {
         team,
         groupBy,
         teams: teamResult.rows.map((row) => row.team),
+        teamStats,
         ...folded,
       };
     },

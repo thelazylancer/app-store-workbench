@@ -128,6 +128,20 @@ describeDb("shelf queries against PostgreSQL", () => {
       lookupStatus: "hit", category: null, minimumOsVersion: "garbage",
       appStoreJson: { name: "Gamma App", iapItems: [] },
     }));
+
+    // Version history: A has one 3-day gap; B a single release; E two 5-day gaps.
+    await writes.upsertVersions(codeA, [
+      { version: "1.0", releasedAt: `${shiftDay(sunday, -4)}T00:00:00.000Z`, notes: null },
+      { version: "1.1", releasedAt: `${shiftDay(sunday, -1)}T00:00:00.000Z`, notes: null },
+    ]);
+    await writes.upsertVersions(codeB, [
+      { version: "2.0", releasedAt: `${shiftDay(monday, -20)}T00:00:00.000Z`, notes: null },
+    ]);
+    await writes.upsertVersions(codeE, [
+      { version: "1.0", releasedAt: `${shiftDay(monday, -6)}T00:00:00.000Z`, notes: null },
+      { version: "2.0", releasedAt: `${shiftDay(monday, -1)}T00:00:00.000Z`, notes: null },
+      { version: "3.0", releasedAt: `${shiftDay(monday, 4)}T00:00:00.000Z`, notes: null },
+    ]);
   });
 
   afterAll(async () => {
@@ -250,6 +264,48 @@ describeDb("shelf queries against PostgreSQL", () => {
       { key: "no", count: 3 },
       { key: "unknown", count: 2 },
     ]);
+  });
+
+  it("aggregates per-team version cadence and launch timings", async () => {
+    const trend = await repo.getShelfTrend({ from: sunday, to: week2End, team: null, groupBy: "category" });
+    expect(trend.teamStats).toEqual([
+      {
+        team: alpha,
+        packageCount: 3,
+        versionedPackages: 3,
+        versionCount: 6,
+        avgVersionCount: 2,
+        avgVersionGapDays: 4,
+        avgLatestVersionToAdDays: 7,
+        offlinePackages: 0,
+        avgAdToOfflineDays: null,
+      },
+      {
+        team: beta,
+        packageCount: 2,
+        versionedPackages: 0,
+        versionCount: 0,
+        avgVersionCount: null,
+        avgVersionGapDays: null,
+        avgLatestVersionToAdDays: null,
+        offlinePackages: 1,
+        avgAdToOfflineDays: -1,
+      },
+      {
+        team: gamma,
+        packageCount: 1,
+        versionedPackages: 0,
+        versionCount: 0,
+        avgVersionCount: null,
+        avgVersionGapDays: null,
+        avgLatestVersionToAdDays: null,
+        offlinePackages: 0,
+        avgAdToOfflineDays: null,
+      },
+    ]);
+
+    const filtered = await repo.getShelfTrend({ from: sunday, to: week2End, team: alpha, groupBy: "category" });
+    expect(filtered.teamStats.map((row) => row.team)).toEqual([alpha]);
   });
 
   it("projects only whitelisted detail fields and truncates by limit, not total", async () => {

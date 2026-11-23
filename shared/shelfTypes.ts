@@ -61,6 +61,26 @@ export type ShelfTrendTotals = {
 /** Whole-range distribution for every dimension, so each can be shown at once. */
 export type ShelfDistributions = Record<ShelfGroupBy, ShelfGroupCount[]>;
 
+/** Version and launch timings for one team's packages in the requested range. */
+export type ShelfTeamStats = {
+  team: string;
+  packageCount: number;
+  /** Packages with at least one App Store version record. */
+  versionedPackages: number;
+  /** Distinct versions across the team's packages. */
+  versionCount: number;
+  /** Mean versions per versioned package. */
+  avgVersionCount: number | null;
+  /** Mean days between consecutive releases within a package; needs 2+ release dates. */
+  avgVersionGapDays: number | null;
+  /** Mean days from the latest release to first_ad_date; negative = release after the ad. */
+  avgLatestVersionToAdDays: number | null;
+  /** Packages that already have an offline date. */
+  offlinePackages: number;
+  /** Mean days from first_ad_date to offline_date over offline packages. */
+  avgAdToOfflineDays: number | null;
+};
+
 /** Response of GET /api/public/shelf/trend. */
 export type ShelfTrendResponse = {
   from: string; // YYYY-MM-DD, echoed
@@ -73,6 +93,8 @@ export type ShelfTrendResponse = {
   weeks: ShelfTrendWeek[];
   totals: ShelfTrendTotals;
   distributions: ShelfDistributions;
+  /** Per-team version/launch timings; honors the team filter, ascending by team. */
+  teamStats: ShelfTeamStats[];
 };
 
 /**

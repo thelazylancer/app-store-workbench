@@ -147,12 +147,23 @@ describe("React shelf trend page", () => {
       { week: WEEKS[1]!.weekStart, key: "unknown", count: "1" },
     ]);
 
+    expect(screen.getByRole("heading", { level: 2, name: "团队版本与投放" })).toBeTruthy();
+    const statRows = [...document.querySelectorAll<HTMLElement>('[data-role="team-stats-row"]')].map((row) => ({
+      team: row.dataset.team,
+      cells: [...row.querySelectorAll("td")].map((cell) => cell.textContent),
+    }));
+    expect(statRows).toEqual([
+      { team: "团队 A", cells: ["3", "5", "2/3", "7.0", "-2.0", "4.0"] },
+      { team: "团队 B", cells: ["2", "3", "1/2", "—", "12.0", "—"] },
+    ]);
+
     const labels = document.querySelector('[data-role="weekly-chart"] .wx-chart-labels')?.textContent ?? "";
     expect(labels).toContain("2026-11-09");
     expect(labels).toContain("~ 2026-11-15");
 
     expect(document.querySelector('[data-role="weekly-chart"] caption')?.textContent).toBe("每周入库包数");
-    expect(document.body.textContent).not.toContain("投放");
+    // Launch timing is published only as day averages, never as raw dates.
+    expect(document.body.textContent).not.toContain("投放日期");
   });
 
   it("opens the week detail from a team segment, grouped by category", async () => {

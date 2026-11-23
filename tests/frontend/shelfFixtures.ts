@@ -4,6 +4,7 @@ import type {
   ShelfGroupCount,
   ShelfPackageRow,
   ShelfPackagesResponse,
+  ShelfTeamStats,
   ShelfTrendResponse,
 } from "../../shared/shelfTypes";
 
@@ -43,6 +44,34 @@ function sumGroups(weeks: number[], groupBy: ShelfGroupBy): ShelfGroupCount[] {
   return [...map].map(([key, count]) => ({ key, count }));
 }
 
+function teamStatsFor(team: string | null): ShelfTeamStats[] {
+  const rows: ShelfTeamStats[] = [
+    {
+      team: "团队 A",
+      packageCount: 3,
+      versionedPackages: 2,
+      versionCount: 5,
+      avgVersionCount: 2.5,
+      avgVersionGapDays: 7,
+      avgLatestVersionToAdDays: -2,
+      offlinePackages: 1,
+      avgAdToOfflineDays: 4,
+    },
+    {
+      team: "团队 B",
+      packageCount: 2,
+      versionedPackages: 1,
+      versionCount: 3,
+      avgVersionCount: 3,
+      avgVersionGapDays: null,
+      avgLatestVersionToAdDays: 12,
+      offlinePackages: 0,
+      avgAdToOfflineDays: null,
+    },
+  ];
+  return team === null ? rows : rows.filter((row) => row.team === team);
+}
+
 export function trendFor(team: string | null, groupBy: ShelfGroupBy): ShelfTrendResponse {
   const knownTeam = team === null || team === "团队 A" || team === "团队 B";
   const weekIndexes = !knownTeam ? [] : team === "团队 A" ? [0] : team === "团队 B" ? [1] : [0, 1];
@@ -73,6 +102,7 @@ export function trendFor(team: string | null, groupBy: ShelfGroupBy): ShelfTrend
       ios_version: sumGroups(weekIndexes, "ios_version"),
       iap: sumGroups(weekIndexes, "iap"),
     },
+    teamStats: teamStatsFor(team),
   };
 }
 
