@@ -286,40 +286,42 @@
   outline-offset: 1px;
 }
 
-/* Distribution: one row per dimension, one weekly mini chart per value. */
+/* Distribution: one weekly grouped chart per dimension, one thin bar per type. */
 .wx-dist-rows {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 20px;
+}
+
+.wx-dist-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 16px;
+  margin-bottom: 6px;
 }
 
 .wx-dist-title {
-  margin: 0 0 6px;
+  margin: 0;
   color: var(--color-text-secondary);
   font-size: 12px;
   font-weight: 600;
 }
 
-.wx-dist-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(84px, 140px));
-  gap: 10px 12px;
+.wx-dist-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.wx-dist-card {
+.wx-dist-legend-btn {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 4px;
-  min-width: 0;
-}
-
-.wx-dist-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 6px;
   margin: 0;
   padding: 0;
   border: 0;
@@ -327,81 +329,66 @@
   color: var(--color-text-primary);
   font: inherit;
   font-size: 12px;
-  line-height: 1.5;
-  text-align: left;
+  line-height: 1.6;
   cursor: pointer;
 }
 
-.wx-dist-label {
-  overflow: hidden;
-  color: var(--color-text-secondary);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.wx-dist-head:hover .wx-dist-label {
+.wx-dist-legend-btn:hover .wx-dist-legend-label {
   color: var(--color-text-primary);
 }
 
-.wx-dist-head:focus-visible,
-.wx-dist-bar:focus-visible {
+.wx-dist-legend-btn:focus-visible {
   outline: var(--focus-outline-width) solid var(--focus-outline-color);
   outline-offset: 1px;
 }
 
-.wx-dist-total {
+.wx-dist-swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+}
+
+.wx-dist-legend-label {
+  color: var(--color-text-secondary);
+}
+
+.wx-dist-legend-count {
   font-family: var(--font-family-code);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
-.wx-dist-bars {
-  position: relative;
-  display: flex;
-  align-items: flex-end;
-  gap: 2px;
-  height: 48px;
+/* Shorter and narrower than the main chart; all three rows share the scroll region. */
+.wx-chart-plot.wx-dist-plot {
+  height: 150px;
 }
 
-.wx-dist-bar-wrap {
-  position: relative;
-  display: flex;
-  flex: 1 1 0;
-  align-items: flex-end;
-  min-width: 2px;
-  height: 100%;
+.wx-dist-canvas {
+  --wx-chart-slot-w: 92px;
 }
 
-.wx-dist-bar {
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 2px 2px 0 0;
-  cursor: pointer;
+.wx-dist-canvas .wx-chart-bar-wrap {
+  width: 64px;
 }
 
-.wx-dist-bar:hover:enabled {
-  filter: brightness(0.92);
+.wx-dist-row {
+  margin-bottom: 20px;
 }
 
-.wx-dist-bar:disabled {
-  cursor: default;
+.wx-dist-row:last-child {
+  margin-bottom: 0;
 }
 
-/* Anchored to the card, so edge cards don't clip the tip at the page edge. */
-.wx-dist-bars > .wx-chart-tip {
-  top: auto;
-  bottom: calc(100% + 4px);
+/* One scrollbar for all three rows; each head stays pinned over its own chart. */
+.wx-chart-scroll.wx-dist-scroll {
+  container-type: inline-size;
+}
+
+.wx-dist-head {
+  position: sticky;
   left: 0;
-  transform: none;
-}
-
-.wx-dist-axis {
-  margin: 12px 0 0;
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  line-height: 1.5;
+  z-index: 1;
+  width: 100cqw;
 }
 
 @media (max-width: 1179px) {
@@ -423,11 +410,15 @@
     width: 64px;
   }
 
-  .wx-dist-bars {
-    height: 40px;
+  .wx-chart-plot.wx-dist-plot {
+    height: 132px;
   }
 
-  .wx-dist-cards {
-    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  .wx-dist-canvas {
+    --wx-chart-slot-w: 76px;
+  }
+
+  .wx-dist-canvas .wx-chart-bar-wrap {
+    width: 56px;
   }
 }

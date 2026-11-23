@@ -99,28 +99,52 @@ describe("React shelf trend page", () => {
     const dims = [...document.querySelectorAll<HTMLElement>('[data-role="distribution-row"]')].map((row) => ({
       dimension: row.dataset.dimension,
       title: row.querySelector(".wx-dist-title")?.textContent,
-      cards: [...row.querySelectorAll<HTMLElement>('[data-role="dist-card"]')].map((card) => ({
-        key: card.dataset.key,
-        total: card.querySelector(".wx-dist-total")?.textContent,
-        bars: [...card.querySelectorAll<HTMLElement>('[data-role="dist-bar"]')].map((bar) => bar.dataset.count),
+      legend: [...row.querySelectorAll(".wx-dist-legend li")].map((item) => ({
+        label: item.querySelector(".wx-dist-legend-label")?.textContent,
+        count: item.querySelector(".wx-dist-legend-count")?.textContent,
+      })),
+      bars: [...row.querySelectorAll<HTMLElement>('[data-role="dist-bar"]')].map((bar) => ({
+        week: bar.dataset.week,
+        key: bar.dataset.key,
+        count: bar.dataset.count,
       })),
     }));
     expect(dims.map((row) => row.title)).toEqual(["类目", "最低 iOS", "内购"]);
-    expect(dims[0]!.cards).toEqual([
-      { key: "Games", total: "2", bars: ["2", "0"] },
-      { key: "Utilities", total: "1", bars: ["0", "1"] },
-      { key: "unknown", total: "2", bars: ["1", "1"] },
+    expect(dims[0]!.legend).toEqual([
+      { label: "游戏", count: "2" },
+      { label: "工具", count: "1" },
+      { label: "未知", count: "2" },
     ]);
-    expect(dims[1]!.cards).toEqual([
-      { key: "15", total: "1", bars: ["0", "1"] },
-      { key: "16", total: "1", bars: ["1", "0"] },
-      { key: "17", total: "1", bars: ["1", "0"] },
-      { key: "unknown", total: "2", bars: ["1", "1"] },
+    expect(dims[0]!.bars).toEqual([
+      { week: WEEKS[0]!.weekStart, key: "Games", count: "2" },
+      { week: WEEKS[0]!.weekStart, key: "unknown", count: "1" },
+      { week: WEEKS[1]!.weekStart, key: "Utilities", count: "1" },
+      { week: WEEKS[1]!.weekStart, key: "unknown", count: "1" },
     ]);
-    expect(dims[2]!.cards).toEqual([
-      { key: "yes", total: "1", bars: ["1", "0"] },
-      { key: "no", total: "2", bars: ["1", "1"] },
-      { key: "unknown", total: "2", bars: ["1", "1"] },
+    expect(dims[1]!.legend).toEqual([
+      { label: "15", count: "1" },
+      { label: "16", count: "1" },
+      { label: "17", count: "1" },
+      { label: "未知", count: "2" },
+    ]);
+    expect(dims[1]!.bars).toEqual([
+      { week: WEEKS[0]!.weekStart, key: "16", count: "1" },
+      { week: WEEKS[0]!.weekStart, key: "17", count: "1" },
+      { week: WEEKS[0]!.weekStart, key: "unknown", count: "1" },
+      { week: WEEKS[1]!.weekStart, key: "15", count: "1" },
+      { week: WEEKS[1]!.weekStart, key: "unknown", count: "1" },
+    ]);
+    expect(dims[2]!.legend).toEqual([
+      { label: "有", count: "1" },
+      { label: "无", count: "2" },
+      { label: "未知", count: "2" },
+    ]);
+    expect(dims[2]!.bars).toEqual([
+      { week: WEEKS[0]!.weekStart, key: "yes", count: "1" },
+      { week: WEEKS[0]!.weekStart, key: "no", count: "1" },
+      { week: WEEKS[0]!.weekStart, key: "unknown", count: "1" },
+      { week: WEEKS[1]!.weekStart, key: "no", count: "1" },
+      { week: WEEKS[1]!.weekStart, key: "unknown", count: "1" },
     ]);
 
     const labels = document.querySelector('[data-role="weekly-chart"] .wx-chart-labels')?.textContent ?? "";
@@ -174,6 +198,17 @@ describe("React shelf trend page", () => {
     expect(document.querySelector(".wx-chart-tip")?.textContent).toBe("团队 A 3 包");
     fireEvent.mouseOut(teamSegment);
     expect(document.querySelector(".wx-chart-tip")).toBeNull();
+
+    // The distribution rows share one tip state; each bar keeps its own slot id.
+    const distBar = document.querySelector<HTMLElement>(
+      `[data-role="distribution-row"][data-dimension="iap"] `
+      + `[data-role="dist-bar"][data-week="${WEEKS[0]!.weekStart}"][data-key="yes"]`,
+    )!;
+    fireEvent.mouseOver(distBar);
+    expect(document.querySelectorAll(".wx-chart-tip")).toHaveLength(1);
+    expect(document.querySelector(".wx-chart-tip")?.textContent).toBe("有 1 包");
+    fireEvent.mouseOut(distBar);
+    expect(document.querySelector(".wx-chart-tip")).toBeNull();
   });
 
   it("opens the whole-range detail narrowed to a clicked ranking row", async () => {
@@ -183,7 +218,7 @@ describe("React shelf trend page", () => {
     await waitForTeamSegments(2);
 
     const games = document.querySelector<HTMLElement>(
-      `[data-role="distribution-row"][data-dimension="category"] [data-role="dist-card"][data-key="Games"] .wx-dist-head`,
+      `[data-role="distribution-row"][data-dimension="category"] [data-role="dist-legend"][data-key="Games"]`,
     );
     await openDetails(games!);
 
@@ -209,8 +244,8 @@ describe("React shelf trend page", () => {
     await waitForTeamSegments(2);
 
     const bar = document.querySelector<HTMLElement>(
-      `[data-role="distribution-row"][data-dimension="category"] [data-role="dist-card"][data-key="Games"] `
-      + `[data-role="dist-bar"][data-week="${WEEKS[0]!.weekStart}"]`,
+      `[data-role="distribution-row"][data-dimension="category"] `
+      + `[data-role="dist-bar"][data-week="${WEEKS[0]!.weekStart}"][data-key="Games"]`,
     );
     await openDetails(bar!);
 
@@ -232,7 +267,7 @@ describe("React shelf trend page", () => {
     await waitForTeamSegments(2);
 
     const unknown = document.querySelector<HTMLElement>(
-      `[data-role="distribution-row"][data-dimension="category"] [data-role="dist-card"][data-key="unknown"] .wx-dist-head`,
+      `[data-role="distribution-row"][data-dimension="category"] [data-role="dist-legend"][data-key="unknown"]`,
     );
     await openDetails(unknown!);
 
