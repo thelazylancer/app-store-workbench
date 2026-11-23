@@ -62,15 +62,17 @@
   height: 100%;
 }
 
-/* Matches the distribution bars: 3px rounded top, sheen, 2px gap between neighbours. */
+/* Same bar as the distribution rows: centred in its slot, capped so it never gets chunky. */
 .wx-metric-bar {
   position: absolute;
   z-index: 1;
   margin: 0;
-  padding: 0 2px;
+  padding: 0;
+  max-width: 18px;
+  min-height: 1px;
+  transform: translateX(-50%);
   border: 0;
   border-radius: 3px 3px 0 0;
-  background-clip: content-box;
   background-image: linear-gradient(to top, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.22));
   cursor: pointer;
   transition: filter 120ms ease-out;
@@ -89,6 +91,11 @@
   border-radius: 0 0 3px 3px;
 }
 
+/* Week labels line up with the plot area, past the sticky y-axis. */
+.wx-metric-row .wx-chart-labels {
+  padding-left: 44px;
+}
+
 .wx-metric-value {
   position: absolute;
   left: 50%;
@@ -103,7 +110,8 @@
   pointer-events: none;
 }
 
+/* Negative bars label above the zero line, so the text never lands in the week labels. */
 .wx-metric-negative .wx-metric-value {
-  bottom: auto;
-  top: calc(100% + 3px);
+  bottom: calc(100% + 3px);
+  top: auto;
 }

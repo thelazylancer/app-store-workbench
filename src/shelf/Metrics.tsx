@@ -85,7 +85,6 @@ export function MetricsBoard({ weeks, stats, teams, onSelect }: MetricsBoardProp
             onSelect={onSelect}
           />
         ))}
-        <WeekLabels weeks={weeks} />
       </div>
     </div>
   );
@@ -157,7 +156,7 @@ function MetricRow({ metric, weeks, series, allTeams, byWeek, tip, bind, onSelec
                     key={team}
                     className={`wx-metric-bar ${teamClass(team, allTeams)}${entry < 0 ? " wx-metric-negative" : ""}`}
                     style={{
-                      left: `${(index / series.length) * 100}%`,
+                      left: `${((index + 0.5) / series.length) * 100}%`,
                       width: `${100 / series.length}%`,
                       bottom: `${Math.min(valuePct, zeroPct)}%`,
                       height: `${Math.abs(valuePct - zeroPct)}%`,
@@ -193,6 +192,7 @@ function MetricRow({ metric, weeks, series, allTeams, byWeek, tip, bind, onSelec
         ))}
         </div>
       </div>
+      <WeekLabels weeks={weeks} />
     </div>
   );
 }
