@@ -10,35 +10,35 @@ afterEach(() => {
 });
 
 describe("React shelf version charts", () => {
-  it("narrows the version charts to the team picked in the section", async () => {
+  it("filters a version chart from its own legend chips", async () => {
     vi.stubGlobal("fetch", mockShelf());
     renderPage();
     await waitForTeamSegments(2);
 
-    const chip = (team: string) =>
-      document.querySelector<HTMLElement>(`[data-role="metric-team-chip"][data-team="${team}"]`)!;
-    fireEvent.click(chip("团队 A"));
+    const chip = (metric: string, team: string) =>
+      document.querySelector<HTMLElement>(
+        `[data-role="metric-team-chip"][data-metric="${metric}"][data-team="${team}"]`,
+      )!;
+    const bars = (metric: string) =>
+      document.querySelectorAll(`[data-role="metric-bar"][data-metric="${metric}"]`).length;
 
-    await waitFor(() => {
-      expect(document.querySelectorAll('[data-role="metric-bar"]')).toHaveLength(3);
-    });
-    expect([...document.querySelectorAll('[data-role="metric-bar"]')]
-      .every((bar) => (bar as HTMLElement).dataset.team === "团队 A")).toBe(true);
-    // 团队 A has no 投放→下架 value, so that row has nothing to draw.
-    expect([...document.querySelectorAll('[data-role="metric-row"]')]
-      .map((row) => (row as HTMLElement).dataset.metric)).toEqual([
-      "avgVersionCount",
-      "avgVersionGapDays",
-      "avgLatestVersionToAdDays",
-    ]);
-    expect([...document.querySelectorAll('[data-role="metric-row"] .wx-dist-legend-label')]
-      .map((label) => label.textContent)).toEqual(["团队 A", "团队 A", "团队 A"]);
+    // One chip per team with a value in that row: 团队 B has no 平均版本间隔.
+    expect(document.querySelectorAll('[data-role="metric-team-chip"]')).toHaveLength(6);
+    expect(chip("avgVersionGapDays", "团队 B")).toBeNull();
 
-    expect(chip("团队 A").getAttribute("aria-pressed")).toBe("true");
-    fireEvent.click(chip("团队 A"));
+    fireEvent.click(chip("avgVersionCount", "团队 A"));
     await waitFor(() => {
-      expect(document.querySelectorAll('[data-role="metric-bar"]')).toHaveLength(6);
+      expect(bars("avgVersionCount")).toBe(1);
     });
+    expect(chip("avgVersionCount", "团队 A").getAttribute("aria-pressed")).toBe("true");
+    // Each chart filters on its own.
+    expect(bars("avgLatestVersionToAdDays")).toBe(2);
+
+    fireEvent.click(chip("avgVersionCount", "团队 A"));
+    await waitFor(() => {
+      expect(bars("avgVersionCount")).toBe(2);
+    });
+    expect(bars("avgLatestVersionToAdDays")).toBe(2);
   });
 
   it("opens the week-scoped detail from a metric bar", async () => {

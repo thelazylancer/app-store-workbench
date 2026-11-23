@@ -95,7 +95,8 @@ describe("React shelf trend page", () => {
     const metricRows = [...document.querySelectorAll<HTMLElement>('[data-role="metric-row"]')].map((row) => ({
       metric: row.dataset.metric,
       title: row.querySelector(".wx-dist-title")?.textContent,
-      legend: [...row.querySelectorAll(".wx-dist-legend-label")].map((label) => label.textContent),
+      legend: [...row.querySelectorAll('[data-role="metric-team-chip"]')]
+        .map((chip) => (chip as HTMLElement).textContent),
       ticks: [...row.querySelectorAll('[data-role="metric-tick"]')].map((tick) => tick.textContent),
       values: [...row.querySelectorAll('[data-role="metric-value"]')].map((value) => value.textContent),
       bars: [...row.querySelectorAll<HTMLElement>('[data-role="metric-bar"]')].map((bar) => ({
@@ -119,7 +120,7 @@ describe("React shelf trend page", () => {
       {
         metric: "avgVersionGapDays",
         title: "平均版本间隔（天）",
-        legend: ["团队 A", "团队 B"],
+        legend: ["团队 A"],
         ticks: ["0", "2", "4", "6", "8"],
         values: ["7"],
         bars: [{ week: WEEKS[0]!.weekStart, team: "团队 A", value: "7" }],
@@ -138,7 +139,7 @@ describe("React shelf trend page", () => {
       {
         metric: "avgAdToOfflineDays",
         title: "投放→下架（天）",
-        legend: ["团队 A", "团队 B"],
+        legend: ["团队 B"],
         ticks: ["0", "1", "2", "3", "4"],
         values: ["4"],
         bars: [{ week: WEEKS[1]!.weekStart, team: "团队 B", value: "4" }],
