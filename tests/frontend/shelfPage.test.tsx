@@ -153,23 +153,24 @@ describe("React shelf trend page", () => {
     });
   });
 
-  it("opens the whole week from the week label", async () => {
-    const fetchMock = mockShelf();
-    vi.stubGlobal("fetch", fetchMock);
+  it("shows the dimension detail while hovering a bar segment", async () => {
+    vi.stubGlobal("fetch", mockShelf());
     renderPage();
     await waitForTeamSegments(2);
 
-    const label = document.querySelector<HTMLElement>(
-      `[data-role="week-detail"][data-week="${WEEKS[0]!.weekStart}"]`,
-    );
-    await openDetails(label!);
+    const teamSegment = teamSegments(WEEKS[0]!.weekStart)[0]!;
+    fireEvent.mouseOver(teamSegment);
+    expect(document.querySelector(".wx-chart-tip")?.textContent).toBe("团队 A 3 包");
+    fireEvent.mouseOut(teamSegment);
+    expect(document.querySelector(".wx-chart-tip")).toBeNull();
 
-    await waitFor(() => {
-      expect(detailRows()).toHaveLength(3);
-    });
-    expect(screen.getByRole("dialog").textContent).toContain("全部团队");
-    const url = new URL(packagesCalls(fetchMock)[0]!, "http://localhost");
-    expect(url.searchParams.get("team")).toBeNull();
+    const games = document.querySelector<HTMLElement>(
+      `[data-role="segment"][data-week="${WEEKS[0]!.weekStart}"][data-key="Games"]`,
+    );
+    fireEvent.mouseOver(games!);
+    expect(document.querySelector(".wx-chart-tip")?.textContent).toBe("游戏 2 包");
+    fireEvent.mouseOut(games!);
+    expect(document.querySelector(".wx-chart-tip")).toBeNull();
   });
 
   it("narrows the week detail to the clicked distribution segment", async () => {

@@ -35,35 +35,32 @@ function weekLabel(week: ShelfTrendWeek): string {
   return `${week.weekStart} ~ ${week.weekEnd}`;
 }
 
-function WeekLabels({ weeks, team, onSelect }: {
-  weeks: ShelfTrendWeek[];
-  team: string | null;
-  onSelect: (selection: ShelfSelection) => void;
-}) {
+type ChartTipState = { week: string; text: string } | null;
+
+/** One hovered value at a time, shown above its own column. */
+function useChartTip() {
+  const [tip, setTip] = useState<ChartTipState>(null);
+  const bind = (week: string, text: string) => ({
+    onMouseEnter: () => setTip({ week, text }),
+    onMouseLeave: () => setTip(null),
+    onFocus: () => setTip({ week, text }),
+    onBlur: () => setTip(null),
+  });
+  return { tip, bind };
+}
+
+function ChartTip({ tip, week }: { tip: ChartTipState; week: string }) {
+  // Screen readers already get the same detail from each button's aria-label.
+  return tip?.week === week ? <div className="wx-chart-tip" aria-hidden="true">{tip.text}</div> : null;
+}
+
+function WeekLabels({ weeks }: { weeks: ShelfTrendWeek[] }) {
   return (
-    <div className="wx-chart-labels">
+    <div className="wx-chart-labels" aria-hidden="true">
       {weeks.map((week) => (
         <div className="wx-chart-slot" key={week.weekStart}>
-          <button
-            type="button"
-            className="wx-chart-week-link"
-            aria-label={`${weekLabel(week)}，查看明细`}
-            data-role="week-detail"
-            data-week={week.weekStart}
-            onClick={() => onSelect({
-              weekStart: week.weekStart,
-              weekEnd: week.weekEnd,
-              team,
-              groupBy: null,
-              key: null,
-              topKeys: [],
-              label: "",
-            })}
-          >
-            <span>{week.weekStart}</span>
-            <span>~ {week.weekEnd}</span>
-            <span className="wx-chart-week-action">查看明细</span>
-          </button>
+          <span>{week.weekStart}</span>
+          <span>~ {week.weekEnd}</span>
         </div>
       ))}
     </div>
@@ -97,6 +94,7 @@ type WeeklyProps = {
 export function WeeklyBarChart({ weeks, teams, team, onSelect }: WeeklyProps) {
   const max = maxCount(weeks);
   const scroll = useScrollRegion(weeks.length);
+  const { tip, bind } = useChartTip();
   const stacked = team === null;
   const teamTotals = new Map<string, number>();
   for (const week of weeks) {
@@ -126,6 +124,7 @@ export function WeeklyBarChart({ weeks, teams, team, onSelect }: WeeklyProps) {
                             data-week={week.weekStart}
                             data-team={entry.key}
                             data-count={entry.count}
+                            {...bind(week.weekStart, `${teamLabel(entry.key)} ${entry.count} 包`)}
                             onClick={() => onSelect({
                               weekStart: week.weekStart,
                               weekEnd: week.weekEnd,
@@ -146,6 +145,7 @@ export function WeeklyBarChart({ weeks, teams, team, onSelect }: WeeklyProps) {
                         data-role="week-bar"
                         data-week={week.weekStart}
                         data-count={week.packageCount}
+                        {...bind(week.weekStart, `${week.packageCount} 包`)}
                         onClick={() => onSelect({
                           weekStart: week.weekStart,
                           weekEnd: week.weekEnd,
@@ -159,10 +159,11 @@ export function WeeklyBarChart({ weeks, teams, team, onSelect }: WeeklyProps) {
                     )}
                   </div>
                 </div>
+                <ChartTip tip={tip} week={week.weekStart} />
               </div>
             ))}
           </div>
-          <WeekLabels weeks={weeks} team={team} onSelect={onSelect} />
+          <WeekLabels weeks={weeks} />
         </div>
       </div>
       {stacked ? (
@@ -210,6 +211,7 @@ type StackedProps = {
 export function StackedBarChart({ weeks, groupBy, segments, team, onSelect }: StackedProps) {
   const max = maxCount(weeks);
   const scroll = useScrollRegion(weeks.length);
+  const { tip, bind } = useChartTip();
   const shown = segments.filter((segment) => segment.count > 0);
   const legend = shown.map((segment) => `${segment.label} ${segment.count}`).join("、");
   const summary = `入库包分布堆叠图，当前维度：${DIMENSION_LABELS[groupBy]}。图例：${legend}。每周分项数值见数据表。`;
@@ -246,6 +248,7 @@ export function StackedBarChart({ weeks, groupBy, segments, team, onSelect }: St
                               data-week={week.weekStart}
                               data-key={segment.key}
                               data-count={count}
+                              {...bind(week.weekStart, `${segment.label} ${count} 包`)}
                               onClick={() => onSelect({
                                 weekStart: week.weekStart,
                                 weekEnd: week.weekEnd,
@@ -260,12 +263,13 @@ export function StackedBarChart({ weeks, groupBy, segments, team, onSelect }: St
                         })}
                       </div>
                     </div>
+                    <ChartTip tip={tip} week={week.weekStart} />
                   </div>
                 </div>
               );
             })}
           </div>
-          <WeekLabels weeks={weeks} team={team} onSelect={onSelect} />
+          <WeekLabels weeks={weeks} />
         </div>
       </div>
       <ul className="wx-chart-legend">
