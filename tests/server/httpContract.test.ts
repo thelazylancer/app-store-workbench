@@ -306,7 +306,7 @@ describe("HTTP contract", () => {
     const file = await request(app.server).get("/api/ipa-download/done/file");
     expect(file.status).toBe(200);
     expect(file.headers["content-type"]).toBe("application/octet-stream");
-    expect(file.headers["content-disposition"]).toBe('attachment; filename="com.example.app.ipa"');
+    expect(file.headers["content-disposition"]).toBe('attachment; filename="com.example.app.ipa"; filename*=UTF-8\'\'job.ipa');
     expect(file.headers["content-length"]).toBe("9");
     expect(file.headers["accept-ranges"]).toBe("bytes");
     expect(file.headers["cache-control"]).toBe("public, max-age=0");
@@ -321,7 +321,7 @@ describe("HTTP contract", () => {
     expect(notModified.status).toBe(304);
     expect(notModified.headers["content-type"]).toBeUndefined();
     expect(notModified.headers["content-length"]).toBeUndefined();
-    expect(notModified.headers["content-disposition"]).toBe('attachment; filename="com.example.app.ipa"');
+    expect(notModified.headers["content-disposition"]).toBe('attachment; filename="com.example.app.ipa"; filename*=UTF-8\'\'job.ipa');
     expect(notModified.headers["accept-ranges"]).toBe("bytes");
     expect(notModified.headers["cache-control"]).toBe("public, max-age=0");
     expect(notModified.headers.etag).toBe(file.headers.etag);

@@ -35,10 +35,13 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-function renderControl(bundleId = "com.example.app") {
+function renderControl(
+  bundleId = "com.example.app",
+  props: { team?: string; appName?: string } = {},
+) {
   return render(
     <Theme theme={wxTheme} mode="light">
-      <IpaDownload bundleId={bundleId} />
+      <IpaDownload bundleId={bundleId} {...props} />
     </Theme>,
   );
 }
@@ -120,15 +123,23 @@ describe("React IPA download control", () => {
     fireEvent.click(screen.getByRole("button", { name: "保存 IPA" }));
     expect(saved).not.toBeNull();
     expect(saved!.getAttribute("href")).toBe("/api/ipa-download/job-1/file");
-    expect(saved!.download).toBe("com.example.app.ipa");
+    expect(saved!.download).toBe("com.example.app-job1.ipa");
   });
 
   it("saves immediately when the server returns a cached download", async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(
-      json(job({ status: "done", progress: 100, fileUrl: "/api/ipa-download/job-1/file" }), 202),
+      json(
+        job({
+          status: "done",
+          progress: 100,
+          fileName: "2026-11-23_LC_Misate.ipa",
+          fileUrl: "/api/ipa-download/job-1/file",
+        }),
+        202,
+      ),
     );
     vi.stubGlobal("fetch", fetchMock);
-    renderControl();
+    renderControl("com.example.app", { team: "LC", appName: "Misate" });
 
     let saved: HTMLAnchorElement | null = null;
     vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
@@ -140,9 +151,37 @@ describe("React IPA download control", () => {
 
     expect(saved).not.toBeNull();
     expect(saved!.getAttribute("href")).toBe("/api/ipa-download/job-1/file");
-    expect(saved!.download).toBe("com.example.app.ipa");
+    expect(saved!.download).toBe("2026-11-23_LC_Misate.ipa");
     expect(screen.getByRole("button", { name: "保存 IPA" })).toBeTruthy();
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends team and app name so the server can name the file", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(json(job(), 202));
+    vi.stubGlobal("fetch", fetchMock);
+    renderControl("com.example.app", { team: "LC", appName: "Misate" });
+
+    fireEvent.click(screen.getByRole("button", { name: "下载 IPA" }));
+    await advance(0);
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(String(init.body))).toEqual({
+      bundleId: "com.example.app",
+      team: "LC",
+      appName: "Misate",
+    });
+  });
+
+  it("reattaches to the stored job after a page reload", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(json(job({ status: "running", progress: 30 })));
+    vi.stubGlobal("fetch", fetchMock);
+    localStorage.setItem("wx.ipa.job.com.example.app", "job-1");
+
+    renderControl();
+    await advance(0);
+
+    expect(screen.getByRole("button", { name: /下载中 30%/ })).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledWith("/api/ipa-download/job-1");
   });
 
   it("stops polling after the terminal state", async () => {

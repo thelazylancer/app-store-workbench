@@ -28,13 +28,18 @@ export async function getAppDetails(appleId: number, country: StoreCountry): Pro
   return (await response.json()) as AppDetailsResponse;
 }
 
-export async function startIpaDownload(bundleId: string): Promise<IpaDownloadJob> {
+export type IpaDownloadMeta = { team?: string; appName?: string };
+
+export async function startIpaDownload(
+  bundleId: string,
+  meta: IpaDownloadMeta = {},
+): Promise<IpaDownloadJob> {
   const response = await fetch("/api/ipa-download", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ bundleId }),
+    body: JSON.stringify({ bundleId, ...meta }),
   });
   if (!response.ok) throw Object.assign(new Error("IPA download request failed"), { status: response.status });
   return (await response.json()) as IpaDownloadJob;

@@ -5,7 +5,13 @@ import type {
   IpaDownloadJob,
   IpaDownloadStatus,
 } from "../../shared/types";
-import { cancelIpaDownload, getIpaDownload, startIpaDownload, submitIpaAuthCode } from "../lib/api";
+import {
+  cancelIpaDownload,
+  getIpaDownload,
+  startIpaDownload,
+  submitIpaAuthCode,
+  type IpaDownloadMeta,
+} from "../lib/api";
 
 const POLL_INTERVAL_MS = 2000;
 const AWAITING_POLL_INTERVAL_MS = 5000;
@@ -42,6 +48,7 @@ type IpaState = {
   queuePosition: number | null;
   activeJob: IpaDownloadActiveJob | null;
   errorCode: IpaDownloadErrorCode | null;
+  fileName: string | null;
   fileUrl: string | null;
   startedAt: string;
   message: string | null;
@@ -157,6 +164,7 @@ function failedState(message: string | null): IpaState {
     queuePosition: null,
     activeJob: null,
     errorCode: "unknown",
+    fileName: null,
     fileUrl: null,
     startedAt: new Date().toISOString(),
     message,
@@ -167,18 +175,53 @@ function failedState(message: string | null): IpaState {
 // otherwise forget a running job and start a duplicate one).
 const jobStore = new Map<string, IpaState>();
 
-function saveFile(url: string, bundleId: string) {
+// Remember the last job id so a page reload can reattach to the server-side job.
+const STORAGE_PREFIX = "wx.ipa.job.";
+
+function saveFile(url: string, fileName: string) {
   const link = document.createElement("a");
   link.href = url;
-  link.download = `${bundleId}.ipa`;
+  link.download = fileName;
   link.click();
+}
+
+function rememberJob(bundleId: string, jobId: string) {
+  try {
+    localStorage.setItem(`${STORAGE_PREFIX}${bundleId}`, jobId);
+  } catch {
+    // Storage can be blocked; the in-memory store still works.
+  }
+}
+
+function recallJob(bundleId: string): string | null {
+  try {
+    return localStorage.getItem(`${STORAGE_PREFIX}${bundleId}`);
+  } catch {
+    return null;
+  }
+}
+
+function forgetJob(bundleId: string) {
+  try {
+    localStorage.removeItem(`${STORAGE_PREFIX}${bundleId}`);
+  } catch {
+    // Ignore blocked storage.
+  }
 }
 
 export function resetIpaDownloadStore(): void {
   jobStore.clear();
+  try {
+    for (let index = localStorage.length - 1; index >= 0; index--) {
+      const key = localStorage.key(index);
+      if (key?.startsWith(STORAGE_PREFIX)) localStorage.removeItem(key);
+    }
+  } catch {
+    // Ignore blocked storage.
+  }
 }
 
-export function useIpaDownload(bundleId: string): IpaDownloadControl {
+export function useIpaDownload(bundleId: string, meta: IpaDownloadMeta = {}): IpaDownloadControl {
   const [job, setJob] = useState<IpaState | null>(() => jobStore.get(bundleId) ?? null);
   const [notice, setNotice] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
@@ -191,6 +234,8 @@ export function useIpaDownload(bundleId: string): IpaDownloadControl {
   const failuresRef = useRef(0);
   const jobRef = useRef(job);
   jobRef.current = job;
+  const metaRef = useRef(meta);
+  metaRef.current = meta;
 
   useEffect(() => {
     disposed.current = false;
@@ -207,6 +252,8 @@ export function useIpaDownload(bundleId: string): IpaDownloadControl {
 
   const commitJob = useCallback((value: IpaState) => {
     jobStore.set(bundleId, value);
+    if (value.jobId) rememberJob(bundleId, value.jobId);
+    else forgetJob(bundleId);
     setJob(value);
   }, [bundleId]);
 
@@ -220,6 +267,7 @@ export function useIpaDownload(bundleId: string): IpaDownloadControl {
       queuePosition: next.queuePosition ?? null,
       activeJob: next.activeJob ?? null,
       errorCode: next.errorCode,
+      fileName: next.fileName,
       fileUrl: next.fileUrl,
       message: null,
       startedAt:
@@ -230,6 +278,26 @@ export function useIpaDownload(bundleId: string): IpaDownloadControl {
     setNotice(null);
     failuresRef.current = 0;
   }, [commitJob]);
+
+  // After a reload the in-memory store is gone; reattach to the job the server
+  // is still running (or already finished) instead of starting a duplicate.
+  useEffect(() => {
+    if (jobStore.get(bundleId)) return;
+    const storedId = recallJob(bundleId);
+    if (!storedId) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const next = await getIpaDownload(storedId);
+        if (!cancelled && !disposed.current) applyJob(next);
+      } catch {
+        if (!cancelled) forgetJob(bundleId);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [bundleId, applyJob]);
 
   useEffect(() => {
     if (!job || (job.status !== "queued" && job.status !== "running" && job.status !== "awaiting_auth_code")) {
@@ -270,10 +338,12 @@ export function useIpaDownload(bundleId: string): IpaDownloadControl {
     setStarting(true);
     void (async () => {
       try {
-        const next = await startIpaDownload(bundleId);
+        const next = await startIpaDownload(bundleId, metaRef.current);
         applyJob(next);
         // A cache hit comes back already done: save it without a second click.
-        if (next.status === "done" && next.fileUrl) saveFile(next.fileUrl, bundleId);
+        if (next.status === "done" && next.fileUrl) {
+          saveFile(next.fileUrl, next.fileName ?? `${bundleId}.ipa`);
+        }
       } catch (error) {
         if (disposed.current) return;
         const status = (error as { status?: number }).status;
@@ -335,8 +405,8 @@ export function useIpaDownload(bundleId: string): IpaDownloadControl {
   );
 
   const save = useCallback(() => {
-    const url = jobRef.current?.fileUrl;
-    if (url) saveFile(url, bundleId);
+    const current = jobRef.current;
+    if (current?.fileUrl) saveFile(current.fileUrl, current.fileName ?? `${bundleId}.ipa`);
   }, [bundleId]);
 
   const status = job?.status ?? "idle";

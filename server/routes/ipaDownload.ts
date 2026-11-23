@@ -6,9 +6,19 @@ import type { AppDependencies } from "../app";
 
 const BUNDLE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,254}$/;
 
-type Body = { bundleId?: unknown; code?: unknown } | undefined;
+type Body = { bundleId?: unknown; code?: unknown; team?: unknown; appName?: unknown } | undefined;
 
 type ByteRange = { start: number; end: number };
+
+// Header values are latin1; non-ASCII names travel in RFC 5987 filename*.
+function attachmentHeader(fileName: string, fallback: string): string {
+  const ascii = fallback.replace(/[^\x20-\x7e]|["\\]/g, "_");
+  const encoded = encodeURIComponent(fileName).replace(
+    /['()*]/g,
+    (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${encoded}`;
+}
 
 // One range only; `send` also falls back to the full body for multi-range requests.
 function parseByteRange(header: string, size: number): ByteRange | "unsatisfiable" | null {
@@ -40,7 +50,12 @@ export function registerIpaDownloadRoutes(app: FastifyInstance, deps: AppDepende
     if (!BUNDLE_ID_PATTERN.test(bundleId)) {
       return reply.code(400).send({ message: "A valid Bundle ID is required" });
     }
-    return reply.code(202).send(deps.ipaDownload.createJob(bundleId));
+    const team = typeof body?.team === "string" ? body.team.trim().slice(0, 40) : "";
+    const appName = typeof body?.appName === "string" ? body.appName.trim().slice(0, 80) : "";
+    return reply.code(202).send(deps.ipaDownload.createJob(bundleId, {
+      ...(team ? { team } : {}),
+      ...(appName ? { appName } : {}),
+    }));
   });
 
   app.get("/api/ipa-download/:id", async (request, reply) => {
@@ -113,7 +128,7 @@ export function registerIpaDownloadRoutes(app: FastifyInstance, deps: AppDepende
     const etag = `W/"${info.size.toString(16)}-${info.mtime.getTime().toString(16)}"`;
     const modified = Date.parse(info.mtime.toUTCString());
     reply
-      .header("content-disposition", `attachment; filename="${job.bundleId}.ipa"`)
+      .header("content-disposition", attachmentHeader(job.fileName ?? `${job.bundleId}.ipa`, `${job.bundleId}.ipa`))
       .header("content-type", "application/octet-stream")
       .header("accept-ranges", "bytes")
       .header("cache-control", "public, max-age=0")

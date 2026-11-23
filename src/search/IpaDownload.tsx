@@ -14,8 +14,16 @@ import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { useIpaDownload } from "./useIpaDownload";
 import "./styles/ipa-download.css";
 
-export function IpaDownload({ bundleId }: { bundleId: string }) {
-  const control = useIpaDownload(bundleId);
+export function IpaDownload({
+  bundleId,
+  team,
+  appName,
+}: {
+  bundleId: string;
+  team?: string;
+  appName?: string;
+}) {
+  const control = useIpaDownload(bundleId, { team, appName });
   const [code, setCode] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);

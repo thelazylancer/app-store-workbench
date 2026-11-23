@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { statSync } from "node:fs";
+import { existsSync, renameSync, statSync, utimesSync } from "node:fs";
 import { mkdir, unlink } from "node:fs/promises";
 import path from "node:path";
 import type { IpaDownloadErrorCode, IpaDownloadJob } from "../../../shared/types";
@@ -26,9 +26,15 @@ const DEFAULT_MAX_JOBS = 200;
 const STOREFRONT_RETRY_LIMIT = 1;
 const PROGRESS_POLL_MS = 1000;
 const AUTH_REFRESH_TIMEOUT_MS = 2 * 60 * 1000;
+const AWAITING_AUTH_TTL_MS = 24 * 60 * 60 * 1000;
+
+export type IpaJobMeta = {
+  team?: string;
+  appName?: string;
+};
 
 export type IpaDownloadManager = {
-  createJob(bundleId: string): IpaDownloadJob;
+  createJob(bundleId: string, meta?: IpaJobMeta): IpaDownloadJob;
   getJob(id: string): IpaDownloadJob | null;
   getFilePath(id: string): string | null;
   submitAuthCode(id: string, code: string): Promise<IpaDownloadJob | null>;
@@ -72,6 +78,50 @@ export function createIpaDownloadManager(options: IpaDownloadManagerOptions): Ip
 
   const store = createJobStore({ downloadsDir, retentionDays, maxJobs, persistJobs, now });
   const { jobs, queue, controllers } = store;
+  const dayFormat = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai" });
+
+  function safeSegment(value: string | undefined, maxChars: number): string {
+    return (value ?? "")
+      .normalize("NFC")
+      .replace(/[\\/:*?"<>|\u0000-\u001f]+/g, "-")
+      .replace(/\s+/g, "-")
+      .replace(/-{2,}/g, "-")
+      .replace(/^[.\-]+|[.\-]+$/g, "")
+      .slice(0, maxChars);
+  }
+
+  /** `[下载日期]_[团队]_[应用名].ipa`, the date being the Asia/Shanghai day. */
+  function downloadFileName(bundleId: string, meta: IpaJobMeta | undefined, timestamp: number): string {
+    const day = dayFormat.format(new Date(timestamp));
+    const team = safeSegment(meta?.team, 20);
+    // A missing or unusable app name still yields a readable, unique-enough stem.
+    const app = safeSegment(meta?.appName, 40) || bundleId.slice(0, 100);
+    return `${day}_${team ? `${team}_` : ""}${app}.ipa`;
+  }
+
+  function unusedFileName(desired: string, excludeId: string): string {
+    let candidate = desired;
+    for (let index = 2; index < 1000; index++) {
+      const taken = [...jobs.values()].some(
+        (job) => job.id !== excludeId && job.fileName === candidate && job.status !== "cancelled",
+      );
+      if (!taken && !existsSync(path.join(downloadsDir, candidate))) return candidate;
+      candidate = desired.replace(/\.ipa$/, `-${index}.ipa`);
+    }
+    return `${excludeId}.ipa`;
+  }
+
+  // A repeated request for a bundle returns the job already in flight (or
+  // waiting for a code) so page refreshes never start a duplicate download.
+  function activeJob(bundleId: string): JobRecord | null {
+    let newest: JobRecord | null = null;
+    for (const job of jobs.values()) {
+      if (job.bundleId !== bundleId) continue;
+      if (job.status !== "queued" && job.status !== "running" && job.status !== "awaiting_auth_code") continue;
+      if (!newest || job.createdAt > newest.createdAt) newest = job;
+    }
+    return newest;
+  }
 
   // shortcut: the cache is keyed by bundleId only, so a hit can predate the
   // newest App Store build; retention bounds how stale it can be.
@@ -88,6 +138,46 @@ export function createIpaDownloadManager(options: IpaDownloadManagerOptions): Ip
       }
     }
     return newest;
+  }
+
+  /** Re-dating a cache hit keeps today's export complete; the cache itself stays keyed by bundleId. */
+  function refreshCachedJob(record: JobRecord, meta: IpaJobMeta) {
+    const timestamp = now();
+    const desired = downloadFileName(record.bundleId, meta, timestamp);
+    if (record.fileName !== desired) {
+      const target = unusedFileName(desired, record.id);
+      try {
+        renameSync(path.join(downloadsDir, record.fileName), path.join(downloadsDir, target));
+        record.fileName = target;
+      } catch {
+        // Rename failed: keep serving the previous name.
+      }
+    }
+    try {
+      // A re-request refreshes the 30-day window, matching the new date in the name.
+      utimesSync(path.join(downloadsDir, record.fileName), new Date(timestamp), new Date(timestamp));
+    } catch {
+      // Missing file: the next request will fall through to a fresh download.
+    }
+    record.updatedAt = timestamp;
+    store.persistJobsToDisk();
+  }
+
+  // A code prompt left unanswered would otherwise hang forever with no UI link back to it.
+  function expireStaleAuthJobs(referenceTime: number) {
+    const cutoff = referenceTime - AWAITING_AUTH_TTL_MS;
+    let changed = false;
+    for (const job of jobs.values()) {
+      if (job.status !== "awaiting_auth_code" || job.updatedAt >= cutoff) continue;
+      job.status = "failed";
+      job.progress = null;
+      job.bytesDownloaded = null;
+      job.errorCode = "timeout";
+      job.error = errorMessage("timeout");
+      job.updatedAt = referenceTime;
+      changed = true;
+    }
+    if (changed) store.persistJobsToDisk();
   }
 
   async function attemptDownload(
@@ -247,9 +337,15 @@ export function createIpaDownloadManager(options: IpaDownloadManagerOptions): Ip
   store.loadPersistedJobs();
 
   return {
-    createJob(bundleId: string) {
+    createJob(bundleId: string, meta?: IpaJobMeta) {
+      const active = activeJob(bundleId);
+      if (active) return store.toView(active);
+
       const cached = cachedJob(bundleId);
-      if (cached) return store.toView(cached);
+      if (cached) {
+        if (meta) refreshCachedJob(cached, meta);
+        return store.toView(cached);
+      }
 
       const id = randomUUID();
       const timestamp = now();
@@ -259,8 +355,8 @@ export function createIpaDownloadManager(options: IpaDownloadManagerOptions): Ip
         status: "queued",
         progress: null,
         bytesDownloaded: null,
-        // Keep the on-disk name below common 255-byte filename limits.
-        fileName: `${bundleId.slice(0, 200)}-${id.slice(0, 8)}.ipa`,
+        // Segments are length-capped in downloadFileName().
+        fileName: unusedFileName(downloadFileName(bundleId, meta, timestamp), id),
         sizeBytes: null,
         errorCode: null,
         error: null,
@@ -363,6 +459,7 @@ export function createIpaDownloadManager(options: IpaDownloadManagerOptions): Ip
     },
 
     cleanupExpired(referenceTime = now()) {
+      expireStaleAuthJobs(referenceTime);
       return store.cleanupExpired(referenceTime);
     },
   };

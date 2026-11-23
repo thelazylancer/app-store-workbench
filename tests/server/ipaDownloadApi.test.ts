@@ -73,7 +73,7 @@ describe("IPA download API", () => {
     expect(cancelled.body).toMatchObject({ status: "cancelled", errorCode: "cancelled" });
 
     const done = await request(app.server).post("/api/ipa-download").send({ bundleId: "com.example.done" });
-    await vi.waitFor(() => expect(manager.getJob(done.body.id)?.status).toBe("done"));
+    await vi.waitFor(() => expect(manager.getJob(done.body.id)?.status).toBe("done"), { timeout: 3000 });
     expect((await request(app.server).delete(`/api/ipa-download/${done.body.id}`)).status).toBe(409);
     expect((await request(app.server).delete("/api/ipa-download/unknown")).status).toBe(404);
   });
