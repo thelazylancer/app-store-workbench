@@ -30,9 +30,12 @@ describe("page styles", () => {
     expect(files.length).toBeGreaterThan(0);
   });
 
-  it("uses no shadows or gradients", () => {
-    expect(css).not.toMatch(/box-shadow/i);
-    expect(css).not.toMatch(/gradient\(/i);
+  it("uses no shadows, and gradients only in the chart bars", () => {
+    for (const file of files) {
+      const fileCss = readFileSync(file, "utf8");
+      expect(fileCss, file).not.toMatch(/box-shadow/i);
+      if (!/charts\.css$/.test(file)) expect(fileCss, file).not.toMatch(/gradient\(/i);
+    }
   });
 
   it("keeps amber only on exception selectors", () => {

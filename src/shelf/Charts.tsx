@@ -92,10 +92,13 @@ type WeeklyProps = {
 };
 
 export function WeeklyBarChart({ weeks, teams, team, onSelect }: WeeklyProps) {
-  const max = maxCount(weeks);
   const scroll = useScrollRegion(weeks.length);
   const { tip, bind } = useChartTip();
   const stacked = team === null;
+  // Grouped bars are scaled by the tallest single team-week bar, not the week total.
+  const max = stacked
+    ? Math.max(1, ...weeks.flatMap((week) => week.teams.map((entry) => entry.count)))
+    : maxCount(weeks);
   const teamTotals = new Map<string, number>();
   for (const week of weeks) {
     for (const entry of week.teams) teamTotals.set(entry.key, (teamTotals.get(entry.key) ?? 0) + entry.count);
@@ -106,62 +109,67 @@ export function WeeklyBarChart({ weeks, teams, team, onSelect }: WeeklyProps) {
       <div className="wx-chart-scroll" ref={scroll.ref} tabIndex={scroll.tabIndex}>
         <div className="wx-chart-canvas">
           <div className="wx-chart-plot">
-            {weeks.map((week) => (
-              <div className="wx-chart-slot" key={week.weekStart}>
-                <div className="wx-chart-track">
-                  <div className="wx-chart-bar-wrap" style={{ height: barHeight(week.packageCount, max) }}>
-                    <span className="wx-chart-value">{week.packageCount}</span>
-                    {stacked ? (
-                      <div className="wx-chart-bar wx-chart-stack">
-                        {week.teams.map((entry) => (
-                          <button
-                            type="button"
-                            key={entry.key}
-                            className={`wx-chart-segment ${teamClass(entry.key, teams)}`}
-                            style={{ flexGrow: entry.count }}
-                            aria-label={`${weekLabel(week)}，${teamLabel(entry.key)} ${entry.count} 包`}
-                            data-role="team-segment"
-                            data-week={week.weekStart}
-                            data-team={entry.key}
-                            data-count={entry.count}
-                            {...bind(week.weekStart, `${teamLabel(entry.key)} ${entry.count} 包`)}
-                            onClick={() => onSelect({
-                              weekStart: week.weekStart,
-                              weekEnd: week.weekEnd,
-                              team: entry.key,
-                              groupBy: null,
-                              key: null,
-                              topKeys: [],
-                              label: "",
-                            })}
-                          />
-                        ))}
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        className="wx-chart-bar wx-bar-total"
-                        aria-label={`${weekLabel(week)}，${week.packageCount} 包`}
-                        data-role="week-bar"
-                        data-week={week.weekStart}
-                        data-count={week.packageCount}
-                        {...bind(week.weekStart, `${week.packageCount} 包`)}
-                        onClick={() => onSelect({
-                          weekStart: week.weekStart,
-                          weekEnd: week.weekEnd,
-                          team,
-                          groupBy: null,
-                          key: null,
-                          topKeys: [],
-                          label: "",
-                        })}
-                      />
-                    )}
+            {weeks.map((week) => {
+              const top = stacked
+                ? Math.max(1, ...week.teams.map((entry) => entry.count))
+                : week.packageCount;
+              return (
+                <div className="wx-chart-slot" key={week.weekStart}>
+                  <div className="wx-chart-track">
+                    <div className="wx-chart-bar-wrap" style={{ height: barHeight(top, max) }}>
+                      <span className="wx-chart-value">{week.packageCount}</span>
+                      {stacked ? (
+                        <div className="wx-chart-group">
+                          {week.teams.map((entry) => (
+                            <button
+                              type="button"
+                              key={entry.key}
+                              className={`wx-chart-segment ${teamClass(entry.key, teams)}`}
+                              style={{ height: barHeight(entry.count, top) }}
+                              aria-label={`${weekLabel(week)}，${teamLabel(entry.key)} ${entry.count} 包`}
+                              data-role="team-segment"
+                              data-week={week.weekStart}
+                              data-team={entry.key}
+                              data-count={entry.count}
+                              {...bind(week.weekStart, `${teamLabel(entry.key)} ${entry.count} 包`)}
+                              onClick={() => onSelect({
+                                weekStart: week.weekStart,
+                                weekEnd: week.weekEnd,
+                                team: entry.key,
+                                groupBy: null,
+                                key: null,
+                                topKeys: [],
+                                label: "",
+                              })}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          className="wx-chart-bar wx-bar-total"
+                          aria-label={`${weekLabel(week)}，${week.packageCount} 包`}
+                          data-role="week-bar"
+                          data-week={week.weekStart}
+                          data-count={week.packageCount}
+                          {...bind(week.weekStart, `${week.packageCount} 包`)}
+                          onClick={() => onSelect({
+                            weekStart: week.weekStart,
+                            weekEnd: week.weekEnd,
+                            team,
+                            groupBy: null,
+                            key: null,
+                            topKeys: [],
+                            label: "",
+                          })}
+                        />
+                      )}
+                    </div>
                   </div>
+                  <ChartTip tip={tip} week={week.weekStart} />
                 </div>
-                <ChartTip tip={tip} week={week.weekStart} />
-              </div>
-            ))}
+              );
+            })}
           </div>
           <WeekLabels weeks={weeks} />
         </div>

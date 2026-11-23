@@ -32,6 +32,11 @@
   flex-direction: column;
   justify-content: flex-end;
   align-items: center;
+  transition: background-color 120ms ease-out;
+}
+
+.wx-chart-plot .wx-chart-slot:hover {
+  background: rgba(28, 39, 51, 0.05);
 }
 
 .wx-chart-track {
@@ -75,6 +80,20 @@
   cursor: pointer;
 }
 
+/* One thin bar per team, side by side rather than stacked. */
+.wx-chart-group {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  width: 100%;
+  height: 100%;
+}
+
+.wx-chart-group .wx-chart-segment {
+  flex: 1 1 0;
+  min-width: 2px;
+}
+
 .wx-chart-stack {
   display: flex;
   flex-direction: column;
@@ -90,6 +109,43 @@
   padding: 0;
   border: 0;
   cursor: pointer;
+}
+
+.wx-chart-bar,
+.wx-chart-segment {
+  border-radius: 3px 3px 0 0;
+  background-image: linear-gradient(to top, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.22));
+}
+
+.wx-chart-segment,
+.wx-chart-bar:not(.wx-chart-stack) {
+  transform-origin: bottom;
+  animation: wx-chart-grow 480ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* In a stack only the top segment gets the rounded cap. */
+.wx-chart-stack .wx-chart-segment {
+  border-radius: 0;
+}
+
+.wx-chart-stack .wx-chart-segment:first-child {
+  border-radius: 3px 3px 0 0;
+}
+
+@keyframes wx-chart-grow {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wx-chart-segment,
+  .wx-chart-bar {
+    animation: none;
+  }
 }
 
 .wx-chart-bar:hover,

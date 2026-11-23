@@ -144,7 +144,7 @@ export function ShelfTrendPage() {
               <div className="wx-shelf-block-head">
                 <h2 id="shelf-weekly-title" className="wx-shelf-h2">每周入库包数</h2>
                 <p className="wx-shelf-note">
-                  {filters.team ? "按入库日期分周 · 周一至周日" : "按入库日期分周 · 周一至周日 · 按团队堆叠"}
+                  {filters.team ? "按入库日期分周 · 周一至周日" : "按入库日期分周 · 周一至周日 · 团队并排"}
                 </p>
               </div>
               <WeeklyBarChart
