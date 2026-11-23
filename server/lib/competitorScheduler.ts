@@ -29,10 +29,14 @@ export async function runScheduledCompetitorSync(
   }
 }
 
-/** Starts the daily 08:00 Asia/Shanghai run; the timer does not block listen(). */
+/**
+ * Starts the daily 09:10 Asia/Shanghai run; the timer does not block listen().
+ * The source publishes around 08:38–08:47 Beijing, so an 08:00 run would read
+ * the previous day's publication while "yesterday" still held 0–1 rows.
+ */
 export function startCompetitorScheduler(deps: CompetitorSyncDeps, options: SchedulerOptions = {}) {
   return cron.schedule(
-    "0 8 * * *",
+    "10 9 * * *",
     () => {
       void runScheduledCompetitorSync(deps, options);
     },

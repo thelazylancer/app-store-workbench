@@ -9,3 +9,4 @@ dist/
 !.env.example
 deploy/vendor/
 downloads/
+data/

@@ -5,9 +5,9 @@ import { competitorAssetUrl } from "../../lib/competitorApi";
 import { appStoreUrl, jsonString } from "./format";
 import type { MissingStatus } from "./types";
 
-function statusBadge(status: MissingStatus) {
-  if (status === "miss") return <Badge variant="wx-miss" label="App Store 未命中" />;
-  return null;
+function statusBadge(status: MissingStatus, offlineDate: string | null) {
+  if (status !== "miss") return null;
+  return <Badge variant="wx-miss" label={offlineDate ? `${offlineDate} 下架` : "App Store 未命中"} />;
 }
 
 export function Identity({
@@ -46,7 +46,7 @@ export function Identity({
       <Stack className="wx-detail-identity-copy" gap={1}>
         <div className="wx-detail-title-row">
           <h2>{name}</h2>
-          {statusBadge(status)}
+          {statusBadge(status, packageDetail.offlineDate)}
         </div>
         <Text as="p" type="supporting" className="wx-detail-developer">{developer}</Text>
         {status ? null : (

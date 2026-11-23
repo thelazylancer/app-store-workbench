@@ -95,6 +95,9 @@ export async function lookupAppByBundleId(
 ): Promise<LookupCandidate | null> {
   const target = bundleId.trim();
   if (!target) return null;
+  // The source lowercases bundle IDs; App Store lookup echoes the canonical
+  // casing (com.Studiora.study), so compare case-insensitively.
+  const key = target.toLowerCase();
 
   const params = new URLSearchParams({ bundleId: target, country, entity: "software" });
   const response = await fetch(`https://itunes.apple.com/lookup?${params.toString()}`, {
@@ -102,7 +105,8 @@ export async function lookupAppByBundleId(
   });
   if (!response.ok) throw new Error(`Apple lookup failed with ${response.status}`);
   const body = (await response.json()) as AppleLookupResponse;
-  return normalizeResults(body, country).find((candidate) => candidate.bundleId?.trim() === target) ?? null;
+  return normalizeResults(body, country)
+    .find((candidate) => candidate.bundleId?.trim().toLowerCase() === key) ?? null;
 }
 
 function normalizeResults(body: AppleLookupResponse, country: StoreCountry): LookupCandidate[] {

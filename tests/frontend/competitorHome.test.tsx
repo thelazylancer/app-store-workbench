@@ -309,6 +309,24 @@ describe("React competitor home", () => {
     expect(document.querySelector('[data-reason="miss"]')).not.toBeNull();
   });
 
+  it("labels a missed package by its offline date instead of the lookup", async () => {
+    const delisted = pkg({
+      packageCode: "com.offline.s",
+      displayName: "Offline Source",
+      lookupStatus: "bundle_not_found",
+      enrichStatus: "failed",
+      appleId: null,
+      appStoreJson: {},
+      offlineDate: "2026-11-20",
+    });
+    vi.stubGlobal("fetch", mockApi({ [DATE]: day(DATE, [delisted]) }, [summary(DATE, 1)]));
+    renderPage("?status=miss");
+    await waitFor(() => expect(document.querySelector('[data-role="exception-row"]')).not.toBeNull());
+    const row = document.querySelector('[data-role="exception-row"]')!;
+    expect(row.textContent).toContain("2026-11-20 下架");
+    expect(row.textContent).not.toContain("App Store 未命中");
+  });
+
   it("shows a date-specific empty state and loads the window from 看全部日期", async () => {
     const fetchMock = mockApi({ [DATE]: current }, [summary(DATE, 4)]);
     vi.stubGlobal("fetch", fetchMock);

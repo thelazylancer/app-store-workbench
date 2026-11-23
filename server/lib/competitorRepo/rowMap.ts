@@ -138,6 +138,7 @@ export function packageBrief(row: PackageRowResult, assets: AssetRow[]): Package
     displayName: base.displayName,
     team: base.team,
     appVersion: base.appVersion,
+    offlineDate: base.offlineDate,
     iconLocalPath: assets.find((asset) => asset.type === "icon")?.localPath ?? null,
     hasIap: Array.isArray(iapItems) && iapItems.length > 0,
     versionCount: Array.isArray(versionHistory) ? versionHistory.length : 0,

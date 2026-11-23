@@ -1,0 +1,174 @@
+/* 竞品趋势 — page frame, states and the temporary verification table. */
+.wx-shelf {
+  width: min(1440px, 100%);
+  min-height: calc(100vh - 54px);
+  margin: 0 auto;
+  padding: 0 32px;
+  display: flex;
+  flex-direction: column;
+  color: var(--color-text-primary);
+}
+
+.wx-shelf-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 32px;
+  padding: 22px 0 18px;
+  border-bottom: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+
+.wx-shelf-heading {
+  min-width: 0;
+}
+
+.wx-shelf-h1 {
+  margin: 0 0 6px;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.wx-shelf-meta {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.wx-mono {
+  font-family: var(--font-family-code);
+  font-variant-numeric: tabular-nums;
+}
+
+.wx-shelf-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 200px;
+  max-width: 100%;
+}
+
+.wx-shelf-filter > :first-child {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.wx-shelf-filter > :last-child {
+  flex: 1 1 200px;
+}
+
+.wx-shelf-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.wx-shelf-section {
+  padding: 24px 0 28px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.wx-shelf-block-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.wx-shelf-h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.wx-shelf-note {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.wx-shelf-foot {
+  min-height: 44px;
+  margin-top: auto;
+  padding: 8px 0;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* States */
+.wx-shelf-state {
+  padding: 24px 0 28px;
+  border-top: 1px solid var(--color-border);
+}
+
+.wx-shelf-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.wx-shelf-skeleton-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  height: 120px;
+}
+
+.wx-shelf-skeleton-bars > * {
+  width: 72px;
+}
+
+.wx-shelf-error-title {
+  margin: 0 0 10px;
+  color: var(--color-text-error);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.wx-shelf-error-reason {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.wx-shelf-state-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+@media (max-width: 1180px) {
+  .wx-shelf {
+    padding: 0 24px;
+  }
+}
+
+@media (max-width: 840px) {
+  .wx-shelf {
+    padding: 0 16px;
+  }
+
+  .wx-shelf-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px 0 12px;
+  }
+
+  .wx-shelf-filter {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .wx-shelf-section {
+    padding: 16px 0 20px;
+  }
+}

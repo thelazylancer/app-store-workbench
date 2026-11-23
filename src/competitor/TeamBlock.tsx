@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { Badge } from "@astryxdesign/core";
 import type { PackageBrief, PackageDetail, SummaryCompetitor, SummaryGroup } from "../../shared/competitorTypes";
 import { competitorAssetUrl } from "../lib/competitorApi";
+import { teamLabel } from "../lib/teamLabel";
 import type { StatusFilter } from "./format";
 import { groupShown } from "./selectors";
 
@@ -125,6 +126,12 @@ function HitRow({
   );
 }
 
+/** A missed package with an offline date is explained by the date, not by the lookup. */
+function missLabel(entry: ExceptionEntry): string {
+  if (entry.reason !== "miss") return "待补全";
+  return entry.offlineDate ? `${entry.offlineDate} 下架` : "App Store 未命中";
+}
+
 function ExceptionRow({ entry }: { entry: ExceptionEntry }) {
   return (
     <Link
@@ -134,7 +141,7 @@ function ExceptionRow({ entry }: { entry: ExceptionEntry }) {
       data-package={entry.packageCode}
       data-competitor={`pkg:${entry.packageCode}`}
       to={packageLink(entry.packageCode)}
-      aria-label={`查看 ${entry.displayName}，${entry.reason === "miss" ? "未命中 App Store" : "详情待补全"}`}
+      aria-label={`查看 ${entry.displayName}，${missLabel(entry)}`}
     >
       <RowIcon name={entry.displayName} localPath={entry.iconLocalPath} missed={entry.reason === "miss"} />
       <span className="wx-row-name">{entry.displayName}</span>
@@ -144,7 +151,7 @@ function ExceptionRow({ entry }: { entry: ExceptionEntry }) {
         {entry.reason === "pending" ? <span className="wx-exception-strip" aria-hidden="true" /> : null}
         <Badge
           variant={entry.reason === "miss" ? "wx-miss" : "wx-pending"}
-          label={entry.reason === "miss" ? "App Store 未命中" : "待补全"}
+          label={missLabel(entry)}
         />
       </span>
     </Link>
@@ -177,7 +184,7 @@ export function TeamBlock({
   return (
     <section className="wx-team-block" data-team={group.groupKey} data-packages={shown}>
       <div className="wx-team-line" data-role="team-line">
-        <span className="wx-team-name">{group.groupKey}</span>
+        <span className="wx-team-name" title={group.groupKey}>{teamLabel(group.groupKey)}</span>
         <span className="wx-team-n">{shown} 包</span>
       </div>
       <div className="wx-rows">

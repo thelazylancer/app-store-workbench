@@ -98,6 +98,7 @@ const group: SummaryGroup = {
       displayName: "iOS-Example",
       team: "Alpha",
       appVersion: "1.2.3",
+      offlineDate: null,
       iconLocalPath: "2026-11-18/com.example.app/icon.png",
       hasIap: true,
       versionCount: 2,

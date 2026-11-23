@@ -106,6 +106,7 @@ export type PackageBrief = {
   displayName: string;
   team: string;
   appVersion: string | null;
+  offlineDate: string | null;
   iconLocalPath: string | null;
   hasIap: boolean;
   versionCount: number;

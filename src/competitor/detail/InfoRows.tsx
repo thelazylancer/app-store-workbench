@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { PackageDetail } from "../../../shared/competitorTypes";
+import { teamLabel } from "../../lib/teamLabel";
 import { CopyValue } from "./CopyValue";
 import { assetStatusLabel, dateOnly, formatSize, jsonString } from "./format";
 
@@ -31,7 +32,7 @@ export function PackageInfoSection({ packageDetail }: { packageDetail: PackageDe
     ["Bundle ID", <CopyValue key="bundle" value={bundleId} label="Bundle ID" role="bundle-copy" />],
     ["版本", packageDetail.appVersion ?? "—"],
     ["大小", formatSize(json.fileSizeBytes)],
-    ["团队", packageDetail.team || "—"],
+    ["团队", packageDetail.team ? teamLabel(packageDetail.team) : "—"],
     ["类目", packageDetail.category ?? "—"],
     ["最低 iOS", packageDetail.minimumOsVersion ?? "—"],
     ["源展示名", packageDetail.displayName || "—"],

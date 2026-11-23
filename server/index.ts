@@ -17,6 +17,7 @@ import { buildIapHints } from "./lib/iapHints";
 import { createIpaDownloadManager } from "./lib/ipaDownload";
 import { fetchProductPageDetails as fetchProductPageDetailsUncached } from "./lib/productPage";
 import { createCachedProductPageFetcher } from "./lib/productPageCache";
+import { createShelfQueries } from "./lib/shelfQueries";
 
 const timeoutMinutes = Number(process.env.IPA_DOWNLOAD_TIMEOUT_MINUTES) || 0;
 const productPageCacheTtlSeconds = Number(process.env.PRODUCT_PAGE_CACHE_TTL_SECONDS) || 600;
@@ -42,24 +43,30 @@ const cleanupTimer = setInterval(() => {
 }, 60 * 60 * 1000);
 cleanupTimer.unref();
 
-async function competitorRepoFromEnv(): Promise<ReturnType<typeof createCompetitorRepo> | undefined> {
+async function competitorRepoFromEnv(): Promise<{
+  competitorRepo?: ReturnType<typeof createCompetitorRepo>;
+  shelfQueries?: ReturnType<typeof createShelfQueries>;
+}> {
   const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) return undefined;
+  if (!databaseUrl) return {};
   const pool = createPool(databaseUrl);
   try {
     await runMigrations(pool);
-    return createCompetitorRepo(pool);
+    return {
+      competitorRepo: createCompetitorRepo(pool),
+      shelfQueries: createShelfQueries(pool),
+    };
   } catch (error) {
     console.error(
       `Competitor database unavailable: ${error instanceof Error ? error.message : String(error)}`,
     );
     await pool.end().catch(() => {});
-    return undefined;
+    return {};
   }
 }
 
 async function main() {
-  const competitorRepo = await competitorRepoFromEnv();
+  const { competitorRepo, shelfQueries } = await competitorRepoFromEnv();
 
   if (competitorRepo) {
     startCompetitorScheduler({
@@ -79,6 +86,7 @@ async function main() {
     buildIapHints,
     ipaDownload,
     ...(competitorRepo ? { competitorRepo } : {}),
+    ...(shelfQueries ? { shelfQueries } : {}),
     competitorAssetsDir: process.env.COMPETITOR_DATA_DIR ?? path.resolve("data/competitor"),
   });
 

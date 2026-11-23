@@ -39,6 +39,7 @@ export function briefFrom(pkg: PackageDetail): PackageBrief {
     displayName: pkg.displayName,
     team: pkg.team,
     appVersion: pkg.appVersion,
+    offlineDate: pkg.offlineDate,
     iconLocalPath: pkg.iconLocalPath,
     hasIap: Array.isArray(iap) && iap.length > 0,
     versionCount: versions.length,

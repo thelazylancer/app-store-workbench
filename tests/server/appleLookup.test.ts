@@ -154,7 +154,7 @@ describe("lookupAppStore", () => {
   });
 
   it("looks up an exact Bundle ID in one storefront", async () => {
-    const fetchApple = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+    const fetchApple = vi.spyOn(globalThis, "fetch").mockImplementation(async () => new Response(JSON.stringify({
       results: [
         { trackId: 1, trackName: "Other", sellerName: "Dev", trackViewUrl: "https://apps.apple.com/us/app/id1", bundleId: "com.example.Other" },
         { trackId: 2, trackName: "Target", sellerName: "Dev", trackViewUrl: "https://apps.apple.com/us/app/id2", bundleId: " com.example.Target " },
@@ -170,6 +170,9 @@ describe("lookupAppStore", () => {
     expect(url.searchParams.get("country")).toBe("jp");
     expect(url.searchParams.get("entity")).toBe("software");
     expect(fetchApple.mock.calls[0]![1]).toEqual(expect.objectContaining({ signal: expect.any(AbortSignal) }));
+
+    // Source package codes are lowercased; Apple echoes the canonical casing.
+    expect(await lookupAppByBundleId("com.example.target", "us")).toMatchObject({ appleId: 2 });
   });
 
   it("rejects non-matching Bundle IDs, blank input and upstream failures", async () => {

@@ -175,7 +175,7 @@ describeDb("competitor repository reads", () => {
     });
     expect(group.pendingPackages).toEqual([{
       packageCode: pendingCode, displayName: "iOS-Range-Pending", team,
-      appVersion: null, iconLocalPath: iconPath, hasIap: false, versionCount: 0,
+      appVersion: null, offlineDate: null, iconLocalPath: iconPath, hasIap: false, versionCount: 0,
       earliestReleasedAt: null, latestReleasedAt: null,
     }]);
     expect(group.timeline).toEqual([

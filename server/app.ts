@@ -7,7 +7,9 @@ import { parseExpressJson } from "./lib/expressJson";
 import { registerCompetitorRoutes } from "./routes/competitor";
 import { registerIpaDownloadRoutes } from "./routes/ipaDownload";
 import { registerSearchRoutes } from "./routes/search";
+import { registerShelfRoutes } from "./routes/shelf";
 import type { CompetitorQueryRepo } from "./lib/competitorRepo";
+import type { ShelfQueryRepo } from "./lib/shelfQueries";
 import type { IpaDownloadManager } from "./lib/ipaDownload";
 import type { IapHints, LookupCandidate, StoreCountry } from "../shared/types";
 import type { ProductPageDetails } from "./lib/productPage";
@@ -20,6 +22,7 @@ export type AppDependencies = {
   buildIapHints: (items: ProductPageDetails["iapItems"] | null) => Promise<IapHints>;
   ipaDownload?: IpaDownloadManager;
   competitorRepo?: CompetitorQueryRepo;
+  shelfQueries?: ShelfQueryRepo;
   competitorAssetsDir?: string;
 };
 
@@ -85,6 +88,7 @@ export function createApp(deps: AppDependencies): FastifyInstance {
   });
 
   registerCompetitorRoutes(app, deps);
+  registerShelfRoutes(app, deps);
   registerSearchRoutes(app, deps);
   registerIpaDownloadRoutes(app, deps);
 

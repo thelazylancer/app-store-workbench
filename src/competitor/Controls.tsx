@@ -2,6 +2,7 @@ import { Button, DateInput, SegmentedControl, SegmentedControlItem, Selector, Ta
 import type { ISODateString } from "@astryxdesign/core/Calendar";
 import type { DayDetail } from "../../shared/competitorTypes";
 import type { QueryFilters } from "../app/useQueryFilters";
+import { teamLabel } from "../lib/teamLabel";
 import { statusFilterLabel, yesterdayUtc, type StatusFilter } from "./format";
 import { categoryOf, dedupedPackages, scopedPackages, tabTeams, totals, uniqueSorted } from "./selectors";
 
@@ -56,7 +57,7 @@ export function Controls({ days, loading, filters, onChange, onClear }: Props) {
         >
           <Tab value="" label="全部" data-role="team-tab" data-team="" />
           {teams.map((team) => (
-            <Tab key={team} value={team} label={team} data-role="team-tab" data-team={team} />
+            <Tab key={team} value={team} label={teamLabel(team)} data-role="team-tab" data-team={team} />
           ))}
         </TabList>
 

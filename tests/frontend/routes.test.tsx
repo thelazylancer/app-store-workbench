@@ -9,8 +9,32 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
+const shelfTrend = {
+  from: "2026-08-22",
+  to: "2026-11-20",
+  team: null,
+  groupBy: "category",
+  teams: ["团队 A"],
+  weeks: [],
+  totals: { packageCount: 0, groups: [] },
+};
+
+const shelfPackages = {
+  from: "2026-08-22",
+  to: "2026-11-20",
+  team: null,
+  total: 0,
+  limit: 200,
+  rows: [],
+};
+
 beforeEach(() => {
-  vi.stubGlobal("fetch", vi.fn(async () => json({ days: [] })));
+  vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+    const url = new URL(String(input), "http://localhost");
+    if (url.pathname.endsWith("/api/public/shelf/trend")) return json(shelfTrend);
+    if (url.pathname.endsWith("/api/public/shelf/packages")) return json(shelfPackages);
+    return json({ days: [] });
+  }));
 });
 
 afterEach(() => {
@@ -29,6 +53,7 @@ describe("App shell routes", () => {
     expect(screen.getByRole("heading", { level: 1, name: "竞品日报" })).toBeTruthy();
     expect(document.title).toBe("竞品日报 · App搜索工作台");
     expect(screen.getByRole("link", { name: "竞品日报" }).getAttribute("aria-current")).toBe("page");
+    expect(screen.getByRole("link", { name: "竞品趋势" }).getAttribute("aria-current")).toBeNull();
     expect(screen.getByRole("link", { name: "App Store 搜索" }).getAttribute("aria-current")).toBeNull();
   });
 
@@ -38,12 +63,25 @@ describe("App shell routes", () => {
     expect(screen.getByRole("heading", { name: "输入应用名称或 Bundle ID 后显示结果" })).toBeTruthy();
     expect(document.title).toBe("App Store 搜索 · App 搜索工作台");
     expect(screen.getByRole("link", { name: "App Store 搜索" }).getAttribute("aria-current")).toBe("page");
+    expect(screen.getByRole("link", { name: "竞品日报" }).getAttribute("aria-current")).toBeNull();
+    expect(screen.getByRole("link", { name: "竞品趋势" }).getAttribute("aria-current")).toBeNull();
   });
 
   it("renders the package detail at /package/:code", () => {
     renderAt("/package/123");
     expect(screen.getByRole("button", { name: "返回竞品日报" })).toBeTruthy();
     expect(screen.queryByText(/详情页迁移中/)).toBeNull();
+    expect(screen.getByRole("link", { name: "竞品日报" }).getAttribute("aria-current")).toBe("page");
+    expect(screen.getByRole("link", { name: "竞品趋势" }).getAttribute("aria-current")).toBeNull();
+  });
+
+  it("renders the shelf trend page at /shelf without highlighting 竞品日报", () => {
+    renderAt("/shelf");
+    expect(screen.getByRole("heading", { level: 1, name: "竞品入库趋势" })).toBeTruthy();
+    expect(document.title).toBe("竞品趋势 · App搜索工作台");
+    expect(screen.getByRole("link", { name: "竞品趋势" }).getAttribute("aria-current")).toBe("page");
+    expect(screen.getByRole("link", { name: "竞品日报" }).getAttribute("aria-current")).toBeNull();
+    expect(screen.getByRole("link", { name: "App Store 搜索" }).getAttribute("aria-current")).toBeNull();
   });
 
   it("renders a page-level 404", () => {

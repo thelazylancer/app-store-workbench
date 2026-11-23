@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router";
 import type { PackageDetail } from "../../shared/competitorTypes";
 import { useDocumentTitle } from "../app/useDocumentTitle";
 import { CompetitorApiError, getCompetitorPackage } from "../lib/competitorApi";
+import { teamLabel } from "../lib/teamLabel";
 import { DescriptionSection } from "./detail/Description";
 import { detailName, missingStatus } from "./detail/format";
 import { IapSection } from "./detail/IapSection";
@@ -27,7 +28,7 @@ function DetailTop({ team, name }: { team: string; name: string }) {
     if (index > 0) navigate(-1);
     else navigate("/");
   };
-  const parts = ["竞品日报", team, name].filter(Boolean);
+  const parts = ["竞品日报", team ? teamLabel(team) : "", name].filter(Boolean);
 
   return (
     <div className="wx-detail-top">

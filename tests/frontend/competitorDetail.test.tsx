@@ -262,6 +262,16 @@ describe("React competitor detail", () => {
     await waitFor(() => expect(dialog?.hasAttribute("open")).toBe(false));
   });
 
+  it("labels a delisted miss by its offline date", async () => {
+    vi.stubGlobal("fetch", mockPackage({ ...missed, offlineDate: "2026-11-18" }));
+    renderAt("/package/com.beta.s");
+    await waitForDetail("Beta Source");
+
+    expect(screen.getByText("2026-11-18 下架")).toBeTruthy();
+    expect(screen.queryByText("App Store 未命中")).toBeNull();
+    expect(screen.getByText("已于 2026-11-18 下架，无 App Store 详情可展示。")).toBeTruthy();
+  });
+
   it("shows the missed panel without App Store sections", async () => {
     vi.stubGlobal("fetch", mockPackage(missed));
     renderAt("/package/com.beta.s");

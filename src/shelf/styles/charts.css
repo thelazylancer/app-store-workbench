@@ -1,0 +1,202 @@
+/* 竞品趋势 — weekly bar and quantity-stacked distribution charts. */
+.wx-chart-figure {
+  margin: 0;
+}
+
+.wx-chart-scroll {
+  width: 100%;
+  overflow-x: auto;
+  outline-offset: var(--focus-outline-offset);
+}
+
+.wx-chart-scroll:focus-visible {
+  outline: var(--focus-outline-width) solid var(--focus-outline-color);
+}
+
+.wx-chart-canvas {
+  width: max-content;
+  min-width: 100%;
+}
+
+.wx-chart-plot {
+  display: flex;
+  align-items: stretch;
+  height: 240px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.wx-chart-slot {
+  flex: 0 0 120px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.wx-chart-track {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-top: 24px;
+  box-sizing: border-box;
+}
+
+.wx-chart-bar-wrap {
+  position: relative;
+  width: 72px;
+  display: flex;
+  align-items: flex-end;
+}
+
+.wx-chart-value {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--color-text-primary);
+  font-family: var(--font-family-code);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.wx-chart-bar {
+  width: 100%;
+  height: 100%;
+  background: rgba(28, 39, 51, 0.55);
+}
+
+.wx-chart-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.wx-chart-segment {
+  flex-basis: 0;
+  min-height: 1px;
+  width: 100%;
+}
+
+.wx-seg-0 {
+  background: var(--color-info);
+}
+
+.wx-seg-1 {
+  background: rgba(46, 111, 163, 0.78);
+}
+
+.wx-seg-2 {
+  background: rgba(46, 111, 163, 0.6);
+}
+
+.wx-seg-3 {
+  background: rgba(46, 111, 163, 0.44);
+}
+
+.wx-seg-4 {
+  background: rgba(46, 111, 163, 0.3);
+}
+
+.wx-seg-5 {
+  background: rgba(46, 111, 163, 0.2);
+}
+
+.wx-seg-other {
+  background: rgba(28, 39, 51, 0.32);
+}
+
+.wx-seg-ink {
+  background: rgba(28, 39, 51, 0.55);
+}
+
+.wx-seg-unknown {
+  background: var(--color-track);
+}
+
+.wx-chart-labels {
+  display: flex;
+}
+
+.wx-chart-labels .wx-chart-slot {
+  padding-top: 4px;
+  color: var(--color-text-secondary);
+  font-family: var(--font-family-code);
+  font-size: 12px;
+  line-height: 1.35;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.wx-chart-labels span {
+  display: block;
+}
+
+.wx-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wx-chart-legend li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.wx-legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+}
+
+.wx-legend-name {
+  color: var(--color-text-primary);
+}
+
+.wx-legend-count {
+  color: var(--color-text-primary);
+  font-family: var(--font-family-code);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.wx-legend-unknown .wx-legend-name {
+  color: var(--color-text-secondary);
+}
+
+.wx-legend-unknown .wx-legend-swatch {
+  border: 1px solid var(--color-border);
+}
+
+@media (max-width: 1179px) {
+  .wx-chart-plot {
+    height: 200px;
+  }
+}
+
+@media (max-width: 840px) {
+  .wx-chart-plot {
+    height: 176px;
+  }
+
+  .wx-chart-slot {
+    flex: 0 0 88px;
+  }
+
+  .wx-chart-bar-wrap {
+    width: 64px;
+  }
+}

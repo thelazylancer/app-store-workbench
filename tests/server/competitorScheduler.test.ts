@@ -62,10 +62,10 @@ describe("competitor scheduler", () => {
     expect(retry).toHaveBeenCalledWith("2026-11-19", deps);
   });
 
-  it("registers the 08:00 Asia/Shanghai schedule", () => {
+  it("registers the 09:10 Asia/Shanghai schedule", () => {
     const schedule = vi.spyOn(cron, "schedule");
     const task = startCompetitorScheduler(fakeDeps());
-    expect(schedule).toHaveBeenCalledWith("0 8 * * *", expect.any(Function), { timezone: "Asia/Shanghai" });
+    expect(schedule).toHaveBeenCalledWith("10 9 * * *", expect.any(Function), { timezone: "Asia/Shanghai" });
     task.stop();
     schedule.mockRestore();
   });
