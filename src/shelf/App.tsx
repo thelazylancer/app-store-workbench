@@ -194,10 +194,6 @@ export function ShelfTrendPage() {
       </div>
 
       <ShelfDetailDialog selection={selection} onClose={() => setSelection(null)} />
-
-      <footer className="wx-shelf-foot">
-        口径：入库日期 target_date · 按包计数 · 未解析包计入未知
-      </footer>
     </section>
   );
 }

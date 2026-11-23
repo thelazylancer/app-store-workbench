@@ -92,16 +92,6 @@
   line-height: 1.5;
 }
 
-.wx-shelf-foot {
-  min-height: 44px;
-  margin-top: auto;
-  padding: 8px 0;
-  border-top: 1px solid var(--color-border);
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
 /* States */
 .wx-shelf-state {
   padding: 24px 0 28px;
