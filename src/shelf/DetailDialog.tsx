@@ -91,7 +91,7 @@ export function ShelfDetailDialog({ selection, onClose }: {
               <>
                 <p className="wx-detail-count" data-role="detail-count">
                   共 {matched.length} 包
-                  {rows.length < total ? ` · 本周共 ${total} 包，仅加载前 ${rows.length} 包` : ""}
+                  {rows.length < total ? ` · 该范围共 ${total} 包，仅加载前 ${rows.length} 包` : ""}
                 </p>
                 {groups.length === 0 ? <Text type="supporting" as="p">没有匹配的入库包。</Text> : null}
                 {groups.length > 0 ? (

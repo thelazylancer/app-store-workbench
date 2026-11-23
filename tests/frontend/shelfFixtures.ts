@@ -63,6 +63,11 @@ export function trendFor(team: string | null, groupBy: ShelfGroupBy): ShelfTrend
       packageCount: weeks.reduce((sum, week) => sum + week.packageCount, 0),
       groups: sumGroups(weekIndexes, groupBy),
     },
+    distributions: {
+      category: sumGroups(weekIndexes, "category"),
+      ios_version: sumGroups(weekIndexes, "ios_version"),
+      iap: sumGroups(weekIndexes, "iap"),
+    },
   };
 }
 

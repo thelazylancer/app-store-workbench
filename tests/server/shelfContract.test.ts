@@ -28,6 +28,11 @@ const trendResponse: ShelfTrendResponse = {
     },
   ],
   totals: { packageCount: 93, groups: [{ key: "Games", count: 18 }, { key: "unknown", count: 17 }] },
+  distributions: {
+    category: [{ key: "Games", count: 18 }, { key: "unknown", count: 17 }],
+    ios_version: [{ key: "16", count: 20 }, { key: "unknown", count: 17 }],
+    iap: [{ key: "yes", count: 40 }, { key: "unknown", count: 17 }],
+  },
 };
 
 const packagesResponse: ShelfPackagesResponse = {

@@ -1,4 +1,4 @@
-/* 竞品趋势 — weekly bar and quantity-stacked distribution charts. */
+/* 竞品趋势 — weekly grouped bars, total line and horizontal distribution rankings. */
 .wx-chart-figure {
   margin: 0;
 }
@@ -115,13 +115,6 @@
   min-width: 2px;
 }
 
-.wx-chart-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  cursor: default;
-}
-
 .wx-chart-segment {
   flex-basis: 0;
   min-height: 1px;
@@ -139,18 +132,9 @@
 }
 
 .wx-chart-segment,
-.wx-chart-bar:not(.wx-chart-stack) {
+.wx-chart-bar {
   transform-origin: bottom;
   animation: wx-chart-grow 480ms cubic-bezier(0.22, 0.61, 0.36, 1);
-}
-
-/* In a stack only the top segment gets the rounded cap. */
-.wx-chart-stack .wx-chart-segment {
-  border-radius: 0;
-}
-
-.wx-chart-stack .wx-chart-segment:first-child {
-  border-radius: 3px 3px 0 0;
 }
 
 @keyframes wx-chart-grow {
@@ -266,16 +250,7 @@
   pointer-events: none;
 }
 
-.wx-chart-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 20px;
-  margin: 16px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-/* Clickable team legend in the weekly chart header: filled colour blocks. */
+/* Filled team colour blocks; clicking one filters the weekly chart. */
 .wx-team-chips {
   display: flex;
   flex-wrap: wrap;
@@ -286,7 +261,6 @@
 }
 
 .wx-team-chip {
-  margin: 0;
   padding: 2px 8px;
   border: 0;
   border-radius: 4px;
@@ -312,39 +286,84 @@
   outline-offset: 1px;
 }
 
-.wx-chart-legend li {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+/* One horizontal ranking per dimension (类目 / 最低 iOS / 内购). */
+.wx-ranking-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px 40px;
+}
+
+.wx-ranked-title {
+  margin: 0 0 8px;
   font-size: 12px;
-  line-height: 1.5;
-}
-
-.wx-legend-swatch {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-  box-sizing: border-box;
-  flex: 0 0 auto;
-}
-
-.wx-legend-name {
-  color: var(--color-text-primary);
-}
-
-.wx-legend-count {
-  color: var(--color-text-primary);
-  font-family: var(--font-family-code);
   font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.wx-legend-unknown .wx-legend-name {
   color: var(--color-text-secondary);
 }
 
-.wx-legend-unknown .wx-legend-swatch {
-  border: 1px solid var(--color-border);
+.wx-ranked-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wx-ranked-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: left;
+  cursor: pointer;
+}
+
+.wx-ranked-row:hover {
+  background: rgba(28, 39, 51, 0.05);
+}
+
+.wx-ranked-row:focus-visible {
+  outline: var(--focus-outline-width) solid var(--focus-outline-color);
+  outline-offset: 1px;
+}
+
+.wx-ranked-label {
+  flex: 0 0 72px;
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wx-ranked-track {
+  flex: 1 1 auto;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--color-track);
+  overflow: hidden;
+}
+
+.wx-ranked-fill {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+}
+
+.wx-ranked-count {
+  flex: 0 0 32px;
+  font-family: var(--font-family-code);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 @media (max-width: 1179px) {

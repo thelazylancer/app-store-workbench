@@ -190,6 +190,25 @@ describeDb("shelf queries against PostgreSQL", () => {
       { key: "Games", count: 2 },
       { key: "Utilities", count: 1 },
     ]);
+    // All three dimensions in one response, independent of groupBy.
+    expect(trend.distributions).toEqual({
+      category: [
+        { key: "unknown", count: 3 },
+        { key: "Games", count: 2 },
+        { key: "Utilities", count: 1 },
+      ],
+      ios_version: [
+        { key: "unknown", count: 3 },
+        { key: "15", count: 1 },
+        { key: "16", count: 1 },
+        { key: "26plus", count: 1 },
+      ],
+      iap: [
+        { key: "no", count: 3 },
+        { key: "unknown", count: 2 },
+        { key: "yes", count: 1 },
+      ],
+    });
   });
 
   it("maps minimum OS majors into ios buckets", async () => {

@@ -22,6 +22,7 @@ function fakeRepo() {
     teams: ["团队 A", "团队 B"],
     weeks: [],
     totals: { packageCount: 0, groups: [] },
+    distributions: { category: [], ios_version: [], iap: [] },
   }));
   const getShelfPackages = vi.fn(async (params: ShelfPackagesParams) => ({
     from: params.from,

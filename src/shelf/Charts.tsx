@@ -1,14 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { teamLabel } from "../lib/teamLabel";
 import type { ShelfGroupBy, ShelfTrendWeek } from "../../shared/shelfTypes";
-import { OTHER_KEY, foldWeekGroups, isUnknownKey, type ShelfSegment } from "./buckets";
+import { OTHER_KEY, isUnknownKey, type ShelfSegment } from "./buckets";
 import type { ShelfSelection } from "./selection";
-
-const DIMENSION_LABELS: Record<ShelfGroupBy, string> = {
-  category: "类目",
-  ios_version: "最低 iOS",
-  iap: "内购",
-};
 
 function maxCount(weeks: ShelfTrendWeek[]): number {
   return Math.max(1, ...weeks.map((week) => week.packageCount));
@@ -212,115 +206,60 @@ export function WeeklyBarChart({ weeks, teams, team, onSelect }: WeeklyProps) {
   );
 }
 
-type StackedProps = {
-  weeks: ShelfTrendWeek[];
+type RankedProps = {
+  title: string;
   groupBy: ShelfGroupBy;
   segments: ShelfSegment[];
+  from: string;
+  to: string;
   team: string | null;
   onSelect: (selection: ShelfSelection) => void;
 };
 
-export function StackedBarChart({ weeks, groupBy, segments, team, onSelect }: StackedProps) {
-  const max = maxCount(weeks);
-  const scroll = useScrollRegion(weeks.length);
-  const { tip, bind } = useChartTip();
-  const shown = segments.filter((segment) => segment.count > 0);
-  const legend = shown.map((segment) => `${segment.label} ${segment.count}`).join("、");
-  const summary = `入库包分布堆叠图，当前维度：${DIMENSION_LABELS[groupBy]}。图例：${legend}。每周分项数值见数据表。`;
-  const dimension = DIMENSION_LABELS[groupBy];
+/** One horizontal ranking per dimension over the whole range. */
+export function RankedBarChart({ title, groupBy, segments, from, to, team, onSelect }: RankedProps) {
+  const shown = segments
+    .map((segment, index) => ({ segment, index }))
+    .filter(({ segment }) => segment.count > 0);
+  const max = Math.max(1, ...shown.map(({ segment }) => segment.count));
   const topKeys = segments
     .map((segment) => segment.key)
     .filter((key) => key !== OTHER_KEY && !isUnknownKey(key));
 
   return (
-    <figure className="wx-chart-figure" data-role="stacked-chart">
-      <p className="visually-hidden">{summary}</p>
-      <div className="wx-chart-scroll" ref={scroll.ref} tabIndex={scroll.tabIndex}>
-        <div className="wx-chart-canvas">
-          <div className="wx-chart-plot">
-            {weeks.map((week) => {
-              const counts = foldWeekGroups(groupBy, week.groups, segments);
-              return (
-                <div className="wx-chart-slot" key={week.weekStart}>
-                  <div className="wx-chart-track">
-                    <div className="wx-chart-bar-wrap" style={{ height: barHeight(week.packageCount, max) }}>
-                      <span className="wx-chart-value">{week.packageCount}</span>
-                      <div className="wx-chart-bar wx-chart-stack">
-                        {segments.map((segment, index) => {
-                          const count = counts[segment.key] ?? 0;
-                          if (count === 0) return null;
-                          return (
-                            <button
-                              type="button"
-                              key={segment.key}
-                              className={`wx-chart-segment ${segmentClass(segment.key, index, groupBy)}`}
-                              style={{ flexGrow: count }}
-                              aria-label={`${weekLabel(week)}，${segment.label} ${count} 包`}
-                              data-role="segment"
-                              data-week={week.weekStart}
-                              data-key={segment.key}
-                              data-count={count}
-                              {...bind(week.weekStart, `${segment.label} ${count} 包`)}
-                              onClick={() => onSelect({
-                                weekStart: week.weekStart,
-                                weekEnd: week.weekEnd,
-                                team,
-                                groupBy,
-                                key: segment.key,
-                                topKeys,
-                                label: segment.label,
-                              })}
-                            />
-                          );
-                        })}
-                      </div>
-                    </div>
-                    <ChartTip tip={tip} week={week.weekStart} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <WeekLabels weeks={weeks} />
-        </div>
-      </div>
-      <ul className="wx-chart-legend">
-        {segments.map((segment, index) => ({ segment, index }))
-          .filter(({ segment }) => segment.count > 0)
-          .map(({ segment, index }) => (
-            <li key={segment.key} className={isUnknownKey(segment.key) ? "wx-legend-unknown" : undefined}>
-              <span className={`wx-legend-swatch ${segmentClass(segment.key, index, groupBy)}`} aria-hidden="true" />
-              <span className="wx-legend-name">{segment.label}</span>
-              <b className="wx-legend-count">{segment.count}</b>
-            </li>
-          ))}
+    <div className="wx-ranked" data-role="ranked-chart" data-dimension={groupBy}>
+      <h3 className="wx-ranked-title">{title}</h3>
+      <ul className="wx-ranked-list">
+        {shown.map(({ segment, index }) => (
+          <li key={segment.key}>
+            <button
+              type="button"
+              className="wx-ranked-row"
+              data-role="ranked-row"
+              data-key={segment.key}
+              aria-label={`${title}：${segment.label} ${segment.count} 包`}
+              onClick={() => onSelect({
+                weekStart: from,
+                weekEnd: to,
+                team,
+                groupBy,
+                key: segment.key,
+                topKeys,
+                label: segment.label,
+              })}
+            >
+              <span className="wx-ranked-label">{segment.label}</span>
+              <span className="wx-ranked-track">
+                <span
+                  className={`wx-ranked-fill ${segmentClass(segment.key, index, groupBy)}`}
+                  style={{ width: `${(segment.count / max) * 100}%` }}
+                />
+              </span>
+              <b className="wx-ranked-count">{segment.count}</b>
+            </button>
+          </li>
+        ))}
       </ul>
-      <table className="visually-hidden">
-        <caption>{`每周入库包分布 · ${dimension}`}</caption>
-        <thead>
-          <tr>
-            <th scope="col">周</th>
-            {segments.map((segment) => (
-              <th scope="col" key={segment.key}>{segment.label}</th>
-            ))}
-            <th scope="col">合计</th>
-          </tr>
-        </thead>
-        <tbody>
-          {weeks.map((week) => {
-            const counts = foldWeekGroups(groupBy, week.groups, segments);
-            return (
-              <tr key={week.weekStart}>
-                <th scope="row">{weekLabel(week)}</th>
-                {segments.map((segment) => (
-                  <td key={segment.key}>{counts[segment.key] ?? 0}</td>
-                ))}
-                <td>{week.packageCount}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </figure>
+    </div>
   );
 }

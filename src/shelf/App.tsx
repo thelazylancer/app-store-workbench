@@ -1,32 +1,18 @@
-import {
-  SegmentedControl,
-  SegmentedControlItem,
-  Selector,
-  Text,
-} from "@astryxdesign/core";
+import { Selector, Text } from "@astryxdesign/core";
 import { useEffect, useState } from "react";
-import type {
-  ShelfGroupBy,
-  ShelfTrendResponse,
-} from "../../shared/shelfTypes";
+import type { ShelfTrendResponse } from "../../shared/shelfTypes";
 import { useDocumentTitle } from "../app/useDocumentTitle";
 import { addDays, todayUtc } from "../lib/reportDate";
 import { ShelfApiError, getShelfTrend } from "../lib/shelfApi";
 import { teamLabel } from "../lib/teamLabel";
-import { segmentGroups } from "./buckets";
-import { StackedBarChart, WeeklyBarChart, teamClass } from "./Charts";
+import { foldTopCategories, segmentGroups } from "./buckets";
+import { RankedBarChart, WeeklyBarChart, teamClass } from "./Charts";
 import { ShelfDetailDialog } from "./DetailDialog";
 import { useShelfFilters } from "./filters";
 import type { ShelfSelection } from "./selection";
-import { DistributionLoading, ShelfEmpty, ShelfError, ShelfLoading } from "./states";
+import { ShelfEmpty, ShelfError, ShelfLoading } from "./states";
 import "./styles/shelf.css";
 import "./styles/charts.css";
-
-const DIMENSIONS: { value: ShelfGroupBy; label: string }[] = [
-  { value: "category", label: "类目" },
-  { value: "ios_version", label: "最低 iOS" },
-  { value: "iap", label: "内购" },
-];
 
 function errorMessage(error: unknown): string {
   return error instanceof ShelfApiError ? error.message : "请求失败";
@@ -41,7 +27,6 @@ export function ShelfTrendPage() {
   useDocumentTitle("竞品趋势 · App搜索工作台");
   const { filters, update } = useShelfFilters();
   const [range] = useState(initialRange);
-  const [groupBy, setGroupBy] = useState<ShelfGroupBy>("category");
   const [trend, setTrend] = useState<ShelfTrendResponse | null>(null);
   const [trendLoading, setTrendLoading] = useState(true);
   const [trendError, setTrendError] = useState<string | null>(null);
@@ -52,7 +37,7 @@ export function ShelfTrendPage() {
     let cancelled = false;
     setTrendLoading(true);
     setTrendError(null);
-    getShelfTrend({ ...range, team: filters.team, groupBy })
+    getShelfTrend({ ...range, team: filters.team })
       .then((data) => {
         if (!cancelled) setTrend(data);
       })
@@ -65,16 +50,12 @@ export function ShelfTrendPage() {
     return () => {
       cancelled = true;
     };
-  }, [range, filters.team, groupBy, trendReload]);
+  }, [range, filters.team, trendReload]);
 
   const retry = () => setTrendReload((value) => value + 1);
   const showAllTeams = () => update({ team: null });
 
-  // A failed dimension switch keeps the previous trend's weeks and distribution;
-  // only the distribution block reports the error (DESIGN §6.1).
-  const distributionError = Boolean(trendError) && trend !== null
-    && (trend.team ?? null) === filters.team && trend.groupBy !== groupBy;
-  const pageError = trendError && !distributionError ? trendError : null;
+  const pageError = trendError;
   const initialLoading = !pageError && trend === null && trendLoading;
   const teamPending = trend !== null && (trend.team ?? null) !== filters.team;
   const bodyLoading = initialLoading || (trendLoading && teamPending);
@@ -82,7 +63,6 @@ export function ShelfTrendPage() {
   const empty = !pageError && !bodyLoading && !hasData;
   const total = trend?.totals.packageCount;
 
-  const dimensionLabel = DIMENSIONS.find((dimension) => dimension.value === groupBy)?.label ?? "类目";
   const teams = [...(trend?.teams ?? [])].sort((left, right) => left.localeCompare(right, "zh"));
   const teamOptions = [
     { value: "", label: "全部" },
@@ -118,7 +98,7 @@ export function ShelfTrendPage() {
       </header>
 
       <p className="visually-hidden" role="status" data-role="shelf-status">
-        {trend && !trendLoading ? `已筛选团队：${filters.team ? teamLabel(filters.team) : "全部"}，共 ${trend.totals.packageCount} 包。分布维度：${dimensionLabel}` : ""}
+        {trend && !trendLoading ? `已筛选团队：${filters.team ? teamLabel(filters.team) : "全部"}，共 ${trend.totals.packageCount} 包。` : ""}
       </p>
 
       <div className="wx-shelf-body" aria-busy={trendLoading}>
@@ -171,36 +151,36 @@ export function ShelfTrendPage() {
             <section className="wx-shelf-section" aria-labelledby="shelf-distribution-title">
               <div className="wx-shelf-block-head">
                 <h2 id="shelf-distribution-title" className="wx-shelf-h2">入库包分布</h2>
-                <SegmentedControl
-                  label="分布维度"
-                  size="sm"
-                  value={groupBy}
-                  onChange={(value) => setGroupBy(value as ShelfGroupBy)}
-                >
-                  {DIMENSIONS.map((dimension) => (
-                    <SegmentedControlItem
-                      key={dimension.value}
-                      value={dimension.value}
-                      label={dimension.label}
-                      data-role="group-by"
-                      data-value={dimension.value}
-                    />
-                  ))}
-                </SegmentedControl>
               </div>
-              {distributionError ? (
-                <ShelfError title="分布数据加载失败" message={trendError ?? "请求失败"} onRetry={retry} />
-              ) : trend.groupBy === groupBy ? (
-                <StackedBarChart
-                  weeks={trend.weeks}
-                  groupBy={groupBy}
-                  segments={segmentGroups(groupBy, trend.totals.groups)}
+              <div className="wx-ranking-grid">
+                <RankedBarChart
+                  title="类目"
+                  groupBy="category"
+                  segments={foldTopCategories(trend.distributions.category)}
+                  from={range.from}
+                  to={range.to}
                   team={filters.team}
                   onSelect={setSelection}
                 />
-              ) : (
-                <DistributionLoading />
-              )}
+                <RankedBarChart
+                  title="最低 iOS"
+                  groupBy="ios_version"
+                  segments={segmentGroups("ios_version", trend.distributions.ios_version)}
+                  from={range.from}
+                  to={range.to}
+                  team={filters.team}
+                  onSelect={setSelection}
+                />
+                <RankedBarChart
+                  title="内购"
+                  groupBy="iap"
+                  segments={segmentGroups("iap", trend.distributions.iap)}
+                  from={range.from}
+                  to={range.to}
+                  team={filters.team}
+                  onSelect={setSelection}
+                />
+              </div>
             </section>
           </>
         ) : null}

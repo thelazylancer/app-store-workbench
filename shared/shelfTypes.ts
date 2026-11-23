@@ -56,6 +56,9 @@ export type ShelfTrendTotals = {
   groups: ShelfGroupCount[]; // whole range, same ordering rule
 };
 
+/** Whole-range distribution for every dimension, so each can be shown at once. */
+export type ShelfDistributions = Record<ShelfGroupBy, ShelfGroupCount[]>;
+
 /** Response of GET /api/public/shelf/trend. */
 export type ShelfTrendResponse = {
   from: string; // YYYY-MM-DD, echoed
@@ -67,6 +70,7 @@ export type ShelfTrendResponse = {
   /** Only weeks with data, ascending by weekStart; the current partial week included. */
   weeks: ShelfTrendWeek[];
   totals: ShelfTrendTotals;
+  distributions: ShelfDistributions;
 };
 
 /**

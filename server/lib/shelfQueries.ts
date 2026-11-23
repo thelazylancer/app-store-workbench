@@ -156,9 +156,16 @@ function sortedGroups(groups: Map<string, number>): ShelfGroupCount[] {
 function foldTrend(rows: TrendAggregateRow[], groupBy: ShelfGroupBy): {
   weeks: ShelfTrendWeek[];
   totals: ShelfTrendTotals;
+  distributions: Record<ShelfGroupBy, ShelfGroupCount[]>;
 } {
   const weeks = new Map<string, { packageCount: number; groups: Map<string, number>; teams: Map<string, number> }>();
   const totalGroups = new Map<string, number>();
+  const dimensionTotals: Record<ShelfGroupBy, Map<string, number>> = {
+    category: new Map(),
+    ios_version: new Map(),
+    iap: new Map(),
+  };
+  const DIMENSIONS: ShelfGroupBy[] = ["category", "ios_version", "iap"];
   let totalCount = 0;
 
   for (const row of rows) {
@@ -171,6 +178,11 @@ function foldTrend(rows: TrendAggregateRow[], groupBy: ShelfGroupBy): {
     week.packageCount += row.n;
     week.groups.set(key, (week.groups.get(key) ?? 0) + row.n);
     week.teams.set(row.team, (week.teams.get(row.team) ?? 0) + row.n);
+    for (const dimension of DIMENSIONS) {
+      const totals = dimensionTotals[dimension];
+      const dimensionKey = groupKey(row, dimension);
+      totals.set(dimensionKey, (totals.get(dimensionKey) ?? 0) + row.n);
+    }
     totalCount += row.n;
     totalGroups.set(key, (totalGroups.get(key) ?? 0) + row.n);
   }
@@ -186,6 +198,11 @@ function foldTrend(rows: TrendAggregateRow[], groupBy: ShelfGroupBy): {
         teams: sortedGroups(week.teams),
       })),
     totals: { packageCount: totalCount, groups: sortedGroups(totalGroups) },
+    distributions: {
+      category: sortedGroups(dimensionTotals.category),
+      ios_version: sortedGroups(dimensionTotals.ios_version),
+      iap: sortedGroups(dimensionTotals.iap),
+    },
   };
 }
 

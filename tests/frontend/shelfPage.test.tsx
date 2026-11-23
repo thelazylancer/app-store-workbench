@@ -2,10 +2,10 @@ import { Theme } from "@astryxdesign/core";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { BrowserRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ShelfGroupBy } from "../../shared/shelfTypes";
 import { ShelfTrendPage } from "../../src/shelf/App";
+import { addDays, todayUtc } from "../../src/lib/reportDate";
 import { wxTheme } from "../../src/theme/wxTheme";
-import { WEEKS, json, mockShelf, packagesFor, trendFor } from "./shelfFixtures";
+import { WEEKS, json, mockShelf } from "./shelfFixtures";
 
 // Astryx Dialog drives the native <dialog>; jsdom ships the element without the modal API.
 if (typeof HTMLDialogElement.prototype.showModal !== "function") {
@@ -90,23 +90,37 @@ describe("React shelf trend page", () => {
     expect(teamSegments(WEEKS[0]!.weekStart).map((segment) => segment.dataset.count)).toEqual(["3"]);
     expect(teamSegments(WEEKS[1]!.weekStart).map((segment) => segment.dataset.count)).toEqual(["2"]);
 
-    const segmentTotal = (weekStart: string) => [...document.querySelectorAll<HTMLElement>('[data-role="segment"]')]
-      .filter((segment) => segment.dataset.week === weekStart)
-      .reduce((sum, segment) => sum + Number(segment.dataset.count), 0);
-    expect(segmentTotal(WEEKS[0]!.weekStart)).toBe(3);
-    expect(segmentTotal(WEEKS[1]!.weekStart)).toBe(2);
-
-    expect(document.querySelector('[data-role="weekly-chart"] .wx-chart-line polyline')).not.toBeNull();
     const chips = [...document.querySelectorAll('[data-role="team-filter-chip"]')]
       .map((chip) => chip.textContent);
     expect(chips).toEqual(["团队 A", "团队 B"]);
 
-    const legend = [...document.querySelectorAll(".wx-chart-legend li")].map((item) => ({
-      name: item.querySelector(".wx-legend-name")?.textContent,
-      count: item.querySelector(".wx-legend-count")?.textContent,
+    expect(document.querySelector('[data-role="weekly-chart"] .wx-chart-line polyline')).not.toBeNull();
+
+    const rankings = [...document.querySelectorAll<HTMLElement>('[data-role="ranked-chart"]')].map((chart) => ({
+      dimension: chart.dataset.dimension,
+      title: chart.querySelector(".wx-ranked-title")?.textContent,
+      rows: [...chart.querySelectorAll<HTMLElement>('[data-role="ranked-row"]')].map((row) => ({
+        key: row.dataset.key,
+        count: row.querySelector(".wx-ranked-count")?.textContent,
+      })),
     }));
-    expect(legend).toContainEqual({ name: "游戏", count: "2" });
-    expect(legend).toContainEqual({ name: "未知", count: "2" });
+    expect(rankings.map((chart) => chart.title)).toEqual(["类目", "最低 iOS", "内购"]);
+    expect(rankings[0]!.rows).toEqual([
+      { key: "Games", count: "2" },
+      { key: "Utilities", count: "1" },
+      { key: "unknown", count: "2" },
+    ]);
+    expect(rankings[1]!.rows).toEqual([
+      { key: "15", count: "1" },
+      { key: "16", count: "1" },
+      { key: "17", count: "1" },
+      { key: "unknown", count: "2" },
+    ]);
+    expect(rankings[2]!.rows).toEqual([
+      { key: "yes", count: "1" },
+      { key: "no", count: "2" },
+      { key: "unknown", count: "2" },
+    ]);
 
     const labels = document.querySelector('[data-role="weekly-chart"] .wx-chart-labels')?.textContent ?? "";
     expect(labels).toContain("2026-11-09");
@@ -149,7 +163,7 @@ describe("React shelf trend page", () => {
     });
   });
 
-  it("shows the dimension detail while hovering a bar segment", async () => {
+  it("shows the team detail while hovering a bar", async () => {
     vi.stubGlobal("fetch", mockShelf());
     renderPage();
     await waitForTeamSegments(2);
@@ -159,24 +173,16 @@ describe("React shelf trend page", () => {
     expect(document.querySelector(".wx-chart-tip")?.textContent).toBe("团队 A 3 包");
     fireEvent.mouseOut(teamSegment);
     expect(document.querySelector(".wx-chart-tip")).toBeNull();
-
-    const games = document.querySelector<HTMLElement>(
-      `[data-role="segment"][data-week="${WEEKS[0]!.weekStart}"][data-key="Games"]`,
-    );
-    fireEvent.mouseOver(games!);
-    expect(document.querySelector(".wx-chart-tip")?.textContent).toBe("游戏 2 包");
-    fireEvent.mouseOut(games!);
-    expect(document.querySelector(".wx-chart-tip")).toBeNull();
   });
 
-  it("narrows the week detail to the clicked distribution segment", async () => {
+  it("opens the whole-range detail narrowed to a clicked ranking row", async () => {
     const fetchMock = mockShelf();
     vi.stubGlobal("fetch", fetchMock);
     renderPage();
     await waitForTeamSegments(2);
 
     const games = document.querySelector<HTMLElement>(
-      `[data-role="segment"][data-week="${WEEKS[0]!.weekStart}"][data-key="Games"]`,
+      `[data-role="ranked-chart"][data-dimension="category"] [data-role="ranked-row"][data-key="Games"]`,
     );
     await openDetails(games!);
 
@@ -187,23 +193,28 @@ describe("React shelf trend page", () => {
     expect(dialog.textContent).toContain("全部团队 · 游戏");
     expect(dialog.textContent).toContain("共 2 包");
     expect(detailRows().map((row) => row.textContent).join(" ")).not.toContain("com.unresolved.ios");
-    expect(new URL(packagesCalls(fetchMock)[0]!, "http://localhost").searchParams.get("team")).toBeNull();
+
+    const url = new URL(packagesCalls(fetchMock)[0]!, "http://localhost");
+    expect(dialog.textContent).toContain(`${url.searchParams.get("from")} ~ ${url.searchParams.get("to")}`);
+    expect(url.searchParams.get("to")).toBe(todayUtc());
+    expect(url.searchParams.get("from")).toBe(addDays(todayUtc(), -90));
+    expect(url.searchParams.get("team")).toBeNull();
   });
 
-  it("opens the unresolved segment with Bundle ID only", async () => {
+  it("opens the unresolved ranking row with Bundle ID only", async () => {
     vi.stubGlobal("fetch", mockShelf());
     renderPage();
     await waitForTeamSegments(2);
 
     const unknown = document.querySelector<HTMLElement>(
-      `[data-role="segment"][data-week="${WEEKS[0]!.weekStart}"][data-key="unknown"]`,
+      `[data-role="ranked-chart"][data-dimension="category"] [data-role="ranked-row"][data-key="unknown"]`,
     );
     await openDetails(unknown!);
 
     await waitFor(() => {
-      expect(detailRows()).toHaveLength(1);
+      expect(detailRows()).toHaveLength(2);
     });
-    expect(detailRows()[0]?.textContent).toContain("com.unresolved.ios");
+    expect(detailRows().map((row) => row.textContent).join(" ")).toContain("com.unresolved.ios");
     expect(detailRows()[0]?.textContent).toContain("未知");
   });
 
@@ -317,63 +328,6 @@ describe("React shelf trend page", () => {
     await waitForTeamSegments(2);
 
     await openDetails(teamSegments(WEEKS[0]!.weekStart)[0]!);
-    expect(await screen.findByText(/本周共 300 包，仅加载前 3 包/)).toBeTruthy();
-  });
-
-  it("keeps the weekly chart when a dimension switch fails, and retries only the trend", async () => {
-    let failNextDimension = true;
-    const fetchMock = vi.fn(async (input: string | URL | Request) => {
-      const url = new URL(String(input), "http://localhost");
-      const team = url.searchParams.get("team");
-      const groupBy = (url.searchParams.get("group_by") ?? "category") as ShelfGroupBy;
-      if (url.pathname.endsWith("/trend")) {
-        if (failNextDimension && groupBy === "ios_version") {
-          failNextDimension = false;
-          return json({ message: "Shelf query failed" }, 500);
-        }
-        return json(trendFor(team, groupBy));
-      }
-      if (url.pathname.endsWith("/packages")) {
-        return json(packagesFor(team, url.searchParams.get("from") ?? "", url.searchParams.get("to") ?? ""));
-      }
-      return json({ message: "not found" }, 404);
-    });
-    vi.stubGlobal("fetch", fetchMock);
-    renderPage();
-    await waitForTeamSegments(2);
-
-    fireEvent.click(screen.getByRole("radio", { name: "最低 iOS" }));
-
-    expect(await screen.findByText("分布数据加载失败")).toBeTruthy();
-    expect(teamSegments()).toHaveLength(2);
-    expect(document.querySelector('[data-role="stacked-chart"]')).toBeNull();
-
-    fireEvent.click(screen.getByRole("button", { name: "重试" }));
-
-    await waitFor(() => {
-      expect(document.querySelector('[data-role="stacked-chart"] [data-key="15"]')).not.toBeNull();
-    });
-    expect(document.querySelector('[data-role="shelf-error"]')).toBeNull();
-    expect(teamSegments()).toHaveLength(2);
-  });
-
-  it("switching the distribution dimension refetches only the trend", async () => {
-    const fetchMock = mockShelf();
-    vi.stubGlobal("fetch", fetchMock);
-    renderPage();
-    await waitForTeamSegments(2);
-
-    expect(document.querySelector('[data-role="stacked-chart"] [data-key="15"]')).toBeNull();
-
-    fireEvent.click(screen.getByRole("radio", { name: "最低 iOS" }));
-
-    await waitFor(() => {
-      expect(document.querySelector('[data-role="stacked-chart"] [data-key="15"]')).not.toBeNull();
-    });
-    expect(packagesCalls(fetchMock)).toHaveLength(0);
-    const trendUrls = fetchMock.mock.calls
-      .map(([input]) => String(input))
-      .filter((url) => url.includes("/trend"));
-    expect(trendUrls.some((url) => url.includes("group_by=ios_version"))).toBe(true);
+    expect(await screen.findByText(/该范围共 300 包，仅加载前 3 包/)).toBeTruthy();
   });
 });

@@ -4,7 +4,6 @@ import {
   OTHER_KEY,
   categoryLabel,
   foldTopCategories,
-  foldWeekGroups,
   iapLabel,
   iosBucketLabel,
   segmentGroups,
@@ -89,40 +88,10 @@ describe("foldTopCategories", () => {
   });
 });
 
-describe("segmentGroups and foldWeekGroups", () => {
+describe("segmentGroups", () => {
   it("uses the fixed iOS and IAP orders", () => {
     expect(segmentGroups("ios_version", [{ key: "16", count: 3 }]).map((segment) => segment.label))
       .toEqual(["≤14", "15", "16", "17", "18", "26+", "未知"]);
     expect(segmentGroups("iap", []).map((segment) => segment.label)).toEqual(["有", "无", "未知"]);
-  });
-
-  it("folds weekly categories into the same Top 6 + 其他 + 未知 keys", () => {
-    const segments = foldTopCategories([
-      { key: "Games", count: 30 },
-      { key: "Utilities", count: 20 },
-      { key: "Productivity", count: 15 },
-      { key: "Social Networking", count: 12 },
-      { key: "Photo & Video", count: 10 },
-      { key: "Finance", count: 8 },
-      { key: "Travel", count: 5 },
-      { key: "unknown", count: 4 },
-    ]);
-    const week = foldWeekGroups("category", [
-      { key: "Games", count: 2 },
-      { key: "Travel", count: 1 },
-      { key: "unknown", count: 3 },
-    ], segments);
-
-    expect(week.Games).toBe(2);
-    expect(week[OTHER_KEY]).toBe(1);
-    expect(week.unknown).toBe(3);
-    expect(Object.values(week).reduce((sum, count) => sum + count, 0)).toBe(6);
-  });
-
-  it("keeps 未知 out of 其他", () => {
-    const segments = foldTopCategories([{ key: "Games", count: 2 }, { key: "unknown", count: 5 }]);
-    const week = foldWeekGroups("category", [{ key: "unknown", count: 5 }], segments);
-    expect(week.unknown).toBe(5);
-    expect(week[OTHER_KEY] ?? 0).toBe(0);
   });
 });

@@ -45,12 +45,12 @@ export type ShelfTrendQuery = {
   from: string;
   to: string;
   team: string | null;
-  groupBy: ShelfGroupBy;
+  groupBy?: ShelfGroupBy;
 };
 
 export function getShelfTrend({ from, to, team, groupBy }: ShelfTrendQuery): Promise<ShelfTrendResponse> {
   const params = rangeParams(from, to, team);
-  params.set("group_by", groupBy);
+  if (groupBy) params.set("group_by", groupBy);
   return request<ShelfTrendResponse>(`/api/public/shelf/trend?${params.toString()}`);
 }
 
