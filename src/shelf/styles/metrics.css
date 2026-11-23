@@ -62,15 +62,16 @@
   height: 100%;
 }
 
-/* padding + content-box clip keeps a 2px gap between team bars without shrinking the hit area. */
+/* Matches the distribution bars: 3px rounded top, sheen, 2px gap between neighbours. */
 .wx-metric-bar {
   position: absolute;
   z-index: 1;
   margin: 0;
-  padding: 0 1px;
+  padding: 0 2px;
   border: 0;
-  border-radius: 2px 2px 0 0;
+  border-radius: 3px 3px 0 0;
   background-clip: content-box;
+  background-image: linear-gradient(to top, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.22));
   cursor: pointer;
   transition: filter 120ms ease-out;
 }
@@ -85,7 +86,7 @@
 }
 
 .wx-metric-negative {
-  border-radius: 0 0 2px 2px;
+  border-radius: 0 0 3px 3px;
 }
 
 .wx-metric-value {

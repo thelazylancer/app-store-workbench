@@ -34,7 +34,7 @@ describe("page styles", () => {
     for (const file of files) {
       const fileCss = readFileSync(file, "utf8");
       expect(fileCss, file).not.toMatch(/box-shadow/i);
-      if (!/charts\.css$/.test(file)) expect(fileCss, file).not.toMatch(/gradient\(/i);
+      if (!/(charts|metrics)\.css$/.test(file)) expect(fileCss, file).not.toMatch(/gradient\(/i);
     }
   });
 

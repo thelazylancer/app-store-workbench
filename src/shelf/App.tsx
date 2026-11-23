@@ -67,7 +67,6 @@ export function ShelfTrendPage() {
   const bodyLoading = initialLoading || (trendLoading && teamPending);
   const hasData = Boolean(trend && trend.totals.packageCount > 0);
   const empty = !pageError && !bodyLoading && !hasData;
-  const total = trend?.totals.packageCount;
 
   const teams = [...(trend?.teams ?? [])].sort((left, right) => left.localeCompare(right, "zh"));
   const metricTeams = [...new Set((trend?.teamWeekStats ?? []).map((row) => row.team))]
@@ -84,13 +83,8 @@ export function ShelfTrendPage() {
   return (
     <section className="wx-shelf" data-role="shelf-view">
       <header className="wx-shelf-header">
-        <div className="wx-shelf-heading">
-          <h1 className="wx-shelf-h1">竞品入库趋势</h1>
-          <p className="wx-shelf-meta" data-role="shelf-meta">
-            统计范围 <span className="wx-mono">{range.from}</span> ~ <span className="wx-mono">{range.to}</span>
-            {" · "}共 <span className="wx-mono">{total ?? "…"}</span> 包
-          </p>
-        </div>
+        {/* Kept for assistive tech; the visible title/meta are gone by request. */}
+        <h1 className="visually-hidden">竞品入库趋势</h1>
         <div className="wx-shelf-filter">
           <Text type="supporting" as="span">团队</Text>
           <Selector

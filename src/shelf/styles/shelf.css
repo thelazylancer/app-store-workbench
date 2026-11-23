@@ -9,32 +9,19 @@
   color: var(--color-text-primary);
 }
 
+/* Sticky under the 54px app nav, so the team filter survives scrolling. */
 .wx-shelf-header {
+  position: sticky;
+  top: 54px;
+  z-index: 20;
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
+  align-items: center;
+  justify-content: flex-end;
   gap: 16px 32px;
-  padding: 22px 0 18px;
+  padding: 10px 0;
   border-bottom: 1px solid var(--color-border);
+  background: var(--color-background-body);
   flex-wrap: wrap;
-}
-
-.wx-shelf-heading {
-  min-width: 0;
-}
-
-.wx-shelf-h1 {
-  margin: 0 0 6px;
-  font-size: 20px;
-  font-weight: 600;
-  line-height: 1.2;
-}
-
-.wx-shelf-meta {
-  margin: 0;
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  line-height: 1.5;
 }
 
 .wx-mono {
@@ -218,8 +205,8 @@
   .wx-shelf-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 12px;
-    padding: 16px 0 12px;
+    gap: 8px;
+    padding: 10px 0;
   }
 
   .wx-shelf-filter {
