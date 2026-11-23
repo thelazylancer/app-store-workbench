@@ -40,7 +40,7 @@ web
 
 - 支持 iOS 竞品包，不覆盖 Android / Web。
 - 只抓 `first_ad_date` 等于目标日期的记录。
-- 排除 `team = 灵蜂`。
+- 不排除任何团队（含灵蜂）。
 - 只保留 `display_name` 包含 `ios` 的记录。
 - `package_code` 是可靠 Bundle ID，不把它当应用名搜索。
 - 国家范围先支持 `us, cn, hk, tw, jp, sg, gb, au`。

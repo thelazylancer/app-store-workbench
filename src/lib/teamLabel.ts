@@ -6,6 +6,7 @@ const TEAM_INITIALS: Record<string, string> = {
   驰猿: "CY",
   JODO: "JD",
   LivChat: "LC",
+  灵蜂: "LF",
 };
 
 export function teamLabel(team: string): string {

@@ -9,6 +9,7 @@ describe("teamLabel", () => {
     expect(teamLabel("驰猿")).toBe("CY");
     expect(teamLabel("JODO")).toBe("JD");
     expect(teamLabel("LivChat")).toBe("LC");
+    expect(teamLabel("灵蜂")).toBe("LF");
   });
 
   it("falls back to word initials for English names and the full name otherwise", () => {

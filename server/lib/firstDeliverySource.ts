@@ -20,7 +20,6 @@ export type SourceBatch = {
 
 const DEFAULT_API_URL = "http://192.168.110.61:8001/api/v1/first-delivery-packages";
 const REQUEST_TIMEOUT_MS = 30_000;
-const EXCLUDED_TEAM = "灵蜂";
 const PAGE_SIZE = 200;
 
 export class FirstDeliveryHttpError extends Error {
@@ -160,7 +159,7 @@ function normalizeRow(row: Record<string, unknown>): SourcePackageRow | null {
 /**
  * Fetches one day of first-delivery packages. Rejecting means the source is
  * unreachable, unauthorized, or malformed; a resolved batch is already
- * filtered (not 灵蜂, display name contains "ios") and de-duplicated.
+ * filtered (display name contains "ios") and de-duplicated.
  */
 export async function fetchFirstDeliveryPackages(targetDate: string): Promise<SourceBatch> {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) {
@@ -193,7 +192,6 @@ export async function fetchFirstDeliveryPackages(targetDate: string): Promise<So
   for (const raw of rows) {
     const row = normalizeRow(raw);
     if (!row) continue;
-    if (row.team === EXCLUDED_TEAM) continue;
     if (!row.displayName.toLowerCase().includes("ios")) continue;
     if (seen.has(row.packageCode)) continue;
     seen.add(row.packageCode);

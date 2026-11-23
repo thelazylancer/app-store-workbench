@@ -14,7 +14,7 @@
   └─ targetDate = 昨天 (UTC)
      └─ syncCompetitorDay(targetDate)            server/lib/competitorSync.ts
         ├─ fetchFirstDeliveryPackages(targetDate) server/lib/firstDeliverySource.ts
-        │    过滤 team≠灵蜂 / display_name 含 ios / 按 package_code 去重
+        │    过滤 display_name 含 ios / 按 package_code 去重
         ├─ upsertBatch + upsertPackage(主表 + 快照行)   server/lib/competitorRepo.ts
         ├─ 8 国 lookupAppByBundleId               server/lib/appleLookup.ts (新增函数)
         │    upsertCountryHits + 更新主表/快照的 lookup_status、appleId、
@@ -66,7 +66,7 @@ export type SourceBatch = {
 export async function fetchFirstDeliveryPackages(targetDate: string): Promise<SourceBatch>;
 ```
 
-- 接口不变量：抛错 = 源接口不可达/鉴权失败；返回即代表已过滤（`team != 灵蜂`、`display_name` 不区分大小写包含 `ios`、去重）。
+- 接口不变量：抛错 = 源接口不可达/鉴权失败；返回即代表已过滤（`display_name` 不区分大小写包含 `ios`、去重）。
 - 配置：`FIRST_DELIVERY_API_URL`（默认值取 PRODUCT.md 中的内网地址）、`FIRST_DELIVERY_API_KEY`（只从 `process.env` 读，绝不写入文档或代码）。
 - 内部复用 `fetch` + `AbortSignal.timeout`，模式同 `server/lib/appleLookup.ts`。
 
@@ -335,7 +335,7 @@ CREATE TABLE competitor_snapshots (
 
 ## 6. 风险
 
-1. **源接口稳定性/口径**（最大风险）：过滤规则（`display_name` 含 `ios`、`team != 灵蜂`）基于假设，若源字段名或过滤语义与 PRD 描述有出入，每天入库的都是脏数据。缓解：T-002 第一张票先用脚本对真实接口跑一次人工核对，再固化进模块。
+1. **源接口稳定性/口径**（最大风险）：过滤规则（`display_name` 含 `ios`）基于假设，若源字段名或过滤语义与 PRD 描述有出入，每天入库的都是脏数据。缓解：T-002 第一张票先用脚本对真实接口跑一次人工核对，再固化进模块。
 2. **商品页反爬**：批量抓 `apps.apple.com` 商品页可能被限流，导致 `enrich_status` 大面积失败。缓解：低并发 + 现有缓存 + 失败不阻断并如实记录状态。
 3. **每日任务漏跑**：服务器当天没开机就永久缺数。缓解：`scripts/competitor-sync.ts --date` 支持回填，快照表允许补录。
 4. **测试数据库依赖**：仓储测试需要本机 5433 实例，CI 无库时会静默 skip，幂等性验收要靠本地跑。

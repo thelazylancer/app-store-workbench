@@ -25,10 +25,10 @@ function segmentClass(key: string, knownIndex: number, groupBy: ShelfGroupBy): s
   return `wx-seg-${Math.min(knownIndex, 5)}`;
 }
 
-/** Index into the six categorical team colours; unknown teams fall back to the first. */
+/** Index into the seven categorical team colours; unknown teams fall back to the first. */
 function teamClass(team: string, teams: string[]): string {
   const index = teams.indexOf(team);
-  return `wx-team-${index < 0 ? 0 : index % 6}`;
+  return `wx-team-${index < 0 ? 0 : index % 7}`;
 }
 
 function weekLabel(week: ShelfTrendWeek): string {

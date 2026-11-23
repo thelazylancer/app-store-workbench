@@ -22,7 +22,7 @@ describe("fetchFirstDeliveryPackages", () => {
     vi.restoreAllMocks();
   });
 
-  it("filters by team and iOS name, de-duplicates, and maps batch metadata", async () => {
+  it("filters by iOS name, de-duplicates, and keeps every team", async () => {
     const fetchSource = vi.spyOn(globalThis, "fetch").mockResolvedValue(pageBody([
       {
         package_code: "com.example.ios-a", display_name: "iOS-A", team: "Alpha",
@@ -62,6 +62,11 @@ describe("fetchFirstDeliveryPackages", () => {
         packageCode: "com.example.ios-a", displayName: "iOS-A", team: "Alpha",
         firstAdDate: "2026-11-18", listingDate: "2026-11-01",
         first100Date: null, offlineDate: "2026-12-01",
+      },
+      {
+        packageCode: "com.example.ios-c", displayName: "iOS-C", team: "灵蜂",
+        firstAdDate: "2026-11-18", listingDate: null,
+        first100Date: null, offlineDate: null,
       },
       {
         packageCode: "com.example.ios-d", displayName: "FunceIOS daily", team: "Delta",
