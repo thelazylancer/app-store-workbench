@@ -76,7 +76,7 @@ afterEach(() => {
 });
 
 describe("React shelf trend page", () => {
-  it("renders the weekly team stack and the quantity-stacked distribution", async () => {
+  it("renders the grouped weekly bars with the total line and the distribution", async () => {
     vi.stubGlobal("fetch", mockShelf());
     renderPage();
     await waitForTeamSegments(2);
@@ -96,14 +96,10 @@ describe("React shelf trend page", () => {
     expect(segmentTotal(WEEKS[0]!.weekStart)).toBe(3);
     expect(segmentTotal(WEEKS[1]!.weekStart)).toBe(2);
 
-    const teamLegend = [...document.querySelectorAll('[data-role="team-legend"] li')].map((item) => ({
-      name: item.querySelector(".wx-legend-name")?.textContent,
-      count: item.querySelector(".wx-legend-count")?.textContent,
-    }));
-    expect(teamLegend).toEqual([
-      { name: "团队 A", count: "3" },
-      { name: "团队 B", count: "2" },
-    ]);
+    expect(document.querySelector('[data-role="weekly-chart"] .wx-chart-line polyline')).not.toBeNull();
+    const chips = [...document.querySelectorAll('[data-role="team-filter-chip"]')]
+      .map((chip) => chip.textContent);
+    expect(chips).toEqual(["团队 A", "团队 B"]);
 
     const legend = [...document.querySelectorAll(".wx-chart-legend li")].map((item) => ({
       name: item.querySelector(".wx-legend-name")?.textContent,
@@ -211,6 +207,20 @@ describe("React shelf trend page", () => {
     expect(detailRows()[0]?.textContent).toContain("未知");
   });
 
+  it("filters to one team from the chart legend chip and back", async () => {
+    vi.stubGlobal("fetch", mockShelf());
+    renderPage();
+    await waitForTeamSegments(2);
+
+    fireEvent.click(document.querySelector<HTMLElement>('[data-role="team-filter-chip"][data-team="团队 B"]')!);
+    await waitForWeekBars(1);
+    expect(new URLSearchParams(window.location.search).get("team")).toBe("团队 B");
+
+    fireEvent.click(document.querySelector<HTMLElement>('[data-role="team-filter-chip"][data-team="团队 B"]')!);
+    await waitForTeamSegments(2);
+    expect(new URLSearchParams(window.location.search).get("team")).toBeNull();
+  });
+
   it("filters the trend by team, renders a single-series bar and scopes the detail", async () => {
     const fetchMock = mockShelf();
     vi.stubGlobal("fetch", fetchMock);
@@ -222,7 +232,7 @@ describe("React shelf trend page", () => {
 
     await waitForWeekBars(1);
     expect(weekBars()[0]?.dataset.count).toBe("2");
-    expect(document.querySelector('[data-role="team-legend"]')).toBeNull();
+    expect(document.querySelector(".wx-chart-line")).toBeNull();
     expect(new URLSearchParams(window.location.search).get("team")).toBe("团队 B");
     expect(packagesCalls(fetchMock)).toHaveLength(0);
 

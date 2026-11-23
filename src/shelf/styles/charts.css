@@ -16,17 +16,38 @@
 .wx-chart-canvas {
   width: max-content;
   min-width: 100%;
+  /* Shared by the slot widths and the line overlay, so both scale together. */
+  --wx-chart-slot-w: 120px;
 }
 
 .wx-chart-plot {
+  position: relative;
   display: flex;
   align-items: stretch;
   height: 240px;
   border-bottom: 1px solid var(--color-border);
 }
 
+/* Weekly totals, aligned with the same week-total scale as the bars. */
+.wx-chart-line {
+  position: absolute;
+  top: 24px;
+  left: 0;
+  /* Replaced element: without an explicit height it would use the 1:1 viewBox ratio. */
+  height: calc(100% - 24px);
+  pointer-events: none;
+}
+
+.wx-chart-line polyline {
+  fill: none;
+  stroke: rgba(28, 39, 51, 0.5);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .wx-chart-slot {
-  flex: 0 0 120px;
+  flex: 0 0 var(--wx-chart-slot-w);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -253,6 +274,53 @@
   list-style: none;
 }
 
+/* Clickable team legend in the weekly chart header. */
+.wx-team-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wx-team-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  padding: 2px 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: none;
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.wx-team-chip:hover {
+  background: rgba(28, 39, 51, 0.05);
+}
+
+.wx-team-chip[aria-pressed="true"] {
+  border-color: var(--color-border-emphasized);
+  font-weight: 600;
+}
+
+.wx-team-chip:focus-visible {
+  outline: var(--focus-outline-width) solid var(--focus-outline-color);
+  outline-offset: 1px;
+}
+
+.wx-team-chip-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex: 0 0 auto;
+}
+
 .wx-chart-legend li {
   display: flex;
   align-items: center;
@@ -299,8 +367,8 @@
     height: 176px;
   }
 
-  .wx-chart-slot {
-    flex: 0 0 88px;
+  .wx-chart-canvas {
+    --wx-chart-slot-w: 88px;
   }
 
   .wx-chart-bar-wrap {

@@ -26,7 +26,7 @@ function segmentClass(key: string, knownIndex: number, groupBy: ShelfGroupBy): s
 }
 
 /** Index into the seven categorical team colours; unknown teams fall back to the first. */
-function teamClass(team: string, teams: string[]): string {
+export function teamClass(team: string, teams: string[]): string {
   const index = teams.indexOf(team);
   return `wx-team-${index < 0 ? 0 : index % 7}`;
 }
@@ -91,18 +91,34 @@ type WeeklyProps = {
   onSelect: (selection: ShelfSelection) => void;
 };
 
+/** Weekly totals as a polyline over the bars; both share the week-total scale. */
+function TrendLine({ weeks, max }: { weeks: ShelfTrendWeek[]; max: number }) {
+  if (weeks.length < 2) return null;
+  const points = weeks
+    .map((week, index) => {
+      const x = ((index + 0.5) / weeks.length) * 100;
+      const y = (1 - week.packageCount / max) * 100;
+      return `${x.toFixed(2)},${y.toFixed(2)}`;
+    })
+    .join(" ");
+  return (
+    <svg
+      className="wx-chart-line"
+      style={{ width: `calc(var(--wx-chart-slot-w) * ${weeks.length})` }}
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
+      <polyline points={points} vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
+
 export function WeeklyBarChart({ weeks, teams, team, onSelect }: WeeklyProps) {
   const scroll = useScrollRegion(weeks.length);
   const { tip, bind } = useChartTip();
   const stacked = team === null;
-  // Grouped bars are scaled by the tallest single team-week bar, not the week total.
-  const max = stacked
-    ? Math.max(1, ...weeks.flatMap((week) => week.teams.map((entry) => entry.count)))
-    : maxCount(weeks);
-  const teamTotals = new Map<string, number>();
-  for (const week of weeks) {
-    for (const entry of week.teams) teamTotals.set(entry.key, (teamTotals.get(entry.key) ?? 0) + entry.count);
-  }
+  const max = maxCount(weeks);
 
   return (
     <figure className="wx-chart-figure" data-role="weekly-chart">
@@ -110,13 +126,11 @@ export function WeeklyBarChart({ weeks, teams, team, onSelect }: WeeklyProps) {
         <div className="wx-chart-canvas">
           <div className="wx-chart-plot">
             {weeks.map((week) => {
-              const top = stacked
-                ? Math.max(1, ...week.teams.map((entry) => entry.count))
-                : week.packageCount;
+              const top = Math.max(1, week.packageCount);
               return (
                 <div className="wx-chart-slot" key={week.weekStart}>
                   <div className="wx-chart-track">
-                    <div className="wx-chart-bar-wrap" style={{ height: barHeight(top, max) }}>
+                    <div className="wx-chart-bar-wrap" style={{ height: barHeight(week.packageCount, max) }}>
                       <span className="wx-chart-value">{week.packageCount}</span>
                       {stacked ? (
                         <div className="wx-chart-group">
@@ -147,7 +161,7 @@ export function WeeklyBarChart({ weeks, teams, team, onSelect }: WeeklyProps) {
                       ) : (
                         <button
                           type="button"
-                          className="wx-chart-bar wx-bar-total"
+                          className={`wx-chart-bar wx-bar-total ${team ? teamClass(team, teams) : ""}`}
                           aria-label={`${weekLabel(week)}，${week.packageCount} 包`}
                           data-role="week-bar"
                           data-week={week.weekStart}
@@ -170,21 +184,11 @@ export function WeeklyBarChart({ weeks, teams, team, onSelect }: WeeklyProps) {
                 </div>
               );
             })}
+            {stacked ? <TrendLine weeks={weeks} max={max} /> : null}
           </div>
           <WeekLabels weeks={weeks} />
         </div>
       </div>
-      {stacked ? (
-        <ul className="wx-chart-legend" data-role="team-legend">
-          {teams.map((name) => (
-            <li key={name}>
-              <span className={`wx-legend-swatch ${teamClass(name, teams)}`} aria-hidden="true" />
-              <span className="wx-legend-name">{teamLabel(name)}</span>
-              <b className="wx-legend-count">{teamTotals.get(name) ?? 0}</b>
-            </li>
-          ))}
-        </ul>
-      ) : null}
       <table className="visually-hidden">
         <caption>每周入库包数</caption>
         <thead>

@@ -85,13 +85,6 @@
   line-height: 1.5;
 }
 
-.wx-shelf-note {
-  margin: 0;
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
 /* States */
 .wx-shelf-state {
   padding: 24px 0 28px;

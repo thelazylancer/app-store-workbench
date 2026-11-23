@@ -14,7 +14,7 @@ import { addDays, todayUtc } from "../lib/reportDate";
 import { ShelfApiError, getShelfTrend } from "../lib/shelfApi";
 import { teamLabel } from "../lib/teamLabel";
 import { segmentGroups } from "./buckets";
-import { StackedBarChart, WeeklyBarChart } from "./Charts";
+import { StackedBarChart, WeeklyBarChart, teamClass } from "./Charts";
 import { ShelfDetailDialog } from "./DetailDialog";
 import { useShelfFilters } from "./filters";
 import type { ShelfSelection } from "./selection";
@@ -143,9 +143,23 @@ export function ShelfTrendPage() {
             <section className="wx-shelf-section" aria-labelledby="shelf-weekly-title">
               <div className="wx-shelf-block-head">
                 <h2 id="shelf-weekly-title" className="wx-shelf-h2">每周入库包数</h2>
-                <p className="wx-shelf-note">
-                  {filters.team ? "按入库日期分周 · 周一至周日" : "按入库日期分周 · 周一至周日 · 团队并排"}
-                </p>
+                <ul className="wx-team-chips" data-role="team-chips" aria-label="按团队筛选">
+                  {teams.map((name) => (
+                    <li key={name}>
+                      <button
+                        type="button"
+                        className="wx-team-chip"
+                        aria-pressed={filters.team === name}
+                        data-role="team-filter-chip"
+                        data-team={name}
+                        onClick={() => update({ team: filters.team === name ? null : name })}
+                      >
+                        <span className={`wx-team-chip-swatch ${teamClass(name, teams)}`} aria-hidden="true" />
+                        {teamLabel(name)}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
               </div>
               <WeeklyBarChart
                 weeks={trend.weeks}
