@@ -68,7 +68,7 @@ export type ShelfTeamWeekStats = {
   packageCount: number;
   /** Mean versions per package over packages with version records; null when none. */
   avgVersionCount: number | null;
-  /** Mean days between consecutive releases within a package; needs 2+ release dates. */
+  /** Mean days between releases over packages with 2+ releases; gaps over 30 are dropped. */
   avgVersionGapDays: number | null;
   /** Mean days from the latest release to first_ad_date; negative = release after the ad. */
   avgLatestVersionToAdDays: number | null;

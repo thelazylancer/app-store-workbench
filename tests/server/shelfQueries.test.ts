@@ -129,7 +129,8 @@ describeDb("shelf queries against PostgreSQL", () => {
       appStoreJson: { name: "Gamma App", iapItems: [] },
     }));
 
-    // Version history: A has one 3-day gap; B a single release; E two 5-day gaps.
+    // Version history: A has one 3-day gap; B a single release; E two 5-day gaps;
+    // F's 40-day gap is an outlier the team-week mean must drop.
     await writes.upsertVersions(codeA, [
       { version: "1.0", releasedAt: `${shiftDay(sunday, -4)}T00:00:00.000Z`, notes: null },
       { version: "1.1", releasedAt: `${shiftDay(sunday, -1)}T00:00:00.000Z`, notes: null },
@@ -141,6 +142,10 @@ describeDb("shelf queries against PostgreSQL", () => {
       { version: "1.0", releasedAt: `${shiftDay(monday, -6)}T00:00:00.000Z`, notes: null },
       { version: "2.0", releasedAt: `${shiftDay(monday, -1)}T00:00:00.000Z`, notes: null },
       { version: "3.0", releasedAt: `${shiftDay(monday, 4)}T00:00:00.000Z`, notes: null },
+    ]);
+    await writes.upsertVersions(codeF, [
+      { version: "1.0", releasedAt: `${shiftDay(monday, -40)}T00:00:00.000Z`, notes: null },
+      { version: "2.0", releasedAt: `${shiftDay(monday, 5)}T00:00:00.000Z`, notes: null },
     ]);
   });
 
@@ -300,9 +305,9 @@ describeDb("shelf queries against PostgreSQL", () => {
         weekStart: monday,
         team: gamma,
         packageCount: 1,
-        avgVersionCount: null,
-        avgVersionGapDays: null,
-        avgLatestVersionToAdDays: null,
+        avgVersionCount: 2,
+        avgVersionGapDays: null, // its only gap is 40 days → dropped as an outlier
+        avgLatestVersionToAdDays: 0,
         avgAdToOfflineDays: null,
       },
     ]);
