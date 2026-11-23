@@ -6,7 +6,7 @@ import { addDays, todayUtc } from "../lib/reportDate";
 import { ShelfApiError, getShelfTrend } from "../lib/shelfApi";
 import { teamLabel } from "../lib/teamLabel";
 import { foldTopCategories, segmentGroups } from "./buckets";
-import { RankedBarChart, WeeklyBarChart, teamClass } from "./Charts";
+import { DistributionRow, WeeklyBarChart, teamClass } from "./Charts";
 import { ShelfDetailDialog } from "./DetailDialog";
 import { useShelfFilters } from "./filters";
 import type { ShelfSelection } from "./selection";
@@ -152,8 +152,8 @@ export function ShelfTrendPage() {
               <div className="wx-shelf-block-head">
                 <h2 id="shelf-distribution-title" className="wx-shelf-h2">入库包分布</h2>
               </div>
-              <div className="wx-ranking-grid">
-                <RankedBarChart
+              <div className="wx-dist-rows">
+                <DistributionRow
                   title="类目"
                   groupBy="category"
                   segments={foldTopCategories(trend.distributions.category)}
@@ -163,7 +163,7 @@ export function ShelfTrendPage() {
                   team={filters.team}
                   onSelect={setSelection}
                 />
-                <RankedBarChart
+                <DistributionRow
                   title="最低 iOS"
                   groupBy="ios_version"
                   segments={segmentGroups("ios_version", trend.distributions.ios_version)}
@@ -173,7 +173,7 @@ export function ShelfTrendPage() {
                   team={filters.team}
                   onSelect={setSelection}
                 />
-                <RankedBarChart
+                <DistributionRow
                   title="内购"
                   groupBy="iap"
                   segments={segmentGroups("iap", trend.distributions.iap)}
@@ -184,6 +184,14 @@ export function ShelfTrendPage() {
                   onSelect={setSelection}
                 />
               </div>
+              {trend.weeks.length > 1 ? (
+                <p className="wx-dist-axis">
+                  每列从左到右：<span className="wx-mono">{trend.weeks[0]!.weekStart}</span>
+                  {" → "}
+                  <span className="wx-mono">{trend.weeks[trend.weeks.length - 1]!.weekEnd}</span>
+                  ，悬停柱子看该周包数
+                </p>
+              ) : null}
             </section>
           </>
         ) : null}

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { teamLabel } from "../lib/teamLabel";
 import type { ShelfGroupBy, ShelfTrendWeek } from "../../shared/shelfTypes";
 import { OTHER_KEY, foldWeekGroups, isUnknownKey, type ShelfSegment } from "./buckets";
@@ -29,23 +29,23 @@ function weekLabel(week: ShelfTrendWeek): string {
   return `${week.weekStart} ~ ${week.weekEnd}`;
 }
 
-type ChartTipState = { week: string; text: string } | null;
+type ChartTipState = { id: string; text: string } | null;
 
 /** One hovered value at a time, shown above its own column. */
 function useChartTip() {
   const [tip, setTip] = useState<ChartTipState>(null);
-  const bind = (week: string, text: string) => ({
-    onMouseEnter: () => setTip({ week, text }),
+  const bind = (id: string, text: string) => ({
+    onMouseEnter: () => setTip({ id, text }),
     onMouseLeave: () => setTip(null),
-    onFocus: () => setTip({ week, text }),
+    onFocus: () => setTip({ id, text }),
     onBlur: () => setTip(null),
   });
   return { tip, bind };
 }
 
-function ChartTip({ tip, week }: { tip: ChartTipState; week: string }) {
+function ChartTip({ tip, id }: { tip: ChartTipState; id: string }) {
   // Screen readers already get the same detail from each button's aria-label.
-  return tip?.week === week ? <div className="wx-chart-tip" aria-hidden="true">{tip.text}</div> : null;
+  return tip?.id === id ? <div className="wx-chart-tip" aria-hidden="true">{tip.text}</div> : null;
 }
 
 function WeekLabels({ weeks }: { weeks: ShelfTrendWeek[] }) {
@@ -174,7 +174,7 @@ export function WeeklyBarChart({ weeks, teams, team, onSelect }: WeeklyProps) {
                       )}
                     </div>
                   </div>
-                  <ChartTip tip={tip} week={week.weekStart} />
+                  <ChartTip tip={tip} id={week.weekStart} />
                 </div>
               );
             })}
@@ -206,7 +206,7 @@ export function WeeklyBarChart({ weeks, teams, team, onSelect }: WeeklyProps) {
   );
 }
 
-type RankedProps = {
+type DistributionRowProps = {
   title: string;
   groupBy: ShelfGroupBy;
   segments: ShelfSegment[];
@@ -217,52 +217,36 @@ type RankedProps = {
   onSelect: (selection: ShelfSelection) => void;
 };
 
-/** One bar per week for a single ranking row; hover shows that week's count. */
-function Sparkline({ counts, weeks }: { counts: number[]; weeks: ShelfTrendWeek[] }) {
-  const max = Math.max(1, ...counts);
-  return (
-    <span className="wx-spark" aria-hidden="true">
-      {counts.map((count, index) => (
-        <span
-          key={weeks[index]?.weekStart ?? index}
-          className="wx-spark-bar"
-          data-count={count}
-          style={{ height: count === 0 ? 0 : `${Math.max(10, (count / max) * 100)}%` }}
-          title={`${weeks[index]?.weekStart ?? ""} · ${count} 包`}
-        />
-      ))}
-    </span>
-  );
-}
-
-/** One horizontal ranking per dimension over the whole range, with a weekly trend per row. */
-export function RankedBarChart({ title, groupBy, segments, weeks, from, to, team, onSelect }: RankedProps) {
+/** One dimension as a row of cards; each value card is a mini weekly bar chart. */
+export function DistributionRow({ title, groupBy, segments, weeks, from, to, team, onSelect }: DistributionRowProps) {
+  const { tip, bind } = useChartTip();
   const shown = segments
     .map((segment, index) => ({ segment, index }))
     .filter(({ segment }) => segment.count > 0);
-  const max = Math.max(1, ...shown.map(({ segment }) => segment.count));
   const topKeys = segments
     .map((segment) => segment.key)
     .filter((key) => key !== OTHER_KEY && !isUnknownKey(key));
-  // Each week folded into the same segment keys the rows use.
+  // Each week folded into the same segment keys the cards use.
   const weekCounts = weeks.map((week) => (
     groupBy === "category"
       ? foldWeekGroups(week.distributions.category, segments)
       : Object.fromEntries(week.distributions[groupBy].map((group) => [group.key, group.count]))
   ));
+  // One shared scale per row, so card heights stay comparable.
+  const max = Math.max(1, ...shown.flatMap(({ segment }) => (
+    weekCounts.map((counts) => counts[segment.key] ?? 0)
+  )));
 
   return (
-    <div className="wx-ranked" data-role="ranked-chart" data-dimension={groupBy}>
-      <h3 className="wx-ranked-title">{title}</h3>
-      <ul className="wx-ranked-list">
+    <div className="wx-dist-row" data-role="distribution-row" data-dimension={groupBy}>
+      <h3 className="wx-dist-title">{title}</h3>
+      <ul className="wx-dist-cards">
         {shown.map(({ segment, index }) => (
-          <li key={segment.key}>
+          <li key={segment.key} className="wx-dist-card" data-role="dist-card" data-key={segment.key}>
             <button
               type="button"
-              className="wx-ranked-row"
-              data-role="ranked-row"
-              data-key={segment.key}
-              aria-label={`${title}：${segment.label} ${segment.count} 包`}
+              className="wx-dist-head"
+              aria-label={`${title}：${segment.label} 全区间 ${segment.count} 包`}
               onClick={() => onSelect({
                 weekStart: from,
                 weekEnd: to,
@@ -273,21 +257,42 @@ export function RankedBarChart({ title, groupBy, segments, weeks, from, to, team
                 label: segment.label,
               })}
             >
-              <span className="wx-ranked-label">{segment.label}</span>
-              <span className="wx-ranked-track">
-                <span
-                  className={`wx-ranked-fill ${segmentClass(segment.key, index, groupBy)}`}
-                  style={{ width: `${(segment.count / max) * 100}%` }}
-                />
-              </span>
-              {weeks.length > 1 ? (
-                <Sparkline
-                  counts={weekCounts.map((counts) => counts[segment.key] ?? 0)}
-                  weeks={weeks}
-                />
-              ) : null}
-              <b className="wx-ranked-count">{segment.count}</b>
+              <span className="wx-dist-label">{segment.label}</span>
+              <b className="wx-dist-total">{segment.count}</b>
             </button>
+            <div className="wx-dist-bars">
+              {weeks.map((week, weekIndex) => {
+                const count = weekCounts[weekIndex]?.[segment.key] ?? 0;
+                const id = `${segment.key}-${week.weekStart}`;
+                return (
+                  <Fragment key={week.weekStart}>
+                    <span className="wx-dist-bar-wrap">
+                      <button
+                        type="button"
+                        className={`wx-dist-bar ${segmentClass(segment.key, index, groupBy)}`}
+                        style={{ height: `${(count / max) * 100}%` }}
+                        aria-label={`${week.weekStart} ~ ${week.weekEnd}，${segment.label} ${count} 包`}
+                        data-role="dist-bar"
+                        data-week={week.weekStart}
+                        data-count={count}
+                        disabled={count === 0}
+                        {...(count > 0 ? bind(id, `${segment.label} ${count} 包`) : {})}
+                        onClick={() => onSelect({
+                          weekStart: week.weekStart,
+                          weekEnd: week.weekEnd,
+                          team,
+                          groupBy,
+                          key: segment.key,
+                          topKeys,
+                          label: segment.label,
+                        })}
+                      />
+                    </span>
+                    <ChartTip tip={tip} id={id} />
+                  </Fragment>
+                );
+              })}
+            </div>
           </li>
         ))}
       </ul>

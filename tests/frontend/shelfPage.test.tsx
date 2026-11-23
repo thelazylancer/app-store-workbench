@@ -96,47 +96,32 @@ describe("React shelf trend page", () => {
 
     expect(document.querySelector('[data-role="weekly-chart"] .wx-chart-line polyline')).not.toBeNull();
 
-    const rankings = [...document.querySelectorAll<HTMLElement>('[data-role="ranked-chart"]')].map((chart) => ({
-      dimension: chart.dataset.dimension,
-      title: chart.querySelector(".wx-ranked-title")?.textContent,
-      rows: [...chart.querySelectorAll<HTMLElement>('[data-role="ranked-row"]')].map((row) => ({
-        key: row.dataset.key,
-        count: row.querySelector(".wx-ranked-count")?.textContent,
+    const dims = [...document.querySelectorAll<HTMLElement>('[data-role="distribution-row"]')].map((row) => ({
+      dimension: row.dataset.dimension,
+      title: row.querySelector(".wx-dist-title")?.textContent,
+      cards: [...row.querySelectorAll<HTMLElement>('[data-role="dist-card"]')].map((card) => ({
+        key: card.dataset.key,
+        total: card.querySelector(".wx-dist-total")?.textContent,
+        bars: [...card.querySelectorAll<HTMLElement>('[data-role="dist-bar"]')].map((bar) => bar.dataset.count),
       })),
     }));
-    expect(rankings.map((chart) => chart.title)).toEqual(["类目", "最低 iOS", "内购"]);
-    expect(rankings[0]!.rows).toEqual([
-      { key: "Games", count: "2" },
-      { key: "Utilities", count: "1" },
-      { key: "unknown", count: "2" },
+    expect(dims.map((row) => row.title)).toEqual(["类目", "最低 iOS", "内购"]);
+    expect(dims[0]!.cards).toEqual([
+      { key: "Games", total: "2", bars: ["2", "0"] },
+      { key: "Utilities", total: "1", bars: ["0", "1"] },
+      { key: "unknown", total: "2", bars: ["1", "1"] },
     ]);
-    expect(rankings[1]!.rows).toEqual([
-      { key: "15", count: "1" },
-      { key: "16", count: "1" },
-      { key: "17", count: "1" },
-      { key: "unknown", count: "2" },
+    expect(dims[1]!.cards).toEqual([
+      { key: "15", total: "1", bars: ["0", "1"] },
+      { key: "16", total: "1", bars: ["1", "0"] },
+      { key: "17", total: "1", bars: ["1", "0"] },
+      { key: "unknown", total: "2", bars: ["1", "1"] },
     ]);
-    expect(rankings[2]!.rows).toEqual([
-      { key: "yes", count: "1" },
-      { key: "no", count: "2" },
-      { key: "unknown", count: "2" },
+    expect(dims[2]!.cards).toEqual([
+      { key: "yes", total: "1", bars: ["1", "0"] },
+      { key: "no", total: "2", bars: ["1", "1"] },
+      { key: "unknown", total: "2", bars: ["1", "1"] },
     ]);
-
-    const spark = (dimension: string, key: string) => [...document.querySelectorAll<HTMLElement>(
-      `[data-role="ranked-chart"][data-dimension="${dimension}"] [data-role="ranked-row"][data-key="${key}"] .wx-spark-bar`,
-    )].map((bar) => bar.dataset.count);
-    expect(spark("category", "Games")).toEqual(["2", "0"]);
-    expect(spark("category", "Utilities")).toEqual(["0", "1"]);
-    expect(spark("category", "unknown")).toEqual(["1", "1"]);
-    expect(spark("ios_version", "17")).toEqual(["1", "0"]);
-    expect(spark("ios_version", "15")).toEqual(["0", "1"]);
-    expect(spark("ios_version", "unknown")).toEqual(["1", "1"]);
-    expect(spark("iap", "yes")).toEqual(["1", "0"]);
-    expect(spark("iap", "no")).toEqual(["1", "1"]);
-    expect(spark("iap", "unknown")).toEqual(["1", "1"]);
-    expect(document.querySelector<HTMLElement>(
-      '[data-role="ranked-chart"][data-dimension="category"] [data-role="ranked-row"][data-key="Games"] .wx-spark-bar',
-    )?.title).toBe("2026-11-09 · 2 包");
 
     const labels = document.querySelector('[data-role="weekly-chart"] .wx-chart-labels')?.textContent ?? "";
     expect(labels).toContain("2026-11-09");
@@ -198,7 +183,7 @@ describe("React shelf trend page", () => {
     await waitForTeamSegments(2);
 
     const games = document.querySelector<HTMLElement>(
-      `[data-role="ranked-chart"][data-dimension="category"] [data-role="ranked-row"][data-key="Games"]`,
+      `[data-role="distribution-row"][data-dimension="category"] [data-role="dist-card"][data-key="Games"] .wx-dist-head`,
     );
     await openDetails(games!);
 
@@ -217,13 +202,37 @@ describe("React shelf trend page", () => {
     expect(url.searchParams.get("team")).toBeNull();
   });
 
-  it("opens the unresolved ranking row with Bundle ID only", async () => {
+  it("opens a week-scoped detail from a distribution bar", async () => {
+    const fetchMock = mockShelf();
+    vi.stubGlobal("fetch", fetchMock);
+    renderPage();
+    await waitForTeamSegments(2);
+
+    const bar = document.querySelector<HTMLElement>(
+      `[data-role="distribution-row"][data-dimension="category"] [data-role="dist-card"][data-key="Games"] `
+      + `[data-role="dist-bar"][data-week="${WEEKS[0]!.weekStart}"]`,
+    );
+    await openDetails(bar!);
+
+    await waitFor(() => {
+      expect(detailRows()).toHaveLength(2);
+    });
+    const dialog = screen.getByRole("dialog");
+    expect(dialog.textContent).toContain("2026-11-09 ~ 2026-11-15");
+    expect(dialog.textContent).toContain("全部团队 · 游戏");
+    const url = new URL(packagesCalls(fetchMock)[0]!, "http://localhost");
+    expect(url.searchParams.get("from")).toBe("2026-11-09");
+    expect(url.searchParams.get("to")).toBe("2026-11-15");
+    expect(url.searchParams.get("team")).toBeNull();
+  });
+
+  it("opens the unresolved distribution card with Bundle ID only", async () => {
     vi.stubGlobal("fetch", mockShelf());
     renderPage();
     await waitForTeamSegments(2);
 
     const unknown = document.querySelector<HTMLElement>(
-      `[data-role="ranked-chart"][data-dimension="category"] [data-role="ranked-row"][data-key="unknown"]`,
+      `[data-role="distribution-row"][data-dimension="category"] [data-role="dist-card"][data-key="unknown"] .wx-dist-head`,
     );
     await openDetails(unknown!);
 

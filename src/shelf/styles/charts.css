@@ -211,7 +211,7 @@
 }
 
 .wx-seg-unknown {
-  background: var(--color-track);
+  background: rgba(28, 39, 51, 0.22);
 }
 
 .wx-chart-labels {
@@ -286,100 +286,122 @@
   outline-offset: 1px;
 }
 
-/* One horizontal ranking per dimension (类目 / 最低 iOS / 内购). */
-.wx-ranking-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 20px 40px;
-}
-
-.wx-ranked-title {
-  margin: 0 0 8px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-}
-
-.wx-ranked-list {
+/* Distribution: one row per dimension, one weekly mini chart per value. */
+.wx-dist-rows {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 18px;
+}
+
+.wx-dist-title {
+  margin: 0 0 6px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.wx-dist-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 140px));
+  gap: 10px 12px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.wx-ranked-row {
+.wx-dist-card {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.wx-dist-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
   margin: 0;
-  padding: 2px 4px;
+  padding: 0;
   border: 0;
-  border-radius: 3px;
   background: none;
   color: var(--color-text-primary);
   font: inherit;
   font-size: 12px;
-  line-height: 1.6;
+  line-height: 1.5;
   text-align: left;
   cursor: pointer;
 }
 
-.wx-ranked-row:hover {
-  background: rgba(28, 39, 51, 0.05);
-}
-
-.wx-ranked-row:focus-visible {
-  outline: var(--focus-outline-width) solid var(--focus-outline-color);
-  outline-offset: 1px;
-}
-
-.wx-ranked-label {
-  flex: 0 0 72px;
+.wx-dist-label {
   overflow: hidden;
   color: var(--color-text-secondary);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.wx-ranked-track {
-  flex: 1 1 auto;
-  height: 10px;
-  border-radius: 2px;
-  background: var(--color-track);
-  overflow: hidden;
+.wx-dist-head:hover .wx-dist-label {
+  color: var(--color-text-primary);
 }
 
-.wx-ranked-fill {
-  display: block;
-  height: 100%;
-  border-radius: 2px;
+.wx-dist-head:focus-visible,
+.wx-dist-bar:focus-visible {
+  outline: var(--focus-outline-width) solid var(--focus-outline-color);
+  outline-offset: 1px;
 }
 
-/* Weekly trend per ranking row: one thin bar per week, hover shows that week's count. */
-.wx-spark {
-  display: flex;
-  flex: 0 0 84px;
-  align-items: flex-end;
-  gap: 1px;
-  height: 14px;
-}
-
-.wx-spark-bar {
-  flex: 1 1 0;
-  min-width: 1px;
-  border-radius: 1px 1px 0 0;
-  background: rgba(28, 39, 51, 0.4);
-}
-
-.wx-ranked-count {
-  flex: 0 0 32px;
+.wx-dist-total {
   font-family: var(--font-family-code);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  text-align: right;
+}
+
+.wx-dist-bars {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 48px;
+}
+
+.wx-dist-bar-wrap {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  align-items: flex-end;
+  min-width: 2px;
+  height: 100%;
+}
+
+.wx-dist-bar {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 2px 2px 0 0;
+  cursor: pointer;
+}
+
+.wx-dist-bar:hover:enabled {
+  filter: brightness(0.92);
+}
+
+.wx-dist-bar:disabled {
+  cursor: default;
+}
+
+/* Anchored to the card, so edge cards don't clip the tip at the page edge. */
+.wx-dist-bars > .wx-chart-tip {
+  top: auto;
+  bottom: calc(100% + 4px);
+  left: 0;
+  transform: none;
+}
+
+.wx-dist-axis {
+  margin: 12px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 @media (max-width: 1179px) {
@@ -401,7 +423,11 @@
     width: 64px;
   }
 
-  .wx-spark {
-    flex-basis: 56px;
+  .wx-dist-bars {
+    height: 40px;
+  }
+
+  .wx-dist-cards {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
   }
 }
