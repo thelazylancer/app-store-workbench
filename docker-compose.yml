@@ -32,6 +32,12 @@ services:
       PRODUCT_PAGE_CACHE_MAX_ENTRIES: ${PRODUCT_PAGE_CACHE_MAX_ENTRIES:-200}
       IPATOOL_KEYCHAIN_PASSPHRASE: ${IPATOOL_KEYCHAIN_PASSPHRASE:-}
       IPATOOL_PROXY: ${IPATOOL_PROXY:-}
+      # App Privacy categories are only on the storefront HTML page, which Apple
+      # geo-redirects for a mainland egress. Reuse the App Store proxy for HTTPS
+      # fetch traffic and keep internal hosts direct.
+      NODE_OPTIONS: --use-env-proxy
+      HTTPS_PROXY: ${IPATOOL_PROXY:-}
+      NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1,postgres,192.168.110.61}
       # Competitor daily snapshot feature.
       DATABASE_URL: postgres://aurora:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/appstore_workbench
       FIRST_DELIVERY_API_URL: ${FIRST_DELIVERY_API_URL:-}

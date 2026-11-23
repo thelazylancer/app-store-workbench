@@ -41,6 +41,51 @@
   white-space: nowrap;
 }
 
+.wx-privacy-policy {
+  display: inline-block;
+  margin-bottom: 10px;
+  color: var(--color-text-accent);
+  font-size: 12px;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.wx-privacy-none {
+  margin: 0;
+  padding: 2px 0 8px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.wx-privacy-group {
+  padding: 8px 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.wx-privacy-group:first-of-type {
+  border-top: 0;
+}
+
+.wx-privacy-label {
+  margin: 0 0 6px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.wx-privacy-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.wx-privacy-tag {
+  padding: 2px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 2px;
+  font-size: 12px;
+}
+
 .wx-info-list {
   display: flex;
   flex-direction: column;

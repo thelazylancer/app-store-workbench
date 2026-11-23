@@ -88,6 +88,13 @@ function packageDetail(overrides: Partial<PackageDetail> & { packageCode: string
         { name: "高级版", price: "$4.99" },
         { name: "去广告", price: "$1.99" },
       ],
+      privacy: {
+        policyUrl: "https://example.com/privacy",
+        groups: [
+          { label: "用于追踪你的数据", categories: ["联系信息", "标识符"] },
+          { label: "与你关联的数据", categories: ["使用数据"] },
+        ],
+      },
     },
     iconLocalPath: "2026-11-20/com.alpha.ios/icon.png",
     screenshotLocalPaths: [
@@ -205,6 +212,15 @@ describe("React competitor detail", () => {
     expect(iap?.querySelectorAll(".wx-iap-row")).toHaveLength(2);
     expect(iap?.textContent).toContain("高级版");
     expect(iap?.textContent).toContain("$4.99");
+
+    const privacy = document.querySelector('[data-role="privacy-section"]');
+    expect(privacy?.querySelector(".wx-detail-section-title")?.textContent).toBe("隐私");
+    expect(screen.getByRole("link", { name: /隐私政策/ }).getAttribute("href")).toBe("https://example.com/privacy");
+    expect(privacy?.querySelectorAll(".wx-privacy-tag")).toHaveLength(3);
+    expect(privacy?.textContent).toContain("用于追踪你的数据");
+    expect(privacy?.textContent).toContain("联系信息");
+    expect(privacy?.textContent).toContain("与你关联的数据");
+    expect(privacy?.textContent).toContain("使用数据");
 
     const description = document.querySelector('[data-role="description-section"]');
     expect(description?.textContent).toContain("Alpha 描述第一段。");

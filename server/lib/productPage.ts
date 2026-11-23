@@ -1,9 +1,13 @@
 import type { AppVersionHistoryItem, IapItem, StoreCountry } from "../../shared/types";
 
+export type PrivacyGroup = { label: string; categories: string[] };
+export type PrivacyInfo = { policyUrl: string | null; notCollected: boolean; groups: PrivacyGroup[] };
+
 export type ProductPageDetails = {
   screenshotUrls: string[];
   iapItems: IapItem[];
   versionHistory: AppVersionHistoryItem[];
+  privacy?: PrivacyInfo;
 };
 
 const STOREFRONTS: Record<StoreCountry, number> = {
@@ -59,13 +63,121 @@ function materializeMediaUrl(item: unknown): string {
   }
 }
 
+const USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36";
+
+const PRIVACY_GROUPS: Record<string, string> = {
+  "Data Used to Track You": "用于追踪你的数据",
+  "Data Linked to You": "与你关联的数据",
+  "Data Not Linked to You": "未与你关联的数据",
+  "用于追踪你的数据": "用于追踪你的数据",
+  "与你关联的数据": "与你关联的数据",
+  "未与你关联的数据": "未与你关联的数据",
+};
+
+const PRIVACY_CATEGORIES: Record<string, string> = {
+  "Contact Info": "联系信息",
+  "Health & Fitness": "健康与健身",
+  "Financial Info": "财务信息",
+  "Location": "位置",
+  "Sensitive Info": "敏感信息",
+  "Contacts": "联系人",
+  "User Content": "用户内容",
+  "Browsing History": "浏览历史",
+  "Search History": "搜索历史",
+  "Identifiers": "标识符",
+  "Purchases": "购买项目",
+  "Usage Data": "使用数据",
+  "Diagnostics": "诊断",
+  "Other Data": "其他数据",
+};
+
+const ENTITIES: Record<string, string> = {
+  amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'", "#x27": "'",
+};
+
+function decodeEntities(text: string): string {
+  return text.replace(/&(amp|lt|gt|quot|#39|#x27);/g, (_, entity: string) => ENTITIES[entity] ?? "");
+}
+
+function cleanText(html: string): string {
+  return decodeEntities(html.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
+}
+
+function safeHttpUrl(value: unknown): string | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * App Privacy categories only exist in the rendered App Store HTML; the JSON
+ * payload carries the developer's policy URL but no declared data types.
+ */
+function parsePrivacyHtml(html: string): PrivacyGroup[] {
+  const groups: PrivacyGroup[] = [];
+  for (const match of html.matchAll(/<div class="container ([^"]*)" aria-label="([^"]+)">/g)) {
+    const label = PRIVACY_GROUPS[decodeEntities(match[2] ?? "").trim()];
+    if (!label || match[1]?.includes("is-detail-view")) continue;
+    const start = (match.index ?? 0) + match[0].length;
+    const listStart = html.indexOf("<ul", start);
+    if (listStart < 0 || listStart - start > 2000) continue;
+    const listEnd = html.indexOf("</ul>", listStart);
+    if (listEnd < 0) continue;
+    const categories = new Set<string>();
+    for (const item of html.slice(listStart, listEnd).matchAll(/<li[^>]*>([\s\S]*?)<\/li>/g)) {
+      const name = cleanText(item[1] ?? "");
+      if (name) categories.add(PRIVACY_CATEGORIES[name] ?? name);
+    }
+    if (categories.size > 0 && !groups.some((group) => group.label === label)) {
+      groups.push({ label, categories: [...categories] });
+    }
+  }
+  return groups;
+}
+
+async function fetchPrivacy(appStoreUrl: string, appleId: number, policyUrl: string | null): Promise<PrivacyInfo | null> {
+  try {
+    const headers = { "User-Agent": USER_AGENT, "Accept": "text/html", "Accept-Language": "en-US,en;q=0.9" };
+    const signal = AbortSignal.timeout(15_000);
+    let response = await fetch(appStoreUrl, { headers, signal });
+    if (response.ok) {
+      const finalUrl = new URL(response.url);
+      if (!new RegExp(`/id${appleId}/?$`).test(finalUrl.pathname)) {
+        // Apple geolocates a mismatched storefront URL to the local home page.
+        // Retry on the visitor's storefront, forcing English labels we can parse.
+        const geo = finalUrl.pathname.split("/")[1];
+        if (/^[a-z]{2}$/.test(geo ?? "")) {
+          response = await fetch(`https://apps.apple.com/${geo}/app/id${appleId}?l=en`, { headers, signal });
+        } else {
+          return policyUrl ? { policyUrl, notCollected: false, groups: [] } : null;
+        }
+      }
+    }
+    if (!response.ok) return policyUrl ? { policyUrl, notCollected: false, groups: [] } : null;
+    const contentType = response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
+    const html = contentType === "text/html" ? await response.text() : "";
+    const notCollected = /aria-label="(?:Data Not Collected|未收集数据)"/.test(html);
+    const groups = parsePrivacyHtml(html);
+    return policyUrl || notCollected || groups.length > 0
+      ? { policyUrl, notCollected, groups }
+      : null;
+  } catch {
+    // Privacy is enrichment: a failed HTML fetch must not lose screenshots or IAP data.
+    return policyUrl ? { policyUrl, notCollected: false, groups: [] } : null;
+  }
+}
+
 export async function fetchProductPageDetails(
   appStoreUrl: string,
 ): Promise<ProductPageDetails> {
   const { country, appleId } = parseProductUrl(appStoreUrl);
   const response = await fetch(appStoreUrl, {
     headers: {
-      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36",
+      "User-Agent": USER_AGENT,
       "X-Apple-Store-Front": `${STOREFRONTS[country]},29`,
       "Accept-Language": "en-US,en;q=0.9",
     },
@@ -135,6 +247,9 @@ export async function fetchProductPageDetails(
     ?? galleries[0];
   const versionEntries = Array.isArray(pageData.versionHistory) ? pageData.versionHistory : [];
 
+  const softwareInfo = isRecord(product.softwareInfo) ? product.softwareInfo : null;
+  const privacy = await fetchPrivacy(appStoreUrl, appleId, safeHttpUrl(softwareInfo?.privacyPolicyUrl));
+
   return {
     screenshotUrls: gallery?.urls ?? [],
     iapItems,
@@ -148,5 +263,6 @@ export async function fetchProductPageDetails(
         notes: typeof entry.releaseNotes === "string" ? entry.releaseNotes.trim() : "",
       }];
     }),
+    ...(privacy ? { privacy } : {}),
   };
 }

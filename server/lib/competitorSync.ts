@@ -133,6 +133,7 @@ export async function syncCompetitorDay(
               screenshotUrls: screenshots,
               iapItems: details.iapItems,
               versionHistory: details.versionHistory,
+              ...(details.privacy ? { privacy: details.privacy } : {}),
             };
           } catch {
             // A failed product page must not stop the rest of the batch.

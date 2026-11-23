@@ -207,6 +207,75 @@ describe("fetchProductPageDetails", () => {
     await expect(fetchProductPageDetails(APP_URL)).rejects.toThrow();
   });
 
+  it("reads the privacy policy URL and App Privacy categories", async () => {
+    const payload = detailPayload({ softwareInfo: { privacyPolicyUrl: "https://example.com/privacy" } });
+    const html = `<div class="container svelte-1b6vckz" aria-label="Data Used to Track You">
+        <ul><li><span>Contact Info</span></li><li><span>Identifiers</span></li></ul></div>
+      <div class="container svelte-1b6vckz is-detail-view" aria-label="Data Used to Track You">
+        <ul><li><span>Other Data</span></li></ul></div>
+      <div class="container svelte-1b6vckz" aria-label="Data Linked to You">
+        <ul><li><span>Health &amp; Fitness</span></li></ul></div>`;
+    const htmlResponse = new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+    Object.defineProperty(htmlResponse, "url", { value: "https://apps.apple.com/us/app/duolingo/id570060128" });
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(detailResponse(payload))
+      .mockResolvedValueOnce(htmlResponse);
+
+    await expect(fetchProductPageDetails(APP_URL)).resolves.toMatchObject({
+      privacy: {
+        policyUrl: "https://example.com/privacy",
+        groups: [
+          { label: "用于追踪你的数据", categories: ["联系信息", "标识符"] },
+          { label: "与你关联的数据", categories: ["健康与健身"] },
+        ],
+      },
+    });
+  });
+
+  it("retries the privacy page on the visitor's storefront after a geo redirect", async () => {
+    const payload = detailPayload({ softwareInfo: { privacyPolicyUrl: "https://example.com/privacy" } });
+    const home = new Response("<html></html>", { headers: { "Content-Type": "text/html" } });
+    Object.defineProperty(home, "url", { value: "https://apps.apple.com/cn/iphone/today" });
+    const page = new Response(
+      '<div class="container x" aria-label="Data Used to Track You"><ul><li>Identifiers</li></ul></div>',
+      { headers: { "Content-Type": "text/html" } },
+    );
+    Object.defineProperty(page, "url", { value: "https://apps.apple.com/cn/app/duolingo/id570060128?l=en-GB" });
+    const fetchApple = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(detailResponse(payload))
+      .mockResolvedValueOnce(home)
+      .mockResolvedValueOnce(page);
+
+    await expect(fetchProductPageDetails(APP_URL)).resolves.toMatchObject({
+      privacy: { groups: [{ label: "用于追踪你的数据", categories: ["标识符"] }] },
+    });
+    expect(fetchApple.mock.calls[2]?.[0]).toBe("https://apps.apple.com/cn/app/id570060128?l=en");
+  });
+
+  it("keeps product details when the privacy page cannot be read", async () => {
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(detailResponse(detailPayload({ softwareInfo: { privacyPolicyUrl: "https://example.com/privacy" } })))
+      .mockRejectedValueOnce(new Error("Connection unavailable"));
+
+    const details = await fetchProductPageDetails(APP_URL);
+    expect(details.privacy).toEqual({ policyUrl: "https://example.com/privacy", notCollected: false, groups: [] });
+  });
+
+  it("records that an app collects no data", async () => {
+    const page = new Response(
+      '<div class="container x" aria-label="Data Not Collected"><span>Data Not Collected</span></div>',
+      { headers: { "Content-Type": "text/html" } },
+    );
+    Object.defineProperty(page, "url", { value: "https://apps.apple.com/us/app/duolingo/id570060128" });
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(detailResponse(detailPayload()))
+      .mockResolvedValueOnce(page);
+
+    await expect(fetchProductPageDetails(APP_URL)).resolves.toMatchObject({
+      privacy: { policyUrl: null, notCollected: true, groups: [] },
+    });
+  });
+
   it("accepts a canonical slug and query redirect for the same app and storefront", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(detailResponse(
       detailPayload({ id: 570060128 }, { id: 570060128 }),
