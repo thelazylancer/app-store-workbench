@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { OTHER_KEY, foldWeekGroups, isUnknownKey, type ShelfSegment } from "./buckets";
+import { teamLabel } from "../lib/teamLabel";
 import type { ShelfGroupBy, ShelfTrendWeek } from "../../shared/shelfTypes";
+import { OTHER_KEY, foldWeekGroups, isUnknownKey, type ShelfSegment } from "./buckets";
+import type { ShelfSelection } from "./selection";
 
 const DIMENSION_LABELS: Record<ShelfGroupBy, string> = {
   category: "类目",
@@ -23,6 +25,16 @@ function segmentClass(key: string, knownIndex: number, groupBy: ShelfGroupBy): s
   return `wx-seg-${Math.min(knownIndex, 5)}`;
 }
 
+/** Index into the six categorical team colours; unknown teams fall back to the first. */
+function teamClass(team: string, teams: string[]): string {
+  const index = teams.indexOf(team);
+  return `wx-team-${index < 0 ? 0 : index % 6}`;
+}
+
+function weekLabel(week: ShelfTrendWeek): string {
+  return `${week.weekStart} ~ ${week.weekEnd}`;
+}
+
 function WeekLabels({ weeks }: { weeks: ShelfTrendWeek[] }) {
   return (
     <div className="wx-chart-labels" aria-hidden="true">
@@ -34,10 +46,6 @@ function WeekLabels({ weeks }: { weeks: ShelfTrendWeek[] }) {
       ))}
     </div>
   );
-}
-
-function activeSegments(segments: ShelfSegment[]): ShelfSegment[] {
-  return segments.filter((segment) => segment.count > 0);
 }
 
 /** Chart is a tab stop only while its inner canvas overflows the viewport. */
@@ -57,29 +65,76 @@ function useScrollRegion(weekCount: number) {
   return { ref, tabIndex: focusable ? 0 : undefined };
 }
 
-export function WeeklyBarChart({ weeks }: { weeks: ShelfTrendWeek[] }) {
+type WeeklyProps = {
+  weeks: ShelfTrendWeek[];
+  teams: string[]; // all teams in range, stable order → stable colours
+  team: string | null; // current team filter
+  onSelect: (selection: ShelfSelection) => void;
+};
+
+export function WeeklyBarChart({ weeks, teams, team, onSelect }: WeeklyProps) {
   const max = maxCount(weeks);
   const scroll = useScrollRegion(weeks.length);
-  const summary = `每周入库包数柱状图。${weeks
-    .map((week) => `${week.weekStart} ~ ${week.weekEnd}：${week.packageCount} 包`)
-    .join("；")}。`;
+  const stacked = team === null;
+  const teamTotals = new Map<string, number>();
+  for (const week of weeks) {
+    for (const entry of week.teams) teamTotals.set(entry.key, (teamTotals.get(entry.key) ?? 0) + entry.count);
+  }
 
   return (
     <figure className="wx-chart-figure" data-role="weekly-chart">
-      <div className="wx-chart-scroll" role="img" aria-label={summary} ref={scroll.ref} tabIndex={scroll.tabIndex}>
-        <div className="wx-chart-canvas" aria-hidden="true">
+      <div className="wx-chart-scroll" ref={scroll.ref} tabIndex={scroll.tabIndex}>
+        <div className="wx-chart-canvas">
           <div className="wx-chart-plot">
             {weeks.map((week) => (
               <div className="wx-chart-slot" key={week.weekStart}>
                 <div className="wx-chart-track">
                   <div className="wx-chart-bar-wrap" style={{ height: barHeight(week.packageCount, max) }}>
                     <span className="wx-chart-value">{week.packageCount}</span>
-                    <div
-                      className="wx-chart-bar wx-bar-total"
-                      data-role="week-bar"
-                      data-week={week.weekStart}
-                      data-count={week.packageCount}
-                    />
+                    {stacked ? (
+                      <div className="wx-chart-bar wx-chart-stack">
+                        {week.teams.map((entry) => (
+                          <button
+                            type="button"
+                            key={entry.key}
+                            className={`wx-chart-segment ${teamClass(entry.key, teams)}`}
+                            style={{ flexGrow: entry.count }}
+                            aria-label={`${weekLabel(week)}，${teamLabel(entry.key)} ${entry.count} 包`}
+                            data-role="team-segment"
+                            data-week={week.weekStart}
+                            data-team={entry.key}
+                            data-count={entry.count}
+                            onClick={() => onSelect({
+                              weekStart: week.weekStart,
+                              weekEnd: week.weekEnd,
+                              team: entry.key,
+                              groupBy: null,
+                              key: null,
+                              topKeys: [],
+                              label: "",
+                            })}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="wx-chart-bar wx-bar-total"
+                        aria-label={`${weekLabel(week)}，${week.packageCount} 包`}
+                        data-role="week-bar"
+                        data-week={week.weekStart}
+                        data-count={week.packageCount}
+                        onClick={() => onSelect({
+                          weekStart: week.weekStart,
+                          weekEnd: week.weekEnd,
+                          team,
+                          groupBy: null,
+                          key: null,
+                          topKeys: [],
+                          label: "",
+                        })}
+                      />
+                    )}
                   </div>
                 </div>
               </div>
@@ -88,47 +143,64 @@ export function WeeklyBarChart({ weeks }: { weeks: ShelfTrendWeek[] }) {
           <WeekLabels weeks={weeks} />
         </div>
       </div>
+      {stacked ? (
+        <ul className="wx-chart-legend" data-role="team-legend">
+          {teams.map((name) => (
+            <li key={name}>
+              <span className={`wx-legend-swatch ${teamClass(name, teams)}`} aria-hidden="true" />
+              <span className="wx-legend-name">{teamLabel(name)}</span>
+              <b className="wx-legend-count">{teamTotals.get(name) ?? 0}</b>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       <table className="visually-hidden">
         <caption>每周入库包数</caption>
         <thead>
           <tr>
             <th scope="col">周</th>
+            <th scope="col">团队</th>
             <th scope="col">包数</th>
           </tr>
         </thead>
         <tbody>
-          {weeks.map((week) => (
-            <tr key={week.weekStart}>
-              <th scope="row">{`${week.weekStart} ~ ${week.weekEnd}`}</th>
-              <td>{week.packageCount}</td>
+          {weeks.flatMap((week) => week.teams.map((entry) => (
+            <tr key={`${week.weekStart}-${entry.key}`}>
+              <th scope="row">{weekLabel(week)}</th>
+              <td>{teamLabel(entry.key)}</td>
+              <td>{entry.count}</td>
             </tr>
-          ))}
+          )))}
         </tbody>
       </table>
     </figure>
   );
 }
 
-export function StackedBarChart({
-  weeks,
-  groupBy,
-  segments,
-}: {
+type StackedProps = {
   weeks: ShelfTrendWeek[];
   groupBy: ShelfGroupBy;
   segments: ShelfSegment[];
-}) {
+  team: string | null;
+  onSelect: (selection: ShelfSelection) => void;
+};
+
+export function StackedBarChart({ weeks, groupBy, segments, team, onSelect }: StackedProps) {
   const max = maxCount(weeks);
   const scroll = useScrollRegion(weeks.length);
-  const shown = activeSegments(segments);
+  const shown = segments.filter((segment) => segment.count > 0);
   const legend = shown.map((segment) => `${segment.label} ${segment.count}`).join("、");
   const summary = `入库包分布堆叠图，当前维度：${DIMENSION_LABELS[groupBy]}。图例：${legend}。每周分项数值见数据表。`;
   const dimension = DIMENSION_LABELS[groupBy];
+  const topKeys = segments
+    .map((segment) => segment.key)
+    .filter((key) => key !== OTHER_KEY && !isUnknownKey(key));
 
   return (
     <figure className="wx-chart-figure" data-role="stacked-chart">
-      <div className="wx-chart-scroll" role="img" aria-label={summary} ref={scroll.ref} tabIndex={scroll.tabIndex}>
-        <div className="wx-chart-canvas" aria-hidden="true">
+      <p className="visually-hidden">{summary}</p>
+      <div className="wx-chart-scroll" ref={scroll.ref} tabIndex={scroll.tabIndex}>
+        <div className="wx-chart-canvas">
           <div className="wx-chart-plot">
             {weeks.map((week) => {
               const counts = foldWeekGroups(groupBy, week.groups, segments);
@@ -142,14 +214,25 @@ export function StackedBarChart({
                           const count = counts[segment.key] ?? 0;
                           if (count === 0) return null;
                           return (
-                            <div
+                            <button
+                              type="button"
                               key={segment.key}
                               className={`wx-chart-segment ${segmentClass(segment.key, index, groupBy)}`}
                               style={{ flexGrow: count }}
+                              aria-label={`${weekLabel(week)}，${segment.label} ${count} 包`}
                               data-role="segment"
                               data-week={week.weekStart}
                               data-key={segment.key}
                               data-count={count}
+                              onClick={() => onSelect({
+                                weekStart: week.weekStart,
+                                weekEnd: week.weekEnd,
+                                team,
+                                groupBy,
+                                key: segment.key,
+                                topKeys,
+                                label: segment.label,
+                              })}
                             />
                           );
                         })}
@@ -190,7 +273,7 @@ export function StackedBarChart({
             const counts = foldWeekGroups(groupBy, week.groups, segments);
             return (
               <tr key={week.weekStart}>
-                <th scope="row">{`${week.weekStart} ~ ${week.weekEnd}`}</th>
+                <th scope="row">{weekLabel(week)}</th>
                 {segments.map((segment) => (
                   <td key={segment.key}>{counts[segment.key] ?? 0}</td>
                 ))}

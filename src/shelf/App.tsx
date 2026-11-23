@@ -7,17 +7,17 @@ import {
 import { useEffect, useState } from "react";
 import type {
   ShelfGroupBy,
-  ShelfPackagesResponse,
   ShelfTrendResponse,
 } from "../../shared/shelfTypes";
 import { useDocumentTitle } from "../app/useDocumentTitle";
 import { addDays, todayUtc } from "../lib/reportDate";
-import { ShelfApiError, getShelfPackages, getShelfTrend } from "../lib/shelfApi";
+import { ShelfApiError, getShelfTrend } from "../lib/shelfApi";
 import { teamLabel } from "../lib/teamLabel";
 import { segmentGroups } from "./buckets";
 import { StackedBarChart, WeeklyBarChart } from "./Charts";
+import { ShelfDetailDialog } from "./DetailDialog";
 import { useShelfFilters } from "./filters";
-import { PackageTable } from "./PackageTable";
+import type { ShelfSelection } from "./selection";
 import { DistributionLoading, ShelfEmpty, ShelfError, ShelfLoading } from "./states";
 import "./styles/shelf.css";
 import "./styles/charts.css";
@@ -43,13 +43,10 @@ export function ShelfTrendPage() {
   const [range] = useState(initialRange);
   const [groupBy, setGroupBy] = useState<ShelfGroupBy>("category");
   const [trend, setTrend] = useState<ShelfTrendResponse | null>(null);
-  const [packages, setPackages] = useState<ShelfPackagesResponse | null>(null);
   const [trendLoading, setTrendLoading] = useState(true);
-  const [packagesLoading, setPackagesLoading] = useState(true);
   const [trendError, setTrendError] = useState<string | null>(null);
-  const [packagesError, setPackagesError] = useState<string | null>(null);
   const [trendReload, setTrendReload] = useState(0);
-  const [packagesReload, setPackagesReload] = useState(0);
+  const [selection, setSelection] = useState<ShelfSelection | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -70,45 +67,18 @@ export function ShelfTrendPage() {
     };
   }, [range, filters.team, groupBy, trendReload]);
 
-  useEffect(() => {
-    let cancelled = false;
-    setPackagesLoading(true);
-    setPackagesError(null);
-    getShelfPackages({ ...range, team: filters.team })
-      .then((data) => {
-        if (!cancelled) setPackages(data);
-      })
-      .catch((error: unknown) => {
-        if (!cancelled) setPackagesError(errorMessage(error));
-      })
-      .finally(() => {
-        if (!cancelled) setPackagesLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [range, filters.team, packagesReload]);
-
-  const retry = () => {
-    setTrendReload((value) => value + 1);
-    setPackagesReload((value) => value + 1);
-  };
-  const retryTrend = () => setTrendReload((value) => value + 1);
+  const retry = () => setTrendReload((value) => value + 1);
   const showAllTeams = () => update({ team: null });
 
-  const error = trendError ?? packagesError;
-  // A failed dimension switch keeps the previous trend's week totals and table;
+  // A failed dimension switch keeps the previous trend's weeks and distribution;
   // only the distribution block reports the error (DESIGN §6.1).
   const distributionError = Boolean(trendError) && trend !== null
     && (trend.team ?? null) === filters.team && trend.groupBy !== groupBy;
-  const pageError = error && !distributionError ? error : null;
-  const busy = trendLoading || packagesLoading;
-  const initialLoading = !pageError && (!trend || !packages) && busy;
-  const teamPending = (trend !== null && (trend.team ?? null) !== filters.team)
-    || (packages !== null && (packages.team ?? null) !== filters.team);
-  const teamLoading = !pageError && teamPending && busy;
-  const bodyLoading = initialLoading || teamLoading;
-  const hasData = Boolean(trend && packages && trend.totals.packageCount > 0);
+  const pageError = trendError && !distributionError ? trendError : null;
+  const initialLoading = !pageError && trend === null && trendLoading;
+  const teamPending = trend !== null && (trend.team ?? null) !== filters.team;
+  const bodyLoading = initialLoading || (trendLoading && teamPending);
+  const hasData = Boolean(trend && trend.totals.packageCount > 0);
   const empty = !pageError && !bodyLoading && !hasData;
   const total = trend?.totals.packageCount;
 
@@ -151,7 +121,7 @@ export function ShelfTrendPage() {
         {trend && !trendLoading ? `已筛选团队：${filters.team ? teamLabel(filters.team) : "全部"}，共 ${trend.totals.packageCount} 包。分布维度：${dimensionLabel}` : ""}
       </p>
 
-      <div className="wx-shelf-body" aria-busy={busy}>
+      <div className="wx-shelf-body" aria-busy={trendLoading}>
         {bodyLoading ? <ShelfLoading /> : null}
 
         {!bodyLoading && pageError ? <ShelfError message={pageError} onRetry={retry} /> : null}
@@ -168,14 +138,21 @@ export function ShelfTrendPage() {
           />
         ) : null}
 
-        {!bodyLoading && !pageError && hasData && trend && packages ? (
+        {!bodyLoading && !pageError && hasData && trend ? (
           <>
             <section className="wx-shelf-section" aria-labelledby="shelf-weekly-title">
               <div className="wx-shelf-block-head">
                 <h2 id="shelf-weekly-title" className="wx-shelf-h2">每周入库包数</h2>
-                <p className="wx-shelf-note">按入库日期分周 · 周一至周日</p>
+                <p className="wx-shelf-note">
+                  {filters.team ? "按入库日期分周 · 周一至周日" : "按入库日期分周 · 周一至周日 · 按团队堆叠"}
+                </p>
               </div>
-              <WeeklyBarChart weeks={trend.weeks} />
+              <WeeklyBarChart
+                weeks={trend.weeks}
+                teams={teams}
+                team={filters.team}
+                onSelect={setSelection}
+              />
             </section>
 
             <section className="wx-shelf-section" aria-labelledby="shelf-distribution-title">
@@ -199,22 +176,24 @@ export function ShelfTrendPage() {
                 </SegmentedControl>
               </div>
               {distributionError ? (
-                <ShelfError title="分布数据加载失败" message={trendError ?? "请求失败"} onRetry={retryTrend} />
+                <ShelfError title="分布数据加载失败" message={trendError ?? "请求失败"} onRetry={retry} />
               ) : trend.groupBy === groupBy ? (
                 <StackedBarChart
                   weeks={trend.weeks}
                   groupBy={groupBy}
                   segments={segmentGroups(groupBy, trend.totals.groups)}
+                  team={filters.team}
+                  onSelect={setSelection}
                 />
               ) : (
                 <DistributionLoading />
               )}
             </section>
-
-            <PackageTable rows={packages.rows} total={packages.total} />
           </>
         ) : null}
       </div>
+
+      <ShelfDetailDialog selection={selection} onClose={() => setSelection(null)} />
 
       <footer className="wx-shelf-foot">
         口径：入库日期 target_date · 按包计数 · 未解析包计入未知

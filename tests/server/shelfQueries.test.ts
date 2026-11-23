@@ -146,6 +146,10 @@ describeDb("shelf queries against PostgreSQL", () => {
       [previousMonday, sunday, 1],
       [monday, week2End, 5],
     ]);
+    expect(trend.weeks.map((week) => week.teams)).toEqual([
+      [{ key: alpha, count: 1 }],
+      [{ key: alpha, count: 2 }, { key: beta, count: 2 }, { key: gamma, count: 1 }],
+    ]);
     expect(trend.totals.packageCount).toBe(6);
     expect(trend.from).toBe(sunday);
     expect(trend.to).toBe(week2End);

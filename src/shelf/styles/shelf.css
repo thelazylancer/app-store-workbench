@@ -1,4 +1,4 @@
-/* 竞品趋势 — page frame, states and the temporary verification table. */
+/* 竞品趋势 — page frame, states and the chart detail dialog. */
 .wx-shelf {
   width: min(1440px, 100%);
   min-height: calc(100vh - 54px);
@@ -143,6 +143,82 @@
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 16px;
+}
+
+/* Detail dialog */
+.wx-detail-count {
+  margin: 0 0 12px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.wx-detail-error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.wx-detail-error p {
+  margin: 0;
+  color: var(--color-text-error);
+  font-size: 13px;
+}
+
+.wx-detail-table-wrap {
+  overflow-x: auto;
+}
+
+.wx-detail-table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.wx-detail-table .wx-mono {
+  white-space: nowrap;
+}
+
+.wx-detail-table th,
+.wx-detail-table td {
+  padding: 6px 16px 6px 0;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: top;
+}
+
+.wx-detail-table thead th {
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.wx-detail-group th {
+  padding-top: 16px;
+  border-bottom-color: var(--color-border-emphasized);
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.wx-detail-group-count {
+  margin-left: 6px;
+  color: var(--color-text-secondary);
+  font-family: var(--font-family-code);
+  font-weight: 400;
+}
+
+.wx-detail-name {
+  display: block;
+  color: var(--color-text-primary);
+}
+
+.wx-detail-code {
+  display: block;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  word-break: break-all;
 }
 
 @media (max-width: 1180px) {

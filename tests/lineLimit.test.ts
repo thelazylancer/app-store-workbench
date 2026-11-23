@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const MAX_LINES = 500;
@@ -19,7 +19,9 @@ function sourceFiles(): string[] {
     { encoding: "utf8" },
   )
     .split("\0")
-    .filter(Boolean);
+    .filter(Boolean)
+    // A tracked file deleted in the worktree is still listed until it is committed.
+    .filter((file) => existsSync(file));
 }
 
 describe("500-line discipline", () => {

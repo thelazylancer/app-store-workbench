@@ -24,6 +24,7 @@ const trendResponse: ShelfTrendResponse = {
       weekEnd: "2026-11-22",
       packageCount: 42,
       groups: [{ key: "Games", count: 10 }, { key: "unknown", count: 3 }],
+      teams: [{ key: "Alpha", count: 42 }],
     },
   ],
   totals: { packageCount: 93, groups: [{ key: "Games", count: 18 }, { key: "unknown", count: 17 }] },

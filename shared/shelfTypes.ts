@@ -47,6 +47,8 @@ export type ShelfTrendWeek = {
   /** All packages in the week, unresolved included. */
   packageCount: number;
   groups: ShelfGroupCount[]; // count desc, then key asc
+  /** Per-team counts for the week; raw team names, same ordering rule. */
+  teams: ShelfGroupCount[];
 };
 
 export type ShelfTrendTotals = {

@@ -34,6 +34,7 @@ export type ShelfQueryRepo = {
 
 type TrendAggregateRow = {
   week_start: string;
+  team: string;
   lookup_status: LookupStatus;
   category: string | null;
   minimum_os_version: string | null;
@@ -58,6 +59,7 @@ type PackageDetailRow = {
 
 const TREND_SQL = `
   SELECT to_char(date_trunc('week', target_date)::date, 'YYYY-MM-DD') AS week_start,
+         team,
          lookup_status,
          category,
          minimum_os_version,
@@ -71,7 +73,7 @@ const TREND_SQL = `
     FROM competitor_packages
    WHERE target_date BETWEEN $1::date AND $2::date
      AND ($3::text IS NULL OR team = $3)
-   GROUP BY 1, lookup_status, category, minimum_os_version, iap_has
+   GROUP BY 1, team, lookup_status, category, minimum_os_version, iap_has
    ORDER BY 1`;
 
 const TEAMS_SQL = `
@@ -155,7 +157,7 @@ function foldTrend(rows: TrendAggregateRow[], groupBy: ShelfGroupBy): {
   weeks: ShelfTrendWeek[];
   totals: ShelfTrendTotals;
 } {
-  const weeks = new Map<string, { packageCount: number; groups: Map<string, number> }>();
+  const weeks = new Map<string, { packageCount: number; groups: Map<string, number>; teams: Map<string, number> }>();
   const totalGroups = new Map<string, number>();
   let totalCount = 0;
 
@@ -163,11 +165,12 @@ function foldTrend(rows: TrendAggregateRow[], groupBy: ShelfGroupBy): {
     const key = groupKey(row, groupBy);
     let week = weeks.get(row.week_start);
     if (!week) {
-      week = { packageCount: 0, groups: new Map() };
+      week = { packageCount: 0, groups: new Map(), teams: new Map() };
       weeks.set(row.week_start, week);
     }
     week.packageCount += row.n;
     week.groups.set(key, (week.groups.get(key) ?? 0) + row.n);
+    week.teams.set(row.team, (week.teams.get(row.team) ?? 0) + row.n);
     totalCount += row.n;
     totalGroups.set(key, (totalGroups.get(key) ?? 0) + row.n);
   }
@@ -180,6 +183,7 @@ function foldTrend(rows: TrendAggregateRow[], groupBy: ShelfGroupBy): {
         weekEnd: addDays(weekStart, 6),
         packageCount: week.packageCount,
         groups: sortedGroups(week.groups),
+        teams: sortedGroups(week.teams),
       })),
     totals: { packageCount: totalCount, groups: sortedGroups(totalGroups) },
   };
