@@ -4,7 +4,7 @@ import type {
   ShelfGroupCount,
   ShelfPackageRow,
   ShelfPackagesResponse,
-  ShelfTeamStats,
+  ShelfTeamWeekStats,
   ShelfTrendResponse,
 } from "../../shared/shelfTypes";
 
@@ -44,32 +44,30 @@ function sumGroups(weeks: number[], groupBy: ShelfGroupBy): ShelfGroupCount[] {
   return [...map].map(([key, count]) => ({ key, count }));
 }
 
-function teamStatsFor(team: string | null): ShelfTeamStats[] {
-  const rows: ShelfTeamStats[] = [
+function teamWeekStatsFor(team: string | null, weekIndexes: number[]): ShelfTeamWeekStats[] {
+  const rows: ShelfTeamWeekStats[] = [
     {
+      weekStart: WEEKS[0]!.weekStart,
       team: "团队 A",
       packageCount: 3,
-      versionedPackages: 2,
-      versionCount: 5,
       avgVersionCount: 2.5,
       avgVersionGapDays: 7,
-      avgLatestVersionToAdDays: -2,
-      offlinePackages: 1,
-      avgAdToOfflineDays: 4,
+      avgLatestVersionToAdDays: 3.5,
+      avgAdToOfflineDays: null,
     },
     {
+      weekStart: WEEKS[1]!.weekStart,
       team: "团队 B",
       packageCount: 2,
-      versionedPackages: 1,
-      versionCount: 3,
       avgVersionCount: 3,
       avgVersionGapDays: null,
       avgLatestVersionToAdDays: 12,
-      offlinePackages: 0,
-      avgAdToOfflineDays: null,
+      avgAdToOfflineDays: 4,
     },
   ];
-  return team === null ? rows : rows.filter((row) => row.team === team);
+  return rows.filter((row) =>
+    weekIndexes.includes(WEEKS.findIndex((week) => week.weekStart === row.weekStart))
+    && (team === null || row.team === team));
 }
 
 export function trendFor(team: string | null, groupBy: ShelfGroupBy): ShelfTrendResponse {
@@ -102,7 +100,7 @@ export function trendFor(team: string | null, groupBy: ShelfGroupBy): ShelfTrend
       ios_version: sumGroups(weekIndexes, "ios_version"),
       iap: sumGroups(weekIndexes, "iap"),
     },
-    teamStats: teamStatsFor(team),
+    teamWeekStats: teamWeekStatsFor(team, weekIndexes),
   };
 }
 

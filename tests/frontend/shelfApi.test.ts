@@ -23,7 +23,7 @@ function fakeRepo() {
     weeks: [],
     totals: { packageCount: 0, groups: [] },
     distributions: { category: [], ios_version: [], iap: [] },
-    teamStats: [],
+    teamWeekStats: [],
   }));
   const getShelfPackages = vi.fn(async (params: ShelfPackagesParams) => ({
     from: params.from,

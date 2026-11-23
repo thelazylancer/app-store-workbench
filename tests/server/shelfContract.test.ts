@@ -38,16 +38,14 @@ const trendResponse: ShelfTrendResponse = {
     ios_version: [{ key: "16", count: 20 }, { key: "unknown", count: 17 }],
     iap: [{ key: "yes", count: 40 }, { key: "unknown", count: 17 }],
   },
-  teamStats: [
+  teamWeekStats: [
     {
+      weekStart: "2026-11-16",
       team: "Alpha",
       packageCount: 3,
-      versionedPackages: 2,
-      versionCount: 5,
       avgVersionCount: 2.5,
       avgVersionGapDays: 7,
       avgLatestVersionToAdDays: -2,
-      offlinePackages: 1,
       avgAdToOfflineDays: 4,
     },
   ],

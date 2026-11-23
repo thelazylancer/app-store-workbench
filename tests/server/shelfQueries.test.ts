@@ -266,46 +266,52 @@ describeDb("shelf queries against PostgreSQL", () => {
     ]);
   });
 
-  it("aggregates per-team version cadence and launch timings", async () => {
+  it("aggregates version cadence and launch timings per team-week", async () => {
     const trend = await repo.getShelfTrend({ from: sunday, to: week2End, team: null, groupBy: "category" });
-    expect(trend.teamStats).toEqual([
+    expect(trend.teamWeekStats).toEqual([
       {
+        weekStart: previousMonday,
         team: alpha,
-        packageCount: 3,
-        versionedPackages: 3,
-        versionCount: 6,
+        packageCount: 1,
         avgVersionCount: 2,
-        avgVersionGapDays: 4,
-        avgLatestVersionToAdDays: 7,
-        offlinePackages: 0,
+        avgVersionGapDays: 3,
+        avgLatestVersionToAdDays: 1,
         avgAdToOfflineDays: null,
       },
       {
+        weekStart: monday,
+        team: alpha,
+        packageCount: 2,
+        avgVersionCount: 2, // (1 + 3) / 2; a versionless package counts as 0
+        avgVersionGapDays: 5, // only E has two release dates
+        avgLatestVersionToAdDays: 10, // (20 + 0) / 2
+        avgAdToOfflineDays: null,
+      },
+      {
+        weekStart: monday,
         team: beta,
         packageCount: 2,
-        versionedPackages: 0,
-        versionCount: 0,
-        avgVersionCount: null,
+        avgVersionCount: 0,
         avgVersionGapDays: null,
         avgLatestVersionToAdDays: null,
-        offlinePackages: 1,
         avgAdToOfflineDays: -1,
       },
       {
+        weekStart: monday,
         team: gamma,
         packageCount: 1,
-        versionedPackages: 0,
-        versionCount: 0,
-        avgVersionCount: null,
+        avgVersionCount: 0,
         avgVersionGapDays: null,
         avgLatestVersionToAdDays: null,
-        offlinePackages: 0,
         avgAdToOfflineDays: null,
       },
     ]);
 
     const filtered = await repo.getShelfTrend({ from: sunday, to: week2End, team: alpha, groupBy: "category" });
-    expect(filtered.teamStats.map((row) => row.team)).toEqual([alpha]);
+    expect(filtered.teamWeekStats.map((row) => [row.weekStart, row.team])).toEqual([
+      [previousMonday, alpha],
+      [monday, alpha],
+    ]);
   });
 
   it("projects only whitelisted detail fields and truncates by limit, not total", async () => {

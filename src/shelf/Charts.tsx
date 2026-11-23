@@ -36,10 +36,10 @@ function weekLabel(week: ShelfTrendWeek): string {
   return `${week.weekStart} ~ ${week.weekEnd}`;
 }
 
-type ChartTipState = { id: string; text: string } | null;
+export type ChartTipState = { id: string; text: string } | null;
 
 /** One hovered value at a time, shown above its own column. */
-function useChartTip() {
+export function useChartTip() {
   const [tip, setTip] = useState<ChartTipState>(null);
   const bind = (id: string, text: string) => ({
     onMouseEnter: () => setTip({ id, text }),
@@ -50,12 +50,12 @@ function useChartTip() {
   return { tip, bind };
 }
 
-function ChartTip({ tip, id }: { tip: ChartTipState; id: string }) {
+export function ChartTip({ tip, id }: { tip: ChartTipState; id: string }) {
   // Screen readers already get the same detail from each button's aria-label.
   return tip?.id === id ? <div className="wx-chart-tip" aria-hidden="true">{tip.text}</div> : null;
 }
 
-function WeekLabels({ weeks }: { weeks: ShelfTrendWeek[] }) {
+export function WeekLabels({ weeks }: { weeks: ShelfTrendWeek[] }) {
   return (
     <div className="wx-chart-labels" aria-hidden="true">
       {weeks.map((week) => (
@@ -69,7 +69,7 @@ function WeekLabels({ weeks }: { weeks: ShelfTrendWeek[] }) {
 }
 
 /** Chart is a tab stop only while its inner canvas overflows the viewport. */
-function useScrollRegion(weekCount: number) {
+export function useScrollRegion(weekCount: number) {
   const ref = useRef<HTMLDivElement>(null);
   const [focusable, setFocusable] = useState(false);
   useEffect(() => {
@@ -272,7 +272,7 @@ type DistributionRowProps = {
   to: string;
   team: string | null;
   tip: ChartTipState;
-  bind: (id: string, text: string) => Record<string, () => void>;
+  bind: ReturnType<typeof useChartTip>["bind"];
   onSelect: (selection: ShelfSelection) => void;
 };
 

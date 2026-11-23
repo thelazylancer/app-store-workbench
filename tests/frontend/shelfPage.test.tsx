@@ -147,14 +147,48 @@ describe("React shelf trend page", () => {
       { week: WEEKS[1]!.weekStart, key: "unknown", count: "1" },
     ]);
 
-    expect(screen.getByRole("heading", { level: 2, name: "团队版本与投放" })).toBeTruthy();
-    const statRows = [...document.querySelectorAll<HTMLElement>('[data-role="team-stats-row"]')].map((row) => ({
-      team: row.dataset.team,
-      cells: [...row.querySelectorAll("td")].map((cell) => cell.textContent),
+    expect(screen.getByRole("heading", { level: 2, name: "版本与投放（按团队）" })).toBeTruthy();
+    const metricRows = [...document.querySelectorAll<HTMLElement>('[data-role="metric-row"]')].map((row) => ({
+      metric: row.dataset.metric,
+      title: row.querySelector(".wx-dist-title")?.textContent,
+      legend: [...row.querySelectorAll(".wx-dist-legend-label")].map((label) => label.textContent),
+      bars: [...row.querySelectorAll<HTMLElement>('[data-role="metric-bar"]')].map((bar) => ({
+        week: bar.dataset.week,
+        team: bar.dataset.team,
+        value: bar.dataset.value,
+      })),
     }));
-    expect(statRows).toEqual([
-      { team: "团队 A", cells: ["3", "5", "2/3", "7.0", "-2.0", "4.0"] },
-      { team: "团队 B", cells: ["2", "3", "1/2", "—", "12.0", "—"] },
+    expect(metricRows).toEqual([
+      {
+        metric: "avgVersionCount",
+        title: "平均每包版本数",
+        legend: ["团队 A", "团队 B"],
+        bars: [
+          { week: WEEKS[0]!.weekStart, team: "团队 A", value: "2.5" },
+          { week: WEEKS[1]!.weekStart, team: "团队 B", value: "3" },
+        ],
+      },
+      {
+        metric: "avgVersionGapDays",
+        title: "平均版本间隔（天）",
+        legend: ["团队 A", "团队 B"],
+        bars: [{ week: WEEKS[0]!.weekStart, team: "团队 A", value: "7" }],
+      },
+      {
+        metric: "avgLatestVersionToAdDays",
+        title: "最新版本→投放（天）",
+        legend: ["团队 A", "团队 B"],
+        bars: [
+          { week: WEEKS[0]!.weekStart, team: "团队 A", value: "3.5" },
+          { week: WEEKS[1]!.weekStart, team: "团队 B", value: "12" },
+        ],
+      },
+      {
+        metric: "avgAdToOfflineDays",
+        title: "投放→下架（天）",
+        legend: ["团队 A", "团队 B"],
+        bars: [{ week: WEEKS[1]!.weekStart, team: "团队 B", value: "4" }],
+      },
     ]);
 
     const labels = document.querySelector('[data-role="weekly-chart"] .wx-chart-labels')?.textContent ?? "";
@@ -220,6 +254,41 @@ describe("React shelf trend page", () => {
     expect(document.querySelector(".wx-chart-tip")?.textContent).toBe("有 1 包");
     fireEvent.mouseOut(distBar);
     expect(document.querySelector(".wx-chart-tip")).toBeNull();
+
+    // Metric charts share the same tip state; a bar is keyed by metric + week + team.
+    const metricBar = document.querySelector<HTMLElement>(
+      `[data-role="metric-row"][data-metric="avgVersionCount"] `
+      + `[data-role="metric-bar"][data-week="${WEEKS[0]!.weekStart}"][data-team="团队 A"]`,
+    )!;
+    fireEvent.mouseOver(metricBar);
+    expect(document.querySelectorAll(".wx-chart-tip")).toHaveLength(1);
+    expect(document.querySelector(".wx-chart-tip")?.textContent).toBe("团队 A 2.5");
+    fireEvent.mouseOut(metricBar);
+    expect(document.querySelector(".wx-chart-tip")).toBeNull();
+  });
+
+  it("opens the week-scoped detail from a metric bar", async () => {
+    const fetchMock = mockShelf();
+    vi.stubGlobal("fetch", fetchMock);
+    renderPage();
+    await waitForTeamSegments(2);
+
+    const bar = document.querySelector<HTMLElement>(
+      `[data-role="metric-row"][data-metric="avgLatestVersionToAdDays"] `
+      + `[data-role="metric-bar"][data-week="${WEEKS[1]!.weekStart}"][data-team="团队 B"]`,
+    );
+    await openDetails(bar!);
+
+    await waitFor(() => {
+      expect(detailRows()).toHaveLength(2);
+    });
+    const dialog = screen.getByRole("dialog");
+    expect(dialog.textContent).toContain("2026-11-16 ~ 2026-11-22");
+    expect(dialog.textContent).toContain("团队 B");
+    const url = new URL(packagesCalls(fetchMock)[0]!, "http://localhost");
+    expect(url.searchParams.get("from")).toBe("2026-11-16");
+    expect(url.searchParams.get("to")).toBe("2026-11-22");
+    expect(url.searchParams.get("team")).toBe("团队 B");
   });
 
   it("opens the whole-range detail narrowed to a clicked ranking row", async () => {
