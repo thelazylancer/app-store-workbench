@@ -245,9 +245,10 @@ export function DistributionBoard({ distributions, weeks, from, to, team, onSele
               key={groupBy}
               title={title}
               groupBy={groupBy}
-              segments={groupBy === "category"
+              segments={(groupBy === "category"
                 ? foldTopCategories(distributions.category)
-                : segmentGroups(groupBy, distributions[groupBy])}
+                : segmentGroups(groupBy, distributions[groupBy])
+              ).filter((segment) => !isUnknownKey(segment.key))}
               weeks={weeks}
               from={from}
               to={to}

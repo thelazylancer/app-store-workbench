@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+import type { CSSProperties } from "react";
 import { teamLabel } from "../lib/teamLabel";
 import "./styles/metrics.css";
 import type { ShelfTeamWeekStats, ShelfTrendWeek } from "../../shared/shelfTypes";
@@ -103,16 +103,13 @@ type MetricRowProps = {
 };
 
 function MetricRow({ metric, weeks, series, allTeams, byWeek, tip, bind, onSelect }: MetricRowProps) {
-  // Each chart filters on its own: the legend chips are the filter.
-  const [picked, setPicked] = useState<string | null>(null);
   const value = (weekStart: string, team: string) => byWeek.get(weekStart)?.get(team)?.[metric.key];
-  // A team with no value for this metric gets no chip, so no chip leads to an empty chart.
+  // Only teams with a value in this chart get a legend entry.
   const rowTeams = series.filter((team) =>
     weeks.some((week) => typeof value(week.weekStart, team) === "number"));
   if (rowTeams.length === 0) return null;
-  const shown = picked ? rowTeams.filter((team) => team === picked) : rowTeams;
   const values = weeks.flatMap((week) =>
-    shown
+    series
       .map((team) => value(week.weekStart, team))
       .filter((entry): entry is number => typeof entry === "number"));
   // Absent values are skipped, not zeroed; a negative metric keeps a zero baseline.
@@ -128,17 +125,7 @@ function MetricRow({ metric, weeks, series, allTeams, byWeek, tip, bind, onSelec
         <ul className="wx-dist-legend">
           {rowTeams.map((team) => (
             <li key={team}>
-              <button
-                type="button"
-                className={`wx-team-chip ${teamClass(team, allTeams)}`}
-                aria-pressed={picked === team}
-                data-role="metric-team-chip"
-                data-metric={metric.key}
-                data-team={team}
-                onClick={() => setPicked(picked === team ? null : team)}
-              >
-                {teamLabel(team)}
-              </button>
+              <span className="wx-dist-legend-label">{teamLabel(team)}</span>
             </li>
           ))}
         </ul>
@@ -169,7 +156,7 @@ function MetricRow({ metric, weeks, series, allTeams, byWeek, tip, bind, onSelec
         {weeks.map((week) => (
           <div className="wx-chart-slot" key={week.weekStart}>
             <div className="wx-metric-track">
-              {shown.map((team, index) => {
+              {series.map((team, index) => {
                 const entry = value(week.weekStart, team);
                 if (typeof entry !== "number") return null;
                 const valuePct = percent(entry);
@@ -180,8 +167,8 @@ function MetricRow({ metric, weeks, series, allTeams, byWeek, tip, bind, onSelec
                     key={team}
                     className={`wx-metric-bar ${teamClass(team, allTeams)}${entry < 0 ? " wx-metric-negative" : ""}`}
                     style={{
-                      left: `${(index / shown.length) * 100}%`,
-                      width: `${100 / shown.length}%`,
+                      left: `${(index / series.length) * 100}%`,
+                      width: `${100 / series.length}%`,
                       bottom: `${Math.min(valuePct, zeroPct)}%`,
                       height: `${Math.abs(valuePct - zeroPct)}%`,
                     }}
@@ -209,7 +196,7 @@ function MetricRow({ metric, weeks, series, allTeams, byWeek, tip, bind, onSelec
                 );
               })}
             </div>
-            {shown.map((team) => (
+            {rowTeams.map((team) => (
               <ChartTip key={team} tip={tip} id={`${metric.key}:${week.weekStart}:${team}`} />
             ))}
           </div>

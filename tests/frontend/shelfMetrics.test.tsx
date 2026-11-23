@@ -10,35 +10,38 @@ afterEach(() => {
 });
 
 describe("React shelf version charts", () => {
-  it("filters a version chart from its own legend chips", async () => {
+  it("narrows all four version charts with the section team chips", async () => {
     vi.stubGlobal("fetch", mockShelf());
     renderPage();
     await waitForTeamSegments(2);
 
-    const chip = (metric: string, team: string) =>
-      document.querySelector<HTMLElement>(
-        `[data-role="metric-team-chip"][data-metric="${metric}"][data-team="${team}"]`,
-      )!;
-    const bars = (metric: string) =>
-      document.querySelectorAll(`[data-role="metric-bar"][data-metric="${metric}"]`).length;
+    const chip = (team: string) =>
+      document.querySelector<HTMLElement>(`[data-role="metric-team-chip"][data-team="${team}"]`)!;
+    expect(document.querySelectorAll('[data-role="metric-team-chip"]')).toHaveLength(2);
 
-    // One chip per team with a value in that row: 团队 B has no 平均版本间隔.
-    expect(document.querySelectorAll('[data-role="metric-team-chip"]')).toHaveLength(6);
-    expect(chip("avgVersionGapDays", "团队 B")).toBeNull();
-
-    fireEvent.click(chip("avgVersionCount", "团队 A"));
+    fireEvent.click(chip("团队 A"));
     await waitFor(() => {
-      expect(bars("avgVersionCount")).toBe(1);
+      expect(document.querySelectorAll('[data-role="metric-bar"]')).toHaveLength(3);
     });
-    expect(chip("avgVersionCount", "团队 A").getAttribute("aria-pressed")).toBe("true");
-    // Each chart filters on its own.
-    expect(bars("avgLatestVersionToAdDays")).toBe(2);
+    expect([...document.querySelectorAll('[data-role="metric-bar"]')]
+      .every((bar) => (bar as HTMLElement).dataset.team === "团队 A")).toBe(true);
+    expect(chip("团队 A").getAttribute("aria-pressed")).toBe("true");
+    // 团队 A has no 投放→下架 value, so that row has nothing to draw.
+    expect([...document.querySelectorAll('[data-role="metric-row"]')]
+      .map((row) => (row as HTMLElement).dataset.metric)).toEqual([
+      "avgVersionCount",
+      "avgVersionGapDays",
+      "avgLatestVersionToAdDays",
+    ]);
+    // The per-chart legends are colourless labels; colour lives on the section chips.
+    expect(document.querySelectorAll('[data-role="metric-row"] .wx-dist-swatch')).toHaveLength(0);
+    expect([...document.querySelectorAll('[data-role="metric-row"] .wx-dist-legend-label')]
+      .map((label) => label.textContent)).toEqual(["团队 A", "团队 A", "团队 A"]);
 
-    fireEvent.click(chip("avgVersionCount", "团队 A"));
+    fireEvent.click(chip("团队 A"));
     await waitFor(() => {
-      expect(bars("avgVersionCount")).toBe(2);
+      expect(document.querySelectorAll('[data-role="metric-bar"]')).toHaveLength(6);
     });
-    expect(bars("avgLatestVersionToAdDays")).toBe(2);
   });
 
   it("opens the week-scoped detail from a metric bar", async () => {

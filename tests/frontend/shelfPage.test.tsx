@@ -57,46 +57,36 @@ describe("React shelf trend page", () => {
     expect(dims[0]!.legend).toEqual([
       { label: "游戏", count: "2" },
       { label: "工具", count: "1" },
-      { label: "未知", count: "2" },
     ]);
     expect(dims[0]!.bars).toEqual([
       { week: WEEKS[0]!.weekStart, key: "Games", count: "2" },
-      { week: WEEKS[0]!.weekStart, key: "unknown", count: "1" },
       { week: WEEKS[1]!.weekStart, key: "Utilities", count: "1" },
-      { week: WEEKS[1]!.weekStart, key: "unknown", count: "1" },
     ]);
     expect(dims[1]!.legend).toEqual([
       { label: "15", count: "1" },
       { label: "16", count: "1" },
       { label: "17", count: "1" },
-      { label: "未知", count: "2" },
     ]);
     expect(dims[1]!.bars).toEqual([
       { week: WEEKS[0]!.weekStart, key: "16", count: "1" },
       { week: WEEKS[0]!.weekStart, key: "17", count: "1" },
-      { week: WEEKS[0]!.weekStart, key: "unknown", count: "1" },
       { week: WEEKS[1]!.weekStart, key: "15", count: "1" },
-      { week: WEEKS[1]!.weekStart, key: "unknown", count: "1" },
     ]);
     expect(dims[2]!.legend).toEqual([
       { label: "有", count: "1" },
       { label: "无", count: "2" },
-      { label: "未知", count: "2" },
     ]);
     expect(dims[2]!.bars).toEqual([
       { week: WEEKS[0]!.weekStart, key: "yes", count: "1" },
       { week: WEEKS[0]!.weekStart, key: "no", count: "1" },
-      { week: WEEKS[0]!.weekStart, key: "unknown", count: "1" },
       { week: WEEKS[1]!.weekStart, key: "no", count: "1" },
-      { week: WEEKS[1]!.weekStart, key: "unknown", count: "1" },
     ]);
 
     expect(screen.getByRole("heading", { level: 2, name: "版本与投放（按团队）" })).toBeTruthy();
     const metricRows = [...document.querySelectorAll<HTMLElement>('[data-role="metric-row"]')].map((row) => ({
       metric: row.dataset.metric,
       title: row.querySelector(".wx-dist-title")?.textContent,
-      legend: [...row.querySelectorAll('[data-role="metric-team-chip"]')]
-        .map((chip) => (chip as HTMLElement).textContent),
+      legend: [...row.querySelectorAll(".wx-dist-legend-label")].map((label) => label.textContent),
       ticks: [...row.querySelectorAll('[data-role="metric-tick"]')].map((tick) => tick.textContent),
       values: [...row.querySelectorAll('[data-role="metric-value"]')].map((value) => value.textContent),
       bars: [...row.querySelectorAll<HTMLElement>('[data-role="metric-bar"]')].map((bar) => ({
@@ -270,23 +260,6 @@ describe("React shelf trend page", () => {
     expect(url.searchParams.get("from")).toBe("2026-11-09");
     expect(url.searchParams.get("to")).toBe("2026-11-15");
     expect(url.searchParams.get("team")).toBeNull();
-  });
-
-  it("opens the unresolved distribution card with Bundle ID only", async () => {
-    vi.stubGlobal("fetch", mockShelf());
-    renderPage();
-    await waitForTeamSegments(2);
-
-    const unknown = document.querySelector<HTMLElement>(
-      `[data-role="distribution-row"][data-dimension="category"] [data-role="dist-legend"][data-key="unknown"]`,
-    );
-    await openDetails(unknown!);
-
-    await waitFor(() => {
-      expect(detailRows()).toHaveLength(2);
-    });
-    expect(detailRows().map((row) => row.textContent).join(" ")).toContain("com.unresolved.ios");
-    expect(detailRows()[0]?.textContent).toContain("未知");
   });
 
   it("filters to one team from the chart legend chip and back", async () => {

@@ -32,6 +32,8 @@ export function ShelfTrendPage() {
   const [trendError, setTrendError] = useState<string | null>(null);
   const [trendReload, setTrendReload] = useState(0);
   const [selection, setSelection] = useState<ShelfSelection | null>(null);
+  // Local to the version charts: the section chips narrow all four rows together.
+  const [metricTeam, setMetricTeam] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -52,6 +54,10 @@ export function ShelfTrendPage() {
     };
   }, [range, filters.team, trendReload]);
 
+  useEffect(() => {
+    if (metricTeam && !trend?.teamWeekStats.some((row) => row.team === metricTeam)) setMetricTeam(null);
+  }, [trend, metricTeam]);
+
   const retry = () => setTrendReload((value) => value + 1);
   const showAllTeams = () => update({ team: null });
 
@@ -64,6 +70,9 @@ export function ShelfTrendPage() {
   const total = trend?.totals.packageCount;
 
   const teams = [...(trend?.teams ?? [])].sort((left, right) => left.localeCompare(right, "zh"));
+  const metricTeams = [...new Set((trend?.teamWeekStats ?? []).map((row) => row.team))]
+    .sort((left, right) => left.localeCompare(right, "zh"));
+  const metricStats = trend?.teamWeekStats.filter((row) => metricTeam === null || row.team === metricTeam) ?? [];
   const teamOptions = [
     { value: "", label: "全部" },
     ...teams.map((team) => ({ value: team, label: teamLabel(team) })),
@@ -160,15 +169,32 @@ export function ShelfTrendPage() {
                 team={filters.team}
                 onSelect={setSelection}
               />
+              <p className="wx-stats-note">未解析到 App Store 详情的包不计入分布。</p>
             </section>
 
             <section className="wx-shelf-section" aria-labelledby="shelf-teams-title">
               <div className="wx-shelf-block-head">
                 <h2 id="shelf-teams-title" className="wx-shelf-h2">版本与投放（按团队）</h2>
+                <ul className="wx-team-chips" data-role="metric-team-chips" aria-label="按团队筛选版本图表">
+                  {metricTeams.map((name) => (
+                    <li key={name}>
+                      <button
+                        type="button"
+                        className={`wx-team-chip ${teamClass(name, teams)}`}
+                        aria-pressed={metricTeam === name}
+                        data-role="metric-team-chip"
+                        data-team={name}
+                        onClick={() => setMetricTeam(metricTeam === name ? null : name)}
+                      >
+                        {teamLabel(name)}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
               </div>
               <MetricsBoard
                 weeks={trend.weeks}
-                stats={trend.teamWeekStats}
+                stats={metricStats}
                 teams={trend.teams}
                 onSelect={setSelection}
               />
