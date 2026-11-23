@@ -122,6 +122,22 @@ describe("React shelf trend page", () => {
       { key: "unknown", count: "2" },
     ]);
 
+    const spark = (dimension: string, key: string) => [...document.querySelectorAll<HTMLElement>(
+      `[data-role="ranked-chart"][data-dimension="${dimension}"] [data-role="ranked-row"][data-key="${key}"] .wx-spark-bar`,
+    )].map((bar) => bar.dataset.count);
+    expect(spark("category", "Games")).toEqual(["2", "0"]);
+    expect(spark("category", "Utilities")).toEqual(["0", "1"]);
+    expect(spark("category", "unknown")).toEqual(["1", "1"]);
+    expect(spark("ios_version", "17")).toEqual(["1", "0"]);
+    expect(spark("ios_version", "15")).toEqual(["0", "1"]);
+    expect(spark("ios_version", "unknown")).toEqual(["1", "1"]);
+    expect(spark("iap", "yes")).toEqual(["1", "0"]);
+    expect(spark("iap", "no")).toEqual(["1", "1"]);
+    expect(spark("iap", "unknown")).toEqual(["1", "1"]);
+    expect(document.querySelector<HTMLElement>(
+      '[data-role="ranked-chart"][data-dimension="category"] [data-role="ranked-row"][data-key="Games"] .wx-spark-bar',
+    )?.title).toBe("2026-11-09 · 2 包");
+
     const labels = document.querySelector('[data-role="weekly-chart"] .wx-chart-labels')?.textContent ?? "";
     expect(labels).toContain("2026-11-09");
     expect(labels).toContain("~ 2026-11-15");

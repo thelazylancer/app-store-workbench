@@ -157,6 +157,7 @@ export function ShelfTrendPage() {
                   title="类目"
                   groupBy="category"
                   segments={foldTopCategories(trend.distributions.category)}
+                  weeks={trend.weeks}
                   from={range.from}
                   to={range.to}
                   team={filters.team}
@@ -166,6 +167,7 @@ export function ShelfTrendPage() {
                   title="最低 iOS"
                   groupBy="ios_version"
                   segments={segmentGroups("ios_version", trend.distributions.ios_version)}
+                  weeks={trend.weeks}
                   from={range.from}
                   to={range.to}
                   team={filters.team}
@@ -175,6 +177,7 @@ export function ShelfTrendPage() {
                   title="内购"
                   groupBy="iap"
                   segments={segmentGroups("iap", trend.distributions.iap)}
+                  weeks={trend.weeks}
                   from={range.from}
                   to={range.to}
                   team={filters.team}

@@ -51,6 +51,11 @@ export function trendFor(team: string | null, groupBy: ShelfGroupBy): ShelfTrend
     packageCount: groupsFor(groupBy, index).reduce((sum, group) => sum + group.count, 0),
     groups: groupsFor(groupBy, index),
     teams: WEEK_TEAMS[index]!.filter((entry) => team === null || entry.key === team),
+    distributions: {
+      category: groupsFor("category", index),
+      ios_version: groupsFor("ios_version", index),
+      iap: groupsFor("iap", index),
+    },
   }));
   return {
     from: "2026-08-22",

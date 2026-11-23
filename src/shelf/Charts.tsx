@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { teamLabel } from "../lib/teamLabel";
 import type { ShelfGroupBy, ShelfTrendWeek } from "../../shared/shelfTypes";
-import { OTHER_KEY, isUnknownKey, type ShelfSegment } from "./buckets";
+import { OTHER_KEY, foldWeekGroups, isUnknownKey, type ShelfSegment } from "./buckets";
 import type { ShelfSelection } from "./selection";
 
 function maxCount(weeks: ShelfTrendWeek[]): number {
@@ -210,14 +210,33 @@ type RankedProps = {
   title: string;
   groupBy: ShelfGroupBy;
   segments: ShelfSegment[];
+  weeks: ShelfTrendWeek[];
   from: string;
   to: string;
   team: string | null;
   onSelect: (selection: ShelfSelection) => void;
 };
 
-/** One horizontal ranking per dimension over the whole range. */
-export function RankedBarChart({ title, groupBy, segments, from, to, team, onSelect }: RankedProps) {
+/** One bar per week for a single ranking row; hover shows that week's count. */
+function Sparkline({ counts, weeks }: { counts: number[]; weeks: ShelfTrendWeek[] }) {
+  const max = Math.max(1, ...counts);
+  return (
+    <span className="wx-spark" aria-hidden="true">
+      {counts.map((count, index) => (
+        <span
+          key={weeks[index]?.weekStart ?? index}
+          className="wx-spark-bar"
+          data-count={count}
+          style={{ height: count === 0 ? 0 : `${Math.max(10, (count / max) * 100)}%` }}
+          title={`${weeks[index]?.weekStart ?? ""} · ${count} 包`}
+        />
+      ))}
+    </span>
+  );
+}
+
+/** One horizontal ranking per dimension over the whole range, with a weekly trend per row. */
+export function RankedBarChart({ title, groupBy, segments, weeks, from, to, team, onSelect }: RankedProps) {
   const shown = segments
     .map((segment, index) => ({ segment, index }))
     .filter(({ segment }) => segment.count > 0);
@@ -225,6 +244,12 @@ export function RankedBarChart({ title, groupBy, segments, from, to, team, onSel
   const topKeys = segments
     .map((segment) => segment.key)
     .filter((key) => key !== OTHER_KEY && !isUnknownKey(key));
+  // Each week folded into the same segment keys the rows use.
+  const weekCounts = weeks.map((week) => (
+    groupBy === "category"
+      ? foldWeekGroups(week.distributions.category, segments)
+      : Object.fromEntries(week.distributions[groupBy].map((group) => [group.key, group.count]))
+  ));
 
   return (
     <div className="wx-ranked" data-role="ranked-chart" data-dimension={groupBy}>
@@ -255,6 +280,12 @@ export function RankedBarChart({ title, groupBy, segments, from, to, team, onSel
                   style={{ width: `${(segment.count / max) * 100}%` }}
                 />
               </span>
+              {weeks.length > 1 ? (
+                <Sparkline
+                  counts={weekCounts.map((counts) => counts[segment.key] ?? 0)}
+                  weeks={weeks}
+                />
+              ) : null}
               <b className="wx-ranked-count">{segment.count}</b>
             </button>
           </li>

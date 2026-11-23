@@ -4,6 +4,7 @@ import {
   OTHER_KEY,
   categoryLabel,
   foldTopCategories,
+  foldWeekGroups,
   iapLabel,
   iosBucketLabel,
   segmentGroups,
@@ -93,5 +94,29 @@ describe("segmentGroups", () => {
     expect(segmentGroups("ios_version", [{ key: "16", count: 3 }]).map((segment) => segment.label))
       .toEqual(["≤14", "15", "16", "17", "18", "26+", "未知"]);
     expect(segmentGroups("iap", []).map((segment) => segment.label)).toEqual(["有", "无", "未知"]);
+  });
+});
+
+describe("foldWeekGroups", () => {
+  it("folds below-top categories into 其他 and keeps 未知 apart", () => {
+    const segments = foldTopCategories([
+      { key: "Games", count: 10 },
+      { key: "Utilities", count: 8 },
+      { key: "Productivity", count: 6 },
+      { key: "Social Networking", count: 5 },
+      { key: "Entertainment", count: 4 },
+      { key: "Photo & Video", count: 3 },
+      { key: "Travel", count: 2 },
+      { key: "unknown", count: 5 },
+    ]);
+    const week = foldWeekGroups([
+      { key: "Games", count: 2 },
+      { key: "Travel", count: 1 },
+      { key: "unknown", count: 3 },
+    ], segments);
+
+    expect(week.Games).toBe(2);
+    expect(week[OTHER_KEY]).toBe(1);
+    expect(week.unknown).toBe(3);
   });
 });

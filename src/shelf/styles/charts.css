@@ -358,6 +358,22 @@
   border-radius: 2px;
 }
 
+/* Weekly trend per ranking row: one thin bar per week, hover shows that week's count. */
+.wx-spark {
+  display: flex;
+  flex: 0 0 84px;
+  align-items: flex-end;
+  gap: 1px;
+  height: 14px;
+}
+
+.wx-spark-bar {
+  flex: 1 1 0;
+  min-width: 1px;
+  border-radius: 1px 1px 0 0;
+  background: rgba(28, 39, 51, 0.4);
+}
+
 .wx-ranked-count {
   flex: 0 0 32px;
   font-family: var(--font-family-code);
@@ -383,5 +399,9 @@
 
   .wx-chart-bar-wrap {
     width: 64px;
+  }
+
+  .wx-spark {
+    flex-basis: 56px;
   }
 }

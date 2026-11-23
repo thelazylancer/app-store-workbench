@@ -49,6 +49,8 @@ export type ShelfTrendWeek = {
   groups: ShelfGroupCount[]; // count desc, then key asc
   /** Per-team counts for the week; raw team names, same ordering rule. */
   teams: ShelfGroupCount[];
+  /** This week's counts for every dimension, for the per-row weekly trends. */
+  distributions: ShelfDistributions;
 };
 
 export type ShelfTrendTotals = {

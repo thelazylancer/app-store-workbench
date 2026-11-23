@@ -25,6 +25,11 @@ const trendResponse: ShelfTrendResponse = {
       packageCount: 42,
       groups: [{ key: "Games", count: 10 }, { key: "unknown", count: 3 }],
       teams: [{ key: "Alpha", count: 42 }],
+      distributions: {
+        category: [{ key: "Games", count: 10 }, { key: "unknown", count: 3 }],
+        ios_version: [{ key: "16", count: 12 }, { key: "unknown", count: 3 }],
+        iap: [{ key: "yes", count: 20 }, { key: "unknown", count: 3 }],
+      },
     },
   ],
   totals: { packageCount: 93, groups: [{ key: "Games", count: 18 }, { key: "unknown", count: 17 }] },

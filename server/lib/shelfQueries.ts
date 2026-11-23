@@ -153,18 +153,24 @@ function sortedGroups(groups: Map<string, number>): ShelfGroupCount[] {
     .sort((left, right) => right.count - left.count || left.key.localeCompare(right.key));
 }
 
+function emptyDimensions(): Record<ShelfGroupBy, Map<string, number>> {
+  return { category: new Map(), ios_version: new Map(), iap: new Map() };
+}
+
 function foldTrend(rows: TrendAggregateRow[], groupBy: ShelfGroupBy): {
   weeks: ShelfTrendWeek[];
   totals: ShelfTrendTotals;
   distributions: Record<ShelfGroupBy, ShelfGroupCount[]>;
 } {
-  const weeks = new Map<string, { packageCount: number; groups: Map<string, number>; teams: Map<string, number> }>();
-  const totalGroups = new Map<string, number>();
-  const dimensionTotals: Record<ShelfGroupBy, Map<string, number>> = {
-    category: new Map(),
-    ios_version: new Map(),
-    iap: new Map(),
+  type WeekFold = {
+    packageCount: number;
+    groups: Map<string, number>;
+    teams: Map<string, number>;
+    dimensions: Record<ShelfGroupBy, Map<string, number>>;
   };
+  const weeks = new Map<string, WeekFold>();
+  const totalGroups = new Map<string, number>();
+  const dimensionTotals = emptyDimensions();
   const DIMENSIONS: ShelfGroupBy[] = ["category", "ios_version", "iap"];
   let totalCount = 0;
 
@@ -172,16 +178,18 @@ function foldTrend(rows: TrendAggregateRow[], groupBy: ShelfGroupBy): {
     const key = groupKey(row, groupBy);
     let week = weeks.get(row.week_start);
     if (!week) {
-      week = { packageCount: 0, groups: new Map(), teams: new Map() };
+      week = { packageCount: 0, groups: new Map(), teams: new Map(), dimensions: emptyDimensions() };
       weeks.set(row.week_start, week);
     }
     week.packageCount += row.n;
     week.groups.set(key, (week.groups.get(key) ?? 0) + row.n);
     week.teams.set(row.team, (week.teams.get(row.team) ?? 0) + row.n);
     for (const dimension of DIMENSIONS) {
-      const totals = dimensionTotals[dimension];
       const dimensionKey = groupKey(row, dimension);
+      const totals = dimensionTotals[dimension];
       totals.set(dimensionKey, (totals.get(dimensionKey) ?? 0) + row.n);
+      const weekTotals = week.dimensions[dimension];
+      weekTotals.set(dimensionKey, (weekTotals.get(dimensionKey) ?? 0) + row.n);
     }
     totalCount += row.n;
     totalGroups.set(key, (totalGroups.get(key) ?? 0) + row.n);
@@ -196,6 +204,11 @@ function foldTrend(rows: TrendAggregateRow[], groupBy: ShelfGroupBy): {
         packageCount: week.packageCount,
         groups: sortedGroups(week.groups),
         teams: sortedGroups(week.teams),
+        distributions: {
+          category: sortedGroups(week.dimensions.category),
+          ios_version: sortedGroups(week.dimensions.ios_version),
+          iap: sortedGroups(week.dimensions.iap),
+        },
       })),
     totals: { packageCount: totalCount, groups: sortedGroups(totalGroups) },
     distributions: {

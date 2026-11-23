@@ -111,6 +111,23 @@ export function segmentGroups(groupBy: ShelfGroupBy, totals: ShelfGroupCount[]):
   }));
 }
 
+/** Fold one week's raw categories into the same segment keys as the range totals. */
+export function foldWeekGroups(groups: ShelfGroupCount[], segments: ShelfSegment[]): Record<string, number> {
+  const result: Record<string, number> = {};
+  for (const segment of segments) result[segment.key] = 0;
+  const topKeys = new Set(
+    segments
+      .map((segment) => segment.key)
+      .filter((key) => key !== OTHER_KEY && key !== SHELF_UNKNOWN_KEY),
+  );
+
+  for (const group of groups) {
+    const key = group.key !== SHELF_UNKNOWN_KEY && !topKeys.has(group.key) ? OTHER_KEY : group.key;
+    if (key in result) result[key] = (result[key] ?? 0) + group.count;
+  }
+  return result;
+}
+
 /** Category / iOS / IAP display order is fixed; unknown always renders last. */
 export function isUnknownKey(key: string): boolean {
   return key === SHELF_UNKNOWN_KEY;

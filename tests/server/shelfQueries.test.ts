@@ -209,6 +209,28 @@ describeDb("shelf queries against PostgreSQL", () => {
         { key: "yes", count: 1 },
       ],
     });
+    // Every week also carries all three dimensions, for the per-row weekly trends.
+    expect(trend.weeks[0]!.distributions).toEqual({
+      category: [{ key: "Games", count: 1 }],
+      ios_version: [{ key: "16", count: 1 }],
+      iap: [{ key: "yes", count: 1 }],
+    });
+    expect(trend.weeks[1]!.distributions).toEqual({
+      category: [
+        { key: "unknown", count: 3 },
+        { key: "Games", count: 1 },
+        { key: "Utilities", count: 1 },
+      ],
+      ios_version: [
+        { key: "unknown", count: 3 },
+        { key: "15", count: 1 },
+        { key: "26plus", count: 1 },
+      ],
+      iap: [
+        { key: "no", count: 3 },
+        { key: "unknown", count: 2 },
+      ],
+    });
   });
 
   it("maps minimum OS majors into ios buckets", async () => {
