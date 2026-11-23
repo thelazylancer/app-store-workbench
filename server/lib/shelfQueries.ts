@@ -95,6 +95,8 @@ const TEAMS_SQL = `
 
 // Version timings per team-week. A package's mean interval is (last - first) / (n - 1),
 // which avoids window functions; float casts keep pg from returning numeric strings.
+// Version counts average only packages with version records; a package we never got
+// history for must not read as "zero versions".
 const TEAM_WEEK_STATS_SQL = `
   WITH pkg_versions AS (
     SELECT package_code,
@@ -129,7 +131,7 @@ const TEAM_WEEK_STATS_SQL = `
   SELECT to_char(week_start, 'YYYY-MM-DD') AS week_start,
          team,
          count(*)::int AS package_count,
-         avg(version_count)::float8 AS avg_version_count,
+         avg(CASE WHEN version_count > 0 THEN version_count END)::float8 AS avg_version_count,
          avg(gap_days)::float8 AS avg_gap_days,
          avg(latest_to_ad_days)::float8 AS avg_latest_to_ad_days,
          avg(ad_to_offline_days)::float8 AS avg_ad_to_offline_days

@@ -282,7 +282,7 @@ describeDb("shelf queries against PostgreSQL", () => {
         weekStart: monday,
         team: alpha,
         packageCount: 2,
-        avgVersionCount: 2, // (1 + 3) / 2; a versionless package counts as 0
+        avgVersionCount: 2, // (1 + 3) / 2
         avgVersionGapDays: 5, // only E has two release dates
         avgLatestVersionToAdDays: 10, // (20 + 0) / 2
         avgAdToOfflineDays: null,
@@ -291,7 +291,7 @@ describeDb("shelf queries against PostgreSQL", () => {
         weekStart: monday,
         team: beta,
         packageCount: 2,
-        avgVersionCount: 0,
+        avgVersionCount: null, // no version records at all
         avgVersionGapDays: null,
         avgLatestVersionToAdDays: null,
         avgAdToOfflineDays: -1,
@@ -300,7 +300,7 @@ describeDb("shelf queries against PostgreSQL", () => {
         weekStart: monday,
         team: gamma,
         packageCount: 1,
-        avgVersionCount: 0,
+        avgVersionCount: null,
         avgVersionGapDays: null,
         avgLatestVersionToAdDays: null,
         avgAdToOfflineDays: null,
