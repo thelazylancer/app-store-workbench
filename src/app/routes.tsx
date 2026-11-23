@@ -39,7 +39,7 @@ function Shell({ children }: { children: ReactNode }) {
       topNav={
         <TopNav
           label="主导航"
-          heading={<TopNavHeading as={RouterLink} logo={<BrandMark />} heading="竞品气象台" headingHref="/" />}
+          heading={<TopNavHeading as={RouterLink} logo={<BrandMark />} heading="观星台" headingHref="/" />}
           startContent={NAV_ITEMS.map((item) => (
             <TopNavItem
               key={item.to}
