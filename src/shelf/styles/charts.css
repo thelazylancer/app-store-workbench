@@ -190,7 +190,8 @@
 
 .wx-seg-1,
 .wx-team-1 {
-  background: #4c8c6f;
+  /* Slightly darker than the original green so the white chip label keeps AA contrast. */
+  background: #477f65;
 }
 
 .wx-seg-2,
@@ -274,51 +275,41 @@
   list-style: none;
 }
 
-/* Clickable team legend in the weekly chart header. */
+/* Clickable team legend in the weekly chart header: filled colour blocks. */
 .wx-team-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 6px;
+  gap: 4px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .wx-team-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
   margin: 0;
-  padding: 2px 6px;
-  border: 1px solid transparent;
+  padding: 2px 8px;
+  border: 0;
   border-radius: 4px;
-  background: none;
-  color: var(--color-text-primary);
+  color: #fff;
   font: inherit;
   font-size: 12px;
+  font-weight: 600;
   line-height: 1.5;
   cursor: pointer;
 }
 
 .wx-team-chip:hover {
-  background: rgba(28, 39, 51, 0.05);
+  filter: brightness(0.9);
 }
 
 .wx-team-chip[aria-pressed="true"] {
-  border-color: var(--color-border-emphasized);
-  font-weight: 600;
+  outline: 2px solid var(--color-text-primary);
+  outline-offset: 1px;
 }
 
 .wx-team-chip:focus-visible {
   outline: var(--focus-outline-width) solid var(--focus-outline-color);
   outline-offset: 1px;
-}
-
-.wx-team-chip-swatch {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-  flex: 0 0 auto;
 }
 
 .wx-chart-legend li {

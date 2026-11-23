@@ -148,13 +148,12 @@ export function ShelfTrendPage() {
                     <li key={name}>
                       <button
                         type="button"
-                        className="wx-team-chip"
+                        className={`wx-team-chip ${teamClass(name, teams)}`}
                         aria-pressed={filters.team === name}
                         data-role="team-filter-chip"
                         data-team={name}
                         onClick={() => update({ team: filters.team === name ? null : name })}
                       >
-                        <span className={`wx-team-chip-swatch ${teamClass(name, teams)}`} aria-hidden="true" />
                         {teamLabel(name)}
                       </button>
                     </li>
