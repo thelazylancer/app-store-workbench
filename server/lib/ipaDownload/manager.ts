@@ -207,6 +207,9 @@ export function createIpaDownloadManager(options: IpaDownloadManagerOptions): Ip
       await mkdir(downloadsDir, { recursive: true });
       record.output = "";
       record.bytesDownloaded = null;
+      // A cancel can land before the runner subscribes to the signal; without this
+      // check the job would never settle and the queue would stall behind it.
+      if (record.cancelRequested || controller.signal.aborted) return "cancelled";
       const result = await runner(
         record.bundleId,
         outPath,
