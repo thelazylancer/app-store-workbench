@@ -5,7 +5,7 @@ import { createCompetitorWrites } from "./competitorRepo/writes";
 import type { CompetitorWriteRepo } from "./competitorRepo/writes";
 
 export type { CompetitorQueryRepo } from "./competitorRepo/queries";
-export type { CompetitorWriteRepo, CountryHitRow } from "./competitorRepo/writes";
+export type { CompetitorWriteRepo, CountryHitRow, OfflineDateUpdate } from "./competitorRepo/writes";
 
 export function createCompetitorRepo(pool: Pool): CompetitorWriteRepo & CompetitorQueryRepo {
   return {

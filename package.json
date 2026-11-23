@@ -10,7 +10,8 @@
     "test": "vitest run",
     "build:ipatool": "bash scripts/build-ipatool.sh",
     "fetch:app-store": "tsx scripts/fetch-app-store-details.ts",
-    "sync:competitor": "tsx scripts/competitor-sync.ts"
+    "sync:competitor": "tsx scripts/competitor-sync.ts",
+    "sync:offline": "tsx scripts/offline-sync.ts"
   },
   "dependencies": {
     "@astryxdesign/core": "0.7.16",

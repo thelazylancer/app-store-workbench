@@ -10,6 +10,8 @@ export type CountryHitRow = {
   fetchedAt: string;
 };
 
+export type OfflineDateUpdate = { packageCode: string; offlineDate: string };
+
 export type CompetitorWriteRepo = {
   upsertBatch(batch: BatchRow): Promise<void>;
   /** Writes the latest package row and its per-day snapshot in one transaction. */
@@ -17,6 +19,8 @@ export type CompetitorWriteRepo = {
   upsertCountryHits(packageCode: string, hits: CountryHitRow[]): Promise<void>;
   upsertAssets(packageCode: string, assets: DownloadedAsset[]): Promise<void>;
   upsertVersions(packageCode: string, versions: VersionRow[]): Promise<void>;
+  /** Overwrites offline_date for existing packages; returns the matched codes. */
+  updateOfflineDates(entries: OfflineDateUpdate[]): Promise<string[]>;
 };
 
 export function createCompetitorWrites(pool: Pool): CompetitorWriteRepo {
@@ -187,6 +191,22 @@ export function createCompetitorWrites(pool: Pool): CompetitorWriteRepo {
           [packageCode, version.version, version.releasedAt, version.notes],
         );
       }
+    },
+
+    async updateOfflineDates(entries) {
+      if (entries.length === 0) return [];
+      // PostgreSQL leaves the winner undefined when UNNEST repeats a code, so
+      // keep the last write per code; callers also collapse to the max upstream.
+      const byCode = new Map(entries.map((entry) => [entry.packageCode, entry.offlineDate]));
+      const { rows } = await pool.query<{ package_code: string }>(
+        `UPDATE competitor_packages AS cp
+            SET offline_date = u.offline_date
+           FROM UNNEST($1::text[], $2::date[]) AS u(package_code, offline_date)
+          WHERE cp.package_code = u.package_code
+          RETURNING cp.package_code`,
+        [[...byCode.keys()], [...byCode.values()]],
+      );
+      return rows.map((row) => row.package_code);
     },
   };
 }
