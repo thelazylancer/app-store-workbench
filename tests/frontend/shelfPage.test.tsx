@@ -153,6 +153,25 @@ describe("React shelf trend page", () => {
     });
   });
 
+  it("opens the whole week from the week label", async () => {
+    const fetchMock = mockShelf();
+    vi.stubGlobal("fetch", fetchMock);
+    renderPage();
+    await waitForTeamSegments(2);
+
+    const label = document.querySelector<HTMLElement>(
+      `[data-role="week-detail"][data-week="${WEEKS[0]!.weekStart}"]`,
+    );
+    await openDetails(label!);
+
+    await waitFor(() => {
+      expect(detailRows()).toHaveLength(3);
+    });
+    expect(screen.getByRole("dialog").textContent).toContain("全部团队");
+    const url = new URL(packagesCalls(fetchMock)[0]!, "http://localhost");
+    expect(url.searchParams.get("team")).toBeNull();
+  });
+
   it("narrows the week detail to the clicked distribution segment", async () => {
     const fetchMock = mockShelf();
     vi.stubGlobal("fetch", fetchMock);

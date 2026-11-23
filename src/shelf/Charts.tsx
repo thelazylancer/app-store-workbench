@@ -35,13 +35,35 @@ function weekLabel(week: ShelfTrendWeek): string {
   return `${week.weekStart} ~ ${week.weekEnd}`;
 }
 
-function WeekLabels({ weeks }: { weeks: ShelfTrendWeek[] }) {
+function WeekLabels({ weeks, team, onSelect }: {
+  weeks: ShelfTrendWeek[];
+  team: string | null;
+  onSelect: (selection: ShelfSelection) => void;
+}) {
   return (
-    <div className="wx-chart-labels" aria-hidden="true">
+    <div className="wx-chart-labels">
       {weeks.map((week) => (
         <div className="wx-chart-slot" key={week.weekStart}>
-          <span>{week.weekStart}</span>
-          <span>~ {week.weekEnd}</span>
+          <button
+            type="button"
+            className="wx-chart-week-link"
+            aria-label={`${weekLabel(week)}，查看明细`}
+            data-role="week-detail"
+            data-week={week.weekStart}
+            onClick={() => onSelect({
+              weekStart: week.weekStart,
+              weekEnd: week.weekEnd,
+              team,
+              groupBy: null,
+              key: null,
+              topKeys: [],
+              label: "",
+            })}
+          >
+            <span>{week.weekStart}</span>
+            <span>~ {week.weekEnd}</span>
+            <span className="wx-chart-week-action">查看明细</span>
+          </button>
         </div>
       ))}
     </div>
@@ -140,7 +162,7 @@ export function WeeklyBarChart({ weeks, teams, team, onSelect }: WeeklyProps) {
               </div>
             ))}
           </div>
-          <WeekLabels weeks={weeks} />
+          <WeekLabels weeks={weeks} team={team} onSelect={onSelect} />
         </div>
       </div>
       {stacked ? (
@@ -243,7 +265,7 @@ export function StackedBarChart({ weeks, groupBy, segments, team, onSelect }: St
               );
             })}
           </div>
-          <WeekLabels weeks={weeks} />
+          <WeekLabels weeks={weeks} team={team} onSelect={onSelect} />
         </div>
       </div>
       <ul className="wx-chart-legend">
