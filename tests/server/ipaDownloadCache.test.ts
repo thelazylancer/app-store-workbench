@@ -114,6 +114,25 @@ describe("IPA download cache and naming", () => {
     await expect(stat(path.join(dir, "2026-11-20_LC_Misate.ipa"))).rejects.toThrow();
   });
 
+  it("keeps the team prefix when a cache hit has no team metadata", async () => {
+    const dir = await tempDir();
+    let clock = Date.UTC(2026, 10, 20, 4);
+    const manager = createIpaDownloadManager({
+      ipatoolBin: "ipatool",
+      downloadsDir: dir,
+      runner: successRunner,
+      now: () => clock,
+    });
+
+    const first = manager.createJob("com.example.keep", { team: "LC", appName: "Misate" });
+    await vi.waitFor(() => expect(manager.getJob(first.id)?.status).toBe("done"));
+
+    clock = Date.UTC(2026, 10, 23, 4);
+    const second = manager.createJob("com.example.keep", { appName: "Misate" });
+    expect(second.id).toBe(first.id);
+    expect(second.fileName).toBe("2026-11-20_LC_Misate.ipa");
+  });
+
   it("fails a verification prompt left unanswered for a day", async () => {
     const dir = await tempDir();
     let clock = Date.UTC(2026, 10, 20, 4);

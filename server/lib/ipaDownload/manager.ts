@@ -343,7 +343,9 @@ export function createIpaDownloadManager(options: IpaDownloadManagerOptions): Ip
 
       const cached = cachedJob(bundleId);
       if (cached) {
-        if (meta) refreshCachedJob(cached, meta);
+        // Only the competitor page knows both parts; a bare search-page hit must
+        // not drop an existing team prefix from the cached file name.
+        if (meta?.team && meta.appName) refreshCachedJob(cached, meta);
         return store.toView(cached);
       }
 
