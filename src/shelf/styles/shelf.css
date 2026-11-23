@@ -128,14 +128,6 @@
   margin-top: 16px;
 }
 
-/* Notes under the metric charts and the detail dialog */
-.wx-stats-note {
-  margin: 10px 0 0;
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
 /* Detail dialog */
 .wx-detail-count {
   margin: 0 0 12px;

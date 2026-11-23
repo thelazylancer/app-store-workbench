@@ -33,10 +33,8 @@ describe("React shelf version charts", () => {
       "avgVersionGapDays",
       "avgLatestVersionToAdDays",
     ]);
-    // The per-chart legends are colourless labels; colour lives on the section chips.
-    expect(document.querySelectorAll('[data-role="metric-row"] .wx-dist-swatch')).toHaveLength(0);
-    expect([...document.querySelectorAll('[data-role="metric-row"] .wx-dist-legend-label')]
-      .map((label) => label.textContent)).toEqual(["团队 A", "团队 A", "团队 A"]);
+    // Team names live only on the section chips, not on each chart.
+    expect(document.querySelectorAll('[data-role="metric-row"] .wx-dist-legend')).toHaveLength(0);
 
     fireEvent.click(chip("团队 A"));
     await waitFor(() => {

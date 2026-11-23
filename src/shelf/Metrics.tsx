@@ -104,14 +104,11 @@ type MetricRowProps = {
 
 function MetricRow({ metric, weeks, series, allTeams, byWeek, tip, bind, onSelect }: MetricRowProps) {
   const value = (weekStart: string, team: string) => byWeek.get(weekStart)?.get(team)?.[metric.key];
-  // Only teams with a value in this chart get a legend entry.
-  const rowTeams = series.filter((team) =>
-    weeks.some((week) => typeof value(week.weekStart, team) === "number"));
-  if (rowTeams.length === 0) return null;
   const values = weeks.flatMap((week) =>
     series
       .map((team) => value(week.weekStart, team))
       .filter((entry): entry is number => typeof entry === "number"));
+  if (values.length === 0) return null;
   // Absent values are skipped, not zeroed; a negative metric keeps a zero baseline.
   const { min, max, ticks } = metricTicks(values);
   const span = max - min;
@@ -122,13 +119,6 @@ function MetricRow({ metric, weeks, series, allTeams, byWeek, tip, bind, onSelec
     <div className="wx-metric-row" data-role="metric-row" data-metric={metric.key}>
       <div className="wx-dist-head">
         <h3 className="wx-dist-title">{metric.title}</h3>
-        <ul className="wx-dist-legend">
-          {rowTeams.map((team) => (
-            <li key={team}>
-              <span className="wx-dist-legend-label">{teamLabel(team)}</span>
-            </li>
-          ))}
-        </ul>
       </div>
       <div className="wx-chart-plot wx-metric-plot">
         <div className="wx-metric-axis" aria-hidden="true">
@@ -196,7 +186,7 @@ function MetricRow({ metric, weeks, series, allTeams, byWeek, tip, bind, onSelec
                 );
               })}
             </div>
-            {rowTeams.map((team) => (
+            {series.map((team) => (
               <ChartTip key={team} tip={tip} id={`${metric.key}:${week.weekStart}:${team}`} />
             ))}
           </div>

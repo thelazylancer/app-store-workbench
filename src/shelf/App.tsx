@@ -169,7 +169,6 @@ export function ShelfTrendPage() {
                 team={filters.team}
                 onSelect={setSelection}
               />
-              <p className="wx-stats-note">未解析到 App Store 详情的包不计入分布。</p>
             </section>
 
             <section className="wx-shelf-section" aria-labelledby="shelf-teams-title">
@@ -198,10 +197,6 @@ export function ShelfTrendPage() {
                 teams={trend.teams}
                 onSelect={setSelection}
               />
-              <p className="wx-stats-note">
-                版本数据来自 App Store 版本历史，版本数只统计已抓到版本记录的包；版本间隔超过 30 天的包不计入均值；「最新版本→投放」为负数表示投放后仍有版本更新；
-                「投放→下架」只统计已有下架日期的包。
-              </p>
             </section>
           </>
         ) : null}
