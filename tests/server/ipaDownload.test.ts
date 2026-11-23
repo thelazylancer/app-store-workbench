@@ -61,6 +61,34 @@ describe("IPA download manager", () => {
     expect(manager.getFilePath(job.id)).toBe(path.join(dir, done.fileName!));
   });
 
+  it("reuses a completed download instead of running ipatool again", async () => {
+    const dir = await tempDir();
+    const runner = vi.fn(successRunner);
+    const manager = createIpaDownloadManager({ ipatoolBin: "ipatool", downloadsDir: dir, runner });
+
+    const first = manager.createJob("com.example.cached");
+    await vi.waitFor(() => expect(manager.getJob(first.id)?.status).toBe("done"));
+
+    const second = manager.createJob("com.example.cached");
+    expect(second.id).toBe(first.id);
+    expect(second.status).toBe("done");
+    expect(second.fileUrl).toBe(`/api/ipa-download/${first.id}/file`);
+    expect(runner).toHaveBeenCalledTimes(1);
+  });
+
+  it("starts a fresh download when the cached file was cleaned up", async () => {
+    const dir = await tempDir();
+    const manager = createIpaDownloadManager({ ipatoolBin: "ipatool", downloadsDir: dir, runner: successRunner });
+
+    const first = manager.createJob("com.example.recleaned");
+    await vi.waitFor(() => expect(manager.getJob(first.id)?.status).toBe("done"));
+    await rm(path.join(dir, manager.getJob(first.id)!.fileName!));
+
+    const second = manager.createJob("com.example.recleaned");
+    expect(second.id).not.toBe(first.id);
+    await vi.waitFor(() => expect(manager.getJob(second.id)?.status).toBe("done"));
+  });
+
   it("classifies App Store terms failures even when ipatool exits zero", async () => {
     const dir = await tempDir();
     const runner: DownloadRunner = async () => ({

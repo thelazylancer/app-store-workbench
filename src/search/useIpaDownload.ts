@@ -167,6 +167,13 @@ function failedState(message: string | null): IpaState {
 // otherwise forget a running job and start a duplicate one).
 const jobStore = new Map<string, IpaState>();
 
+function saveFile(url: string, bundleId: string) {
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${bundleId}.ipa`;
+  link.click();
+}
+
 export function resetIpaDownloadStore(): void {
   jobStore.clear();
 }
@@ -263,7 +270,10 @@ export function useIpaDownload(bundleId: string): IpaDownloadControl {
     setStarting(true);
     void (async () => {
       try {
-        applyJob(await startIpaDownload(bundleId));
+        const next = await startIpaDownload(bundleId);
+        applyJob(next);
+        // A cache hit comes back already done: save it without a second click.
+        if (next.status === "done" && next.fileUrl) saveFile(next.fileUrl, bundleId);
       } catch (error) {
         if (disposed.current) return;
         const status = (error as { status?: number }).status;
@@ -326,11 +336,7 @@ export function useIpaDownload(bundleId: string): IpaDownloadControl {
 
   const save = useCallback(() => {
     const url = jobRef.current?.fileUrl;
-    if (!url) return;
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${bundleId}.ipa`;
-    link.click();
+    if (url) saveFile(url, bundleId);
   }, [bundleId]);
 
   const status = job?.status ?? "idle";

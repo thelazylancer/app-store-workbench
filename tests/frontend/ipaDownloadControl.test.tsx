@@ -123,6 +123,28 @@ describe("React IPA download control", () => {
     expect(saved!.download).toBe("com.example.app.ipa");
   });
 
+  it("saves immediately when the server returns a cached download", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      json(job({ status: "done", progress: 100, fileUrl: "/api/ipa-download/job-1/file" }), 202),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    renderControl();
+
+    let saved: HTMLAnchorElement | null = null;
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+      saved = this;
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "下载 IPA" }));
+    await advance(0);
+
+    expect(saved).not.toBeNull();
+    expect(saved!.getAttribute("href")).toBe("/api/ipa-download/job-1/file");
+    expect(saved!.download).toBe("com.example.app.ipa");
+    expect(screen.getByRole("button", { name: "保存 IPA" })).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("stops polling after the terminal state", async () => {
     const fetchMock = vi
       .fn()

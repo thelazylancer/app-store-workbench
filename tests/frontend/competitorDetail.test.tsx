@@ -184,6 +184,7 @@ describe("React competitor detail", () => {
     expect(storeLink.getAttribute("href")).toBe("https://apps.apple.com/app/id111");
     const qimai = screen.getByRole("link", { name: /七麦查看/ });
     expect(qimai.getAttribute("href")).toBe("https://www.qimai.cn/app/baseinfo/appid/111/country/us");
+    expect(screen.getByRole("button", { name: "下载 IPA" })).toBeTruthy();
     expect(document.body.textContent).not.toContain("App Store 已命中");
 
     const metrics = Array.from(document.querySelectorAll<HTMLElement>('[data-role="metric"]'));
@@ -279,6 +280,7 @@ describe("React competitor detail", () => {
 
     expect(screen.getByText("App Store 未命中")).toBeTruthy();
     expect(screen.getByText("未命中，无 App Store 详情可展示。")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "下载 IPA" })).toBeNull();
     expect(document.querySelector('[data-role="detail-metrics"]')).toBeNull();
     expect(document.querySelector('[data-role="screenshots"]')).toBeNull();
     expect(document.querySelector('[data-role="iap-section"]')).toBeNull();
@@ -297,6 +299,7 @@ describe("React competitor detail", () => {
     await waitForDetail("Pending Source");
 
     expect(screen.queryByText("待补全")).toBeNull();
+    expect(screen.queryByRole("button", { name: "下载 IPA" })).toBeNull();
     expect(document.querySelector('[data-role="missed-panel"]')).toBeNull();
     expect(document.querySelector('[data-role="detail-metrics"]')).not.toBeNull();
     expect(document.querySelector('[data-role="package-info"]')).not.toBeNull();

@@ -2,6 +2,7 @@ import { Badge, Stack, Text } from "@astryxdesign/core";
 import { useState } from "react";
 import type { PackageDetail } from "../../../shared/competitorTypes";
 import { competitorAssetUrl } from "../../lib/competitorApi";
+import { IpaDownload } from "../../search/IpaDownload";
 import { appStoreUrl, jsonString } from "./format";
 import type { MissingStatus } from "./types";
 
@@ -65,6 +66,9 @@ export function Identity({
               >
                 七麦查看<span aria-hidden="true"> ↗</span>
               </a>
+            ) : null}
+            {packageDetail.lookupStatus === "hit" ? (
+              <IpaDownload bundleId={packageDetail.packageCode} />
             ) : null}
           </div>
         )}

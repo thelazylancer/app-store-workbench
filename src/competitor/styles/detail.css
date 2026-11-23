@@ -71,6 +71,7 @@
 .wx-detail-links {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 14px;
   margin-top: 8px;
 }

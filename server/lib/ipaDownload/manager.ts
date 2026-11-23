@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { statSync } from "node:fs";
 import { mkdir, unlink } from "node:fs/promises";
 import path from "node:path";
 import type { IpaDownloadErrorCode, IpaDownloadJob } from "../../../shared/types";
@@ -20,7 +21,7 @@ import { createJobStore, isTerminalStatus } from "./jobStore";
 import type { JobRecord } from "./jobStore";
 
 const DEFAULT_TIMEOUT_MS = 60 * 60 * 1000;
-const DEFAULT_RETENTION_DAYS = 7;
+const DEFAULT_RETENTION_DAYS = 30;
 const DEFAULT_MAX_JOBS = 200;
 const STOREFRONT_RETRY_LIMIT = 1;
 const PROGRESS_POLL_MS = 1000;
@@ -71,6 +72,23 @@ export function createIpaDownloadManager(options: IpaDownloadManagerOptions): Ip
 
   const store = createJobStore({ downloadsDir, retentionDays, maxJobs, persistJobs, now });
   const { jobs, queue, controllers } = store;
+
+  // shortcut: the cache is keyed by bundleId only, so a hit can predate the
+  // newest App Store build; retention bounds how stale it can be.
+  function cachedJob(bundleId: string): JobRecord | null {
+    const cutoff = now() - retentionDays * 24 * 60 * 60 * 1000;
+    let newest: JobRecord | null = null;
+    for (const job of jobs.values()) {
+      if (job.bundleId !== bundleId || job.status !== "done" || job.updatedAt < cutoff) continue;
+      if (newest && job.updatedAt <= newest.updatedAt) continue;
+      try {
+        if (statSync(path.join(downloadsDir, job.fileName)).isFile()) newest = job;
+      } catch {
+        // The file was cleaned up: not a cache hit.
+      }
+    }
+    return newest;
+  }
 
   async function attemptDownload(
     record: JobRecord,
@@ -230,6 +248,9 @@ export function createIpaDownloadManager(options: IpaDownloadManagerOptions): Ip
 
   return {
     createJob(bundleId: string) {
+      const cached = cachedJob(bundleId);
+      if (cached) return store.toView(cached);
+
       const id = randomUUID();
       const timestamp = now();
       const record: JobRecord = {
