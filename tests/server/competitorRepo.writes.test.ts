@@ -1,8 +1,10 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { createCompetitorRepo } from "../../server/lib/competitorRepo";
 import { syncCompetitorDay } from "../../server/lib/competitorSync";
 import { runMigrations } from "../../server/lib/db";
 import type { SourceBatch } from "../../server/lib/firstDeliverySource";
+import { fetchOfflinePackages } from "../../server/lib/offlineSource";
+import { syncOfflinePackages } from "../../server/lib/offlineSync";
 import { STORE_COUNTRIES } from "../../shared/types";
 import { createCompetitorRepoFixtures } from "./competitorRepoTestUtils";
 import { openTestPool } from "./dbTestUtils";
@@ -20,8 +22,12 @@ describeDb("competitor repository writes", () => {
     await runMigrations(pool!);
   });
 
-  afterAll(async () => {
-    const pattern = `test.competitor.${suffix}%`;
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  afterAll(async () => {    const pattern = `test.competitor.${suffix}%`;
     await pool!.query("DELETE FROM competitor_country_hits WHERE package_code LIKE $1", [pattern]);
     await pool!.query("DELETE FROM competitor_assets WHERE package_code LIKE $1", [pattern]);
     await pool!.query("DELETE FROM competitor_versions WHERE package_code LIKE $1", [pattern]);
@@ -322,5 +328,96 @@ describeDb("competitor repository writes", () => {
       screenshotLocalPaths: [`${day}/${code}/shot.jpg`],
     });
     expect(stored?.versions.map((entry) => entry.version)).toEqual(["2.0"]);
+  });
+
+  it("updates offline_date only for packages that already exist", async () => {
+    const repo = createCompetitorRepo(pool!);
+    const codeA = `test.competitor.${suffix}.offline-a`;
+    const codeB = `test.competitor.${suffix}.offline-b`;
+    const missing = `test.competitor.${suffix}.offline-missing`;
+    await repo.upsertPackage({ ...pkg, packageCode: codeA });
+    await repo.upsertPackage({ ...pkg, packageCode: codeB });
+    const before = await repo.getPackage(codeA);
+    const snapshotHash = () => pool!.query<{ hash: string }>(
+      `SELECT md5(string_agg(t::text, '|' ORDER BY t.package_code, t.target_date)) AS hash
+         FROM competitor_snapshots t WHERE t.package_code = ANY($1::text[])`,
+      [[codeA, codeB]],
+    );
+    const snapshotsBefore = await snapshotHash();
+
+    const returned = await repo.updateOfflineDates([
+      { packageCode: codeA, offlineDate: "2026-11-10" },
+      { packageCode: codeB, offlineDate: "2026-11-11" },
+      { packageCode: missing, offlineDate: "2026-11-12" },
+    ]);
+
+    expect(returned.sort()).toEqual([codeA, codeB].sort());
+    expect((await repo.getPackage(codeA))?.offlineDate).toBe("2026-11-10");
+    expect((await repo.getPackage(codeB))?.offlineDate).toBe("2026-11-11");
+    expect(await repo.getPackage(missing)).toBeNull();
+
+    const after = await repo.getPackage(codeA);
+    expect(after).toMatchObject({
+      displayName: before!.displayName,
+      team: before!.team,
+      lookupStatus: before!.lookupStatus,
+      fetchedAt: before!.fetchedAt,
+    });
+
+    expect((await snapshotHash()).rows).toEqual(snapshotsBefore.rows);
+  });
+
+  it("writes valid rows even when the source contains calendar-invalid dates", async () => {
+    const repo = createCompetitorRepo(pool!);
+    const good = `test.competitor.${suffix}.offline-good`;
+    const bad = `test.competitor.${suffix}.offline-bad`;
+    await repo.upsertPackage({ ...pkg, packageCode: good });
+    await repo.upsertPackage({ ...pkg, packageCode: bad });
+
+    vi.stubEnv("FIRST_DELIVERY_API_URL", "http://source.test");
+    vi.stubEnv("FIRST_DELIVERY_API_KEY", "test-key");
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      code: 0,
+      message: "ok",
+      request_id: "req_test",
+      data: [
+        { package_code: good, offline_date: "2026-11-20" },
+        { package_code: bad, offline_date: "2026-13-99" },
+        { package_code: bad, offline_date: "2026-02-31" },
+      ],
+      meta: { page: 1, page_size: 200, total_count: 3 },
+    })));
+
+    const report = await syncOfflinePackages(
+      { start: "2026-11-20", end: "2026-11-22" },
+      { fetchOfflinePackages, repo },
+    );
+
+    expect((await repo.getPackage(good))?.offlineDate).toBe("2026-11-20");
+    expect((await repo.getPackage(bad))?.offlineDate).toBeNull();
+    expect(report).toMatchObject({ fetched: 3, matched: 1, updated: 1, unmatched: 0, failed: 2 });
+    expect(report.fetched).toBe(report.matched + report.unmatched + report.failed);
+  });
+
+  it("returns an empty array without querying when no entries are given", async () => {
+    const repo = createCompetitorRepo(pool!);
+    const query = vi.spyOn(pool!, "query");
+
+    await expect(repo.updateOfflineDates([])).resolves.toEqual([]);
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it("lets a later duplicate code overwrite an earlier one", async () => {
+    const repo = createCompetitorRepo(pool!);
+    const code = `test.competitor.${suffix}.offline-dup`;
+    await repo.upsertPackage({ ...pkg, packageCode: code });
+
+    const returned = await repo.updateOfflineDates([
+      { packageCode: code, offlineDate: "2026-11-10" },
+      { packageCode: code, offlineDate: "2026-11-20" },
+    ]);
+
+    expect(returned).toEqual([code]);
+    expect((await repo.getPackage(code))?.offlineDate).toBe("2026-11-20");
   });
 });

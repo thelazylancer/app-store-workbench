@@ -13,6 +13,7 @@ import { createCompetitorRepo } from "./lib/competitorRepo";
 import { startCompetitorScheduler } from "./lib/competitorScheduler";
 import { createPool, runMigrations } from "./lib/db";
 import { fetchFirstDeliveryPackages } from "./lib/firstDeliverySource";
+import { fetchOfflinePackages } from "./lib/offlineSource";
 import { buildIapHints } from "./lib/iapHints";
 import { createIpaDownloadManager } from "./lib/ipaDownload";
 import { fetchProductPageDetails as fetchProductPageDetailsUncached } from "./lib/productPage";
@@ -69,13 +70,16 @@ async function main() {
   const { competitorRepo, shelfQueries } = await competitorRepoFromEnv();
 
   if (competitorRepo) {
-    startCompetitorScheduler({
-      fetchSourcePackages: fetchFirstDeliveryPackages,
-      lookupAppByBundleId,
-      fetchProductPageDetails,
-      downloadAssets: downloadAppAssets,
-      repo: competitorRepo,
-    });
+    startCompetitorScheduler(
+      {
+        fetchSourcePackages: fetchFirstDeliveryPackages,
+        lookupAppByBundleId,
+        fetchProductPageDetails,
+        downloadAssets: downloadAppAssets,
+        repo: competitorRepo,
+      },
+      { fetchOfflinePackages, repo: competitorRepo },
+    );
   }
 
   const app = createApp({
