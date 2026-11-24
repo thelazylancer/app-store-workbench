@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { Theme } from "@astryxdesign/core";
 import { BrowserRouter } from "react-router";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { DayDetail, DaySummary, PackageDetail } from "../../shared/competitorTypes";
 import { CompetitorHomePage } from "../../src/competitor/App";
 import { addDays, yesterdayUtc } from "../../src/competitor/format";
@@ -11,6 +11,29 @@ import { wxTheme } from "../../src/theme/wxTheme";
 const DATE = yesterdayUtc();
 const PREV = addDays(DATE, -1);
 const ZERO = addDays(DATE, -2);
+
+beforeAll(() => {
+  if (!globalThis.IntersectionObserver) {
+    globalThis.IntersectionObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+      takeRecords() { return []; }
+    } as unknown as typeof IntersectionObserver;
+  }
+  // jsdom has no native dialog implementation; Lightbox calls showModal/close.
+  if (typeof HTMLDialogElement.prototype.showModal !== "function") {
+    HTMLDialogElement.prototype.showModal = function showModal() {
+      this.setAttribute("open", "");
+    };
+  }
+  if (typeof HTMLDialogElement.prototype.close !== "function") {
+    HTMLDialogElement.prototype.close = function close() {
+      this.removeAttribute("open");
+      this.dispatchEvent(new Event("close"));
+    };
+  }
+});
 
 function pkg(overrides: Partial<PackageDetail> & { packageCode: string }): PackageDetail {
   return {
@@ -358,6 +381,67 @@ describe("React competitor home", () => {
     expect(document.body.textContent).toContain("未配置数据库");
     fireEvent.click(screen.getByRole("button", { name: "重试" }));
     await waitFor(() => expect(fetchMock.mock.calls.length).toBe(2));
+  });
+
+  it("switches to the screenshot strip mode and opens a lightbox", async () => {
+    const shot = pkg({
+      packageCode: "com.shot.ios",
+      displayName: "Shot Source",
+      appleId: 333,
+      category: "游戏",
+      appVersion: "2.0.0",
+      appStoreJson: {
+        name: "Shot App",
+        trackName: "Shot App",
+        iapItems: [{ name: "Pro", price: "$1.99" }],
+      },
+      screenshotLocalPaths: [`${DATE}/com.shot.ios/1.png`, `${DATE}/com.shot.ios/2.png`],
+    });
+    vi.stubGlobal("fetch", mockApi({ [DATE]: day(DATE, [shot, missed]) }, [summary(DATE, 2)]));
+    renderPage("?view=shots");
+    await waitForRows(1);
+
+    expect(screen.getByRole("radio", { name: /商店图/ }).getAttribute("aria-checked")).toBe("true");
+
+    const row = document.querySelector<HTMLElement>('[data-role="competitor-row"]')!;
+    expect(row.querySelector(".wx-shot-name")?.getAttribute("href")).toBe("/package/com.shot.ios");
+    expect(row.querySelector(".wx-shot-name")?.textContent).toBe("Shot App");
+    expect(row.textContent).toContain("游戏");
+    expect(row.textContent).toContain("v2.0.0");
+    expect(row.textContent).toContain("内购");
+    // Compressed: no bundle id, Apple id, dates or version counts.
+    expect(row.textContent).not.toContain("com.shot.ios");
+    expect(row.querySelector(".wx-row-code")).toBeNull();
+    expect(row.querySelector(".wx-row-versions")).toBeNull();
+
+    const images = [...row.querySelectorAll<HTMLImageElement>(".wx-shot-img")];
+    expect(images.map((img) => img.getAttribute("src"))).toEqual([
+      `/competitor-assets/${DATE}/com.shot.ios/1.png`,
+      `/competitor-assets/${DATE}/com.shot.ios/2.png`,
+    ]);
+    expect(images.every((img) => img.getAttribute("loading") === "lazy")).toBe(true);
+
+    // A missed package keeps its name, badge and a no-screenshot slot.
+    const missedRow = document.querySelector<HTMLElement>('[data-role="exception-row"]')!;
+    expect(missedRow.textContent).toContain("Beta Source");
+    expect(missedRow.textContent).toContain("App Store 未命中");
+    expect(missedRow.querySelector(".wx-shot-empty")?.textContent).toBe("无商店图");
+
+    fireEvent.click(screen.getByRole("button", { name: "放大查看Shot App 截图 2" }));
+    const dialog = document.querySelector<HTMLDialogElement>("dialog");
+    await waitFor(() => expect(dialog?.hasAttribute("open")).toBe(true));
+    expect(dialog?.querySelectorAll("[data-lightbox-page]")).toHaveLength(2);
+    expect([...dialog!.querySelectorAll("[data-lightbox-page] img")].map((img) => img.getAttribute("src")))
+      .toEqual([
+        `/competitor-assets/${DATE}/com.shot.ios/1.png`,
+        `/competitor-assets/${DATE}/com.shot.ios/2.png`,
+      ]);
+    fireEvent.click(dialog?.querySelector<HTMLButtonElement>("[data-lightbox-chrome] button")!);
+    await waitFor(() => expect(dialog?.hasAttribute("open")).toBe(false));
+
+    fireEvent.click(screen.getByRole("radio", { name: /列表/ }));
+    await waitFor(() => expect(window.location.search).toBe(""));
+    expect(document.querySelector('[data-role="competitor-row"]')?.tagName).toBe("A");
   });
 
   it("resolves App Store names as name → trackName → displayName", () => {

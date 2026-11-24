@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { Badge } from "@astryxdesign/core";
+import { Badge, Lightbox } from "@astryxdesign/core";
 import type { PackageBrief, PackageDetail, SummaryCompetitor, SummaryGroup } from "../../shared/competitorTypes";
 import { competitorAssetUrl } from "../lib/competitorApi";
 import { teamLabel } from "../lib/teamLabel";
-import type { StatusFilter } from "./format";
+import type { StatusFilter, ViewMode } from "./format";
 import { groupShown } from "./selectors";
 
 type ExceptionEntry = PackageBrief & { reason: "miss" | "pending" };
@@ -158,16 +158,114 @@ function ExceptionRow({ entry }: { entry: ExceptionEntry }) {
   );
 }
 
+/** Store-screenshot mode: name and one horizontal strip, everything else dropped. */
+function ShotRow({
+  competitor,
+  facts,
+}: {
+  competitor: SummaryCompetitor;
+  facts: PackageDetail | undefined;
+}) {
+  const firstPackage = competitor.packages[0];
+  const code = firstPackage?.packageCode ?? "";
+  const urls = (facts?.screenshotLocalPaths ?? [])
+    .map((path) => competitorAssetUrl(path))
+    .filter((url): url is string => Boolean(url));
+  const version = facts?.appVersion ?? firstPackage?.appVersion;
+  const meta = [
+    facts?.category,
+    version ? `v${version}` : null,
+    firstPackage?.hasIap ? "内购" : null,
+  ].filter(Boolean).join(" · ");
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+
+  return (
+    <div
+      className="wx-shot-row"
+      data-role="competitor-row"
+      data-competitor={competitorKey(competitor)}
+      data-package={code}
+    >
+      <div className="wx-shot-head">
+        <Link className="wx-shot-name" to={packageLink(code)} aria-label={`查看 ${competitor.name} 的竞品详情`}>
+          {competitor.name}
+        </Link>
+        {meta ? <span className="wx-shot-meta">{meta}</span> : null}
+      </div>
+      {urls.length > 0 ? (
+        <div className="wx-shot-strip">
+          {urls.map((url, index) => (
+            <button
+              key={url}
+              type="button"
+              className="wx-shot-btn"
+              aria-label={`放大查看${competitor.name} 截图 ${index + 1}`}
+              onClick={() => setOpenIndex(index)}
+            >
+              <img
+                className="wx-shot-img"
+                src={url}
+                alt={`${competitor.name} 商店截图 ${index + 1}`}
+                loading="lazy"
+                decoding="async"
+              />
+            </button>
+          ))}
+        </div>
+      ) : (
+        <span className="wx-shot-empty">暂无商店图</span>
+      )}
+      <Lightbox
+        isOpen={openIndex !== null}
+        index={openIndex ?? 0}
+        onIndexChange={setOpenIndex}
+        onOpenChange={(open) => { if (!open) setOpenIndex(null); }}
+        media={urls.map((src, index) => ({
+          src,
+          alt: `${competitor.name} 商店截图 ${index + 1}`,
+          caption: `${competitor.name} · ${index + 1}/${urls.length}`,
+        }))}
+        hasZoom
+      />
+    </div>
+  );
+}
+
+function ShotExceptionRow({ entry }: { entry: ExceptionEntry }) {
+  return (
+    <div
+      className="wx-shot-row wx-shot-row-exception"
+      data-role="exception-row"
+      data-reason={entry.reason}
+      data-package={entry.packageCode}
+      data-competitor={`pkg:${entry.packageCode}`}
+    >
+      <div className="wx-shot-head">
+        <Link className="wx-shot-name" to={packageLink(entry.packageCode)}>
+          {entry.displayName}
+        </Link>
+        <Badge
+          variant={entry.reason === "miss" ? "wx-miss" : "wx-pending"}
+          label={missLabel(entry)}
+        />
+      </div>
+      <span className="wx-shot-empty">无商店图</span>
+    </div>
+  );
+}
+
 export function TeamBlock({
   group,
   packages,
   status,
   rangeDays,
+  view,
 }: {
   group: SummaryGroup;
   packages: Map<string, PackageDetail>;
   status: StatusFilter;
   rangeDays: number;
+  view: ViewMode;
 }) {
   const hits = status === "exception"
     ? []
@@ -192,10 +290,21 @@ export function TeamBlock({
           const facts = competitor.packages
             .map((brief) => packages.get(brief.packageCode))
             .find((detail) => detail !== undefined);
-          return <HitRow key={competitorKey(competitor)} competitor={competitor} facts={facts} rangeDays={rangeDays} />;
+          return view === "shots" ? (
+            <ShotRow key={competitorKey(competitor)} competitor={competitor} facts={facts} />
+          ) : (
+            <HitRow
+              key={competitorKey(competitor)}
+              competitor={competitor}
+              facts={facts}
+              rangeDays={rangeDays}
+            />
+          );
         })}
         {exceptions.map((entry) => (
-          <ExceptionRow key={entry.packageCode} entry={entry} />
+          view === "shots"
+            ? <ShotExceptionRow key={entry.packageCode} entry={entry} />
+            : <ExceptionRow key={entry.packageCode} entry={entry} />
         ))}
       </div>
     </section>

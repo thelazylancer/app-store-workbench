@@ -3,14 +3,16 @@ import type { ISODateString } from "@astryxdesign/core/Calendar";
 import type { DayDetail } from "../../shared/competitorTypes";
 import type { QueryFilters } from "../app/useQueryFilters";
 import { teamLabel } from "../lib/teamLabel";
-import { statusFilterLabel, yesterdayUtc, type StatusFilter } from "./format";
+import { statusFilterLabel, yesterdayUtc, type StatusFilter, type ViewMode } from "./format";
 import { categoryOf, dedupedPackages, scopedPackages, tabTeams, totals, uniqueSorted } from "./selectors";
 
 type Props = {
   days: DayDetail[];
   loading: boolean;
   filters: QueryFilters;
+  view: ViewMode;
   onChange: (patch: Partial<QueryFilters>) => void;
+  onViewChange: (view: ViewMode) => void;
   onClear: () => void;
 };
 
@@ -23,7 +25,7 @@ function Stat({ role, label, value, tone }: { role: string; label: string; value
   );
 }
 
-export function Controls({ days, loading, filters, onChange, onClear }: Props) {
+export function Controls({ days, loading, filters, view, onChange, onViewChange, onClear }: Props) {
   const counts = totals(days, filters);
   const hasData = !loading && scopedPackages(days, filters).length > 0;
   const categoryOptions = [
@@ -109,6 +111,18 @@ export function Controls({ days, loading, filters, onChange, onClear }: Props) {
               onChange={(value) => onChange({ date: value ?? null })}
               data-role="date-filter"
             />
+          </div>
+          <div className="wx-control">
+            <Text type="supporting" as="span">视图</Text>
+            <SegmentedControl
+              label="视图"
+              size="sm"
+              value={view}
+              onChange={(value) => onViewChange(value as ViewMode)}
+            >
+              <SegmentedControlItem value="list" label="列表" data-role="view" data-value="list" />
+              <SegmentedControlItem value="shots" label="商店图" data-role="view" data-value="shots" />
+            </SegmentedControl>
           </div>
         </div>
       </div>

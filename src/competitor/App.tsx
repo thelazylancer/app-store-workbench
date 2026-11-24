@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router";
 import type { DayDetail } from "../../shared/competitorTypes";
 import { useQueryFilters, type QueryFilters } from "../app/useQueryFilters";
 import { useDocumentTitle } from "../app/useDocumentTitle";
 import { CompetitorApiError, getCompetitorDay, getCompetitorDays } from "../lib/competitorApi";
-import { yesterdayUtc } from "./format";
+import { yesterdayUtc, type ViewMode } from "./format";
 import { Controls } from "./Controls";
 import { EmptyCard, LoadError, LoadingTimeline } from "./states";
 import { Timeline } from "./Timeline";
@@ -43,6 +44,8 @@ async function fetchWindow(): Promise<DayDetail[]> {
 export function CompetitorHomePage() {
   useDocumentTitle("竞品日报 · App搜索工作台");
   const { filters, update, clear } = useQueryFilters();
+  const [params, setParams] = useSearchParams();
+  const view: ViewMode = params.get("view") === "shots" ? "shots" : "list";
   const [days, setDays] = useState<DayDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -122,11 +125,25 @@ export function CompetitorHomePage() {
   }
 
   const onChange = (patch: Partial<QueryFilters>) => update(patch);
+  const onViewChange = (next: ViewMode) => setParams((current) => {
+    const nextParams = new URLSearchParams(current);
+    if (next === "shots") nextParams.set("view", "shots");
+    else nextParams.delete("view");
+    return nextParams;
+  }, { replace: true });
   const retry = () => setReload((value) => value + 1);
 
   return (
     <section className="wx-report" data-role="list-view">
-      <Controls days={days} loading={loading} filters={filters} onChange={onChange} onClear={clear} />
+      <Controls
+        days={days}
+        loading={loading}
+        filters={filters}
+        view={view}
+        onChange={onChange}
+        onViewChange={onViewChange}
+        onClear={clear}
+      />
 
       {!loading && !loadError && abnormal.length > 0 ? (
         <p className="wx-exception-banner" data-role="batch-banner">
@@ -151,7 +168,7 @@ export function CompetitorHomePage() {
         ) : null}
         {hasDays ? (
           <>
-            <Timeline days={days} filters={filters} />
+            <Timeline days={days} filters={filters} view={view} />
             {shownRows === 0 ? (
               <EmptyCard
                 role="empty-filter"

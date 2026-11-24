@@ -4,6 +4,9 @@ import type { StatusFilter } from "../lib/reportDate";
 export { addDays, daySpan, isDateString, todayUtc, yesterdayUtc } from "../lib/reportDate";
 export type { StatusFilter } from "../lib/reportDate";
 
+/** Home list presentation: dense rows or the store-screenshot strip. */
+export type ViewMode = "list" | "shots";
+
 export const DATE_KIND_LABEL: Record<DateKind, string> = {
   first_ad: "投放日期",
   listing: "上架日期",

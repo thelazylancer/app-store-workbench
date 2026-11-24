@@ -1,9 +1,10 @@
 import type { DayDetail, PackageDetail } from "../../shared/competitorTypes";
 import type { QueryFilters } from "../app/useQueryFilters";
+import type { ViewMode } from "./format";
 import { TeamBlock } from "./TeamBlock";
 import { groupsFrom, groupShown, scopedPackages, scopeDays } from "./selectors";
 
-export function Timeline({ days, filters }: { days: DayDetail[]; filters: QueryFilters }) {
+export function Timeline({ days, filters, view }: { days: DayDetail[]; filters: QueryFilters; view: ViewMode }) {
   const packages = new Map<string, PackageDetail>(scopedPackages(days, filters).map((pkg) => [pkg.packageCode, pkg]));
   const rangeDays = filters.date ? 1 : 0;
 
@@ -28,6 +29,7 @@ export function Timeline({ days, filters }: { days: DayDetail[]; filters: QueryF
                 packages={packages}
                 status={filters.status}
                 rangeDays={rangeDays}
+                view={view}
               />
             ))}
           </section>
