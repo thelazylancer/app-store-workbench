@@ -83,8 +83,8 @@ describe("React shelf trend page", () => {
     ]);
     expect(dims[3]!.legend).toEqual([
       { label: "Cloudflare", count: "1" },
-      { label: "Template generator", count: "1" },
-      { label: "Own domain", count: "1" },
+      { label: "模板站", count: "1" },
+      { label: "自有域名", count: "1" },
     ]);
     expect(dims[3]!.bars).toEqual([
       { week: WEEKS[0]!.weekStart, key: "cloudflare", count: "1" },
@@ -288,7 +288,7 @@ describe("React shelf trend page", () => {
       expect(detailRows()).toHaveLength(1);
     });
     const dialog = screen.getByRole("dialog");
-    expect(dialog.textContent).toContain("全部团队 · Template generator");
+    expect(dialog.textContent).toContain("全部团队 · 模板站");
     expect(detailRows()[0]?.textContent).toContain("Alpha App");
   });
 

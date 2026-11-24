@@ -29,7 +29,11 @@ describe("privacyHostKind", () => {
     expect(privacyHostKind(null)).toBe("unknown");
     expect(privacyHostKind("")).toBe("unknown");
     expect(privacyHostKind("not a url")).toBe("unknown");
-    expect(privacyHostLabel("unknown")).toBe("Unknown");
+    expect(privacyHostLabel("unknown")).toBe("未知");
+    expect(privacyHostLabel("own")).toBe("自有域名");
+    expect(privacyHostLabel("generator")).toBe("模板站");
+    expect(privacyHostLabel("github")).toBe("Github");
+    expect(privacyHostLabel("chatgpt")).toBe("Chatgpt");
   });
 });
 

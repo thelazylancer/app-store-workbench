@@ -64,12 +64,12 @@ export function privacyHostKind(policyUrl: string | null | undefined): PrivacyHo
 }
 
 const LABELS: Record<PrivacyHostKind, string> = {
-  own: "Own domain",
-  generator: "Template generator",
+  own: "自有域名",
+  generator: "模板站",
   cloudflare: "Cloudflare",
   google: "Google",
-  github: "GitHub Pages",
-  chatgpt: "ChatGPT sites",
+  github: "Github",
+  chatgpt: "Chatgpt",
   vercel: "Vercel",
   netlify: "Netlify",
   surge: "Surge",
@@ -77,7 +77,7 @@ const LABELS: Record<PrivacyHostKind, string> = {
   clickup: "ClickUp",
   bunny: "Bunny CDN",
   app_store: "App Store",
-  unknown: "Unknown",
+  unknown: "未知",
 };
 
 export function privacyHostLabel(kind: string): string {
