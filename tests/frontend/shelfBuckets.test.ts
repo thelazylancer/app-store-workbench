@@ -23,11 +23,10 @@ describe("iosBucketLabel", () => {
 });
 
 describe("categoryLabel", () => {
-  it("maps known genres and falls back to the raw English value", () => {
-    expect(categoryLabel("Games")).toBe("游戏");
-    expect(categoryLabel("Utilities")).toBe("工具");
-    expect(categoryLabel("Photo & Video")).toBe("摄影与录像");
-    expect(categoryLabel("Some New Genre")).toBe("Some New Genre");
+  it("keeps App Store's own category name", () => {
+    expect(categoryLabel("Games")).toBe("Games");
+    expect(categoryLabel("Utilities")).toBe("Utilities");
+    expect(categoryLabel("Photo & Video")).toBe("Photo & Video");
   });
 
   it("renders missing values as 未知", () => {
@@ -62,7 +61,7 @@ describe("foldTopCategories", () => {
       OTHER_KEY,
       "unknown",
     ]);
-    expect(segments[0]).toEqual({ key: "Games", label: "游戏", count: 30 });
+    expect(segments[0]).toEqual({ key: "Games", label: "Games", count: 30 });
     expect(segments[6]).toEqual({ key: OTHER_KEY, label: "其他", count: 8 });
     expect(segments[7]).toEqual({ key: "unknown", label: "未知", count: 17 });
   });

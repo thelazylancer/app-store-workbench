@@ -26,39 +26,11 @@ export function iapLabel(value: string): string {
   return "未知";
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  Games: "游戏",
-  Utilities: "工具",
-  Productivity: "效率",
-  "Social Networking": "社交",
-  Entertainment: "娱乐",
-  "Photo & Video": "摄影与录像",
-  Lifestyle: "生活",
-  Shopping: "购物",
-  Finance: "财务",
-  Education: "教育",
-  "Health & Fitness": "健康健美",
-  Business: "商务",
-  Travel: "旅行",
-  "Food & Drink": "美食佳饮",
-  Music: "音乐",
-  "News & Magazines": "新闻杂志",
-  Books: "图书",
-  Medical: "医疗",
-  Navigation: "导航",
-  Weather: "天气",
-  Sports: "体育",
-  Reference: "参考资料",
-  "Kids & Family": "儿童与家庭",
-  "Graphics & Design": "图形与设计",
-  "Developer Tools": "开发者工具",
-};
-
-/** Chinese mapping with English fallback; missing values render as 未知. */
+/** App Store's own category name, shown as-is; a missing value renders as 未知. */
 export function categoryLabel(value: string | null | undefined): string {
   const raw = value?.trim();
   if (!raw || raw === SHELF_UNKNOWN_KEY) return "未知";
-  return CATEGORY_LABELS[raw] ?? raw;
+  return raw;
 }
 
 function countMap(groups: ShelfGroupCount[]): Map<string, number> {

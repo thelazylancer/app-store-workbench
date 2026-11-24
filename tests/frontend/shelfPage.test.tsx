@@ -55,8 +55,8 @@ describe("React shelf trend page", () => {
     }));
     expect(dims.map((row) => row.title)).toEqual(["类目", "最低 iOS", "内购"]);
     expect(dims[0]!.legend).toEqual([
-      { label: "游戏", count: "2" },
-      { label: "工具", count: "1" },
+      { label: "Games", count: "2" },
+      { label: "Utilities", count: "1" },
     ]);
     expect(dims[0]!.bars).toEqual([
       { week: WEEKS[0]!.weekStart, key: "Games", count: "2" },
@@ -163,7 +163,7 @@ describe("React shelf trend page", () => {
     expect(dialog.textContent).toContain("共 3 包");
 
     const categories = [...dialog.querySelectorAll(".wx-detail-group th")].map((heading) => heading.textContent);
-    expect(categories).toEqual(["游戏2", "未知1"]);
+    expect(categories).toEqual(["Games2", "未知1"]);
     expect(detailRows().map((row) => row.textContent).join(" ")).toContain("Beta App");
     expect(detailRows().map((row) => row.textContent).join(" ")).toContain("com.unresolved.ios");
 
@@ -228,7 +228,7 @@ describe("React shelf trend page", () => {
       expect(detailRows()).toHaveLength(2);
     });
     const dialog = screen.getByRole("dialog");
-    expect(dialog.textContent).toContain("全部团队 · 游戏");
+    expect(dialog.textContent).toContain("全部团队 · Games");
     expect(dialog.textContent).toContain("共 2 包");
     expect(detailRows().map((row) => row.textContent).join(" ")).not.toContain("com.unresolved.ios");
 
@@ -256,7 +256,7 @@ describe("React shelf trend page", () => {
     });
     const dialog = screen.getByRole("dialog");
     expect(dialog.textContent).toContain("2026-11-09 ~ 2026-11-15");
-    expect(dialog.textContent).toContain("全部团队 · 游戏");
+    expect(dialog.textContent).toContain("全部团队 · Games");
     const url = new URL(packagesCalls(fetchMock)[0]!, "http://localhost");
     expect(url.searchParams.get("from")).toBe("2026-11-09");
     expect(url.searchParams.get("to")).toBe("2026-11-15");
