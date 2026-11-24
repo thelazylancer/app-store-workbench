@@ -187,7 +187,8 @@ describe("weekly page", () => {
     await screen.findByRole("heading", { level: 2, name: "该周没有已解析入库包" });
     expect(teamCards()).toHaveLength(0);
     expect(byRole<HTMLButtonElement>("weekly-next")?.getAttribute("aria-disabled")).toBe("true");
-    expect(screen.getByText("已是最新完整周")).toBeTruthy();
+    expect(screen.getByText("已超过最新完整周")).toBeTruthy();
+    expect(screen.queryByText("已是最新完整周")).toBeNull();
     expect(byRole<HTMLButtonElement>("weekly-previous")?.getAttribute("aria-disabled")).not.toBe("true");
   });
 
@@ -290,6 +291,9 @@ describe("weekly page", () => {
         '[data-role="weekly-metric-table-hidden"][data-metric="avgAdToOfflineDays"]',
       )?.textContent,
     ).toContain("0 天（已下架 0/30）");
+    expect(
+      rows[2]!.querySelector('[role="img"]')?.getAttribute("aria-label"),
+    ).toContain("0 天表示该团队该周没有已下架包");
 
     const toggle = document.querySelector<HTMLElement>(
       '[data-role="weekly-metric-toggle"][data-metric="avgVersionGapDays"]',

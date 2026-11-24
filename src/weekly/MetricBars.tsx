@@ -164,9 +164,9 @@ function MetricRow({
         <div
           className="wx-metric-area"
           role="img"
-          aria-label={`${series.title}，近 4 周，按团队。完整数值见${
-            open ? "下方表格" : "「数值」表格"
-          }。`}
+          aria-label={`${series.title}，近 4 周，按团队。${
+            series.key === "avgAdToOfflineDays" ? "0 天表示该团队该周没有已下架包；" : ""
+          }完整数值见${open ? "下方表格" : "「数值」表格"}。`}
         >
           {gridTicks.map((tick) => (
             <span
