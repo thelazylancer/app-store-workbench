@@ -215,7 +215,8 @@ describe("React competitor detail", () => {
 
     const privacy = document.querySelector('[data-role="privacy-section"]');
     expect(privacy?.querySelector(".wx-detail-section-title")?.textContent).toBe("隐私");
-    expect(screen.getByRole("link", { name: /隐私政策/ }).getAttribute("href")).toBe("https://example.com/privacy");
+    expect(screen.getByRole("link", { name: "https://example.com/privacy" }).getAttribute("href")).toBe("https://example.com/privacy");
+    expect(privacy?.textContent).toContain("隐私政策");
     expect(privacy?.querySelectorAll(".wx-privacy-tag")).toHaveLength(3);
     expect(privacy?.textContent).toContain("用于追踪你的数据");
     expect(privacy?.textContent).toContain("联系信息");

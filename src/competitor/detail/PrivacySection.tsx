@@ -33,9 +33,12 @@ export function PrivacySection({ packageDetail }: { packageDetail: PackageDetail
     <section className="wx-detail-section wx-privacy-section" data-role="privacy-section">
       <h3 className="wx-detail-section-title">隐私</h3>
       {privacy.policyUrl ? (
-        <a className="wx-privacy-policy" href={privacy.policyUrl} target="_blank" rel="noreferrer">
-          隐私政策<span aria-hidden="true"> ↗</span>
-        </a>
+        <div className="wx-privacy-policy">
+          <span className="wx-privacy-policy-label">隐私政策</span>
+          <a className="wx-privacy-policy-url" href={privacy.policyUrl} target="_blank" rel="noreferrer">
+            {privacy.policyUrl}
+          </a>
+        </div>
       ) : null}
       {privacy.notCollected ? <p className="wx-privacy-none">未收集数据</p> : null}
       {privacy.groups.map((group) => (
