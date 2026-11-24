@@ -3,6 +3,7 @@ import type { PackageDetail } from "../../../shared/competitorTypes";
 import { teamLabel } from "../../lib/teamLabel";
 import { CopyValue } from "./CopyValue";
 import { assetStatusLabel, dateOnly, formatSize, jsonString } from "./format";
+import { readPrivacy } from "./PrivacySection";
 
 export function InfoRow({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -25,6 +26,7 @@ export function PackageInfoSection({ packageDetail }: { packageDetail: PackageDe
   const json = packageDetail.appStoreJson;
   const bundleId = jsonString(json, ["bundleId"]) ?? packageDetail.packageCode;
   const latest = packageDetail.versions[0];
+  const privacyUrl = readPrivacy(json)?.policyUrl;
   const rows: Array<[string, ReactNode]> = [
     ["开发者", jsonString(json, ["developer"]) ?? "—"],
     ["发布日期", dateOnly(packageDetail.listingDate)],
@@ -36,8 +38,15 @@ export function PackageInfoSection({ packageDetail }: { packageDetail: PackageDe
     ["类目", packageDetail.category ?? "—"],
     ["最低 iOS", packageDetail.minimumOsVersion ?? "—"],
     ["源展示名", packageDetail.displayName || "—"],
-    ["图片状态", assetStatusLabel(packageDetail.assetStatus)],
   ];
+  if (privacyUrl) {
+    rows.push(["隐私政策", (
+      <a key="privacy" className="wx-privacy-policy-url" href={privacyUrl} target="_blank" rel="noreferrer">
+        {privacyUrl}
+      </a>
+    )]);
+  }
+  rows.push(["图片状态", assetStatusLabel(packageDetail.assetStatus)]);
 
   return (
     <section className="wx-detail-section wx-package-info" data-role="package-info">

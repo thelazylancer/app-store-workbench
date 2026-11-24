@@ -215,13 +215,20 @@ describe("React competitor detail", () => {
 
     const privacy = document.querySelector('[data-role="privacy-section"]');
     expect(privacy?.querySelector(".wx-detail-section-title")?.textContent).toBe("隐私");
-    expect(screen.getByRole("link", { name: "https://example.com/privacy" }).getAttribute("href")).toBe("https://example.com/privacy");
-    expect(privacy?.textContent).toContain("隐私政策");
     expect(privacy?.querySelectorAll(".wx-privacy-tag")).toHaveLength(3);
     expect(privacy?.textContent).toContain("用于追踪你的数据");
     expect(privacy?.textContent).toContain("联系信息");
     expect(privacy?.textContent).toContain("与你关联的数据");
     expect(privacy?.textContent).toContain("使用数据");
+
+    // The policy URL is a package-info row, not a privacy-section heading.
+    const packageInfo = document.querySelector('[data-role="package-info"]')!;
+    const privacyRow = [...packageInfo.querySelectorAll(".wx-info-row")]
+      .find((row) => row.querySelector(".wx-info-label")?.textContent === "隐私政策");
+    const policyLink = privacyRow?.querySelector<HTMLAnchorElement>("a");
+    expect(policyLink?.getAttribute("href")).toBe("https://example.com/privacy");
+    expect(policyLink?.textContent).toBe("https://example.com/privacy");
+    expect(privacy?.textContent).not.toContain("隐私政策");
 
     const description = document.querySelector('[data-role="description-section"]');
     expect(description?.textContent).toContain("Alpha 描述第一段。");
@@ -241,10 +248,10 @@ describe("React competitor detail", () => {
 
     const info = document.querySelector('[data-role="package-info"]');
     const rows = info?.querySelectorAll(".wx-info-row") ?? [];
-    expect(rows).toHaveLength(11);
+    expect(rows).toHaveLength(12);
     const infoText = info?.textContent ?? "";
     for (const expected of ["开发者", "Alpha Studio", "发布日期", "2026-10-01", "更新日期", "2026-11-10",
-      "com.alpha.ios", "1.0.0", "3.75 MB", "团队 A", "游戏", "15.0", "源展示名", "完整"]) {
+      "com.alpha.ios", "1.0.0", "3.75 MB", "团队 A", "游戏", "15.0", "源展示名", "隐私政策", "完整"]) {
       expect(infoText).toContain(expected);
     }
 

@@ -41,18 +41,6 @@
   white-space: nowrap;
 }
 
-.wx-privacy-policy {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-bottom: 10px;
-  font-size: 12px;
-}
-
-.wx-privacy-policy-label {
-  color: var(--color-text-secondary);
-}
-
 /* The whole address is shown, so a long policy URL must wrap, not overflow. */
 .wx-privacy-policy-url {
   color: var(--color-text-accent);

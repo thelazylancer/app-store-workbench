@@ -4,7 +4,7 @@ import { safeExternalUrl } from "./format";
 type PrivacyGroup = { label: string; categories: string[] };
 
 /** App Privacy data lives in `appStoreJson.privacy`; older rows simply have none. */
-function readPrivacy(json: Record<string, unknown>): { policyUrl: string | null; notCollected: boolean; groups: PrivacyGroup[] } | null {
+export function readPrivacy(json: Record<string, unknown>): { policyUrl: string | null; notCollected: boolean; groups: PrivacyGroup[] } | null {
   const raw = json.privacy;
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return null;
   const { policyUrl, notCollected, groups } = raw as { policyUrl?: unknown; notCollected?: unknown; groups?: unknown };
@@ -27,19 +27,12 @@ function readPrivacy(json: Record<string, unknown>): { policyUrl: string | null;
 
 export function PrivacySection({ packageDetail }: { packageDetail: PackageDetail }) {
   const privacy = readPrivacy(packageDetail.appStoreJson);
-  if (!privacy) return null;
+  // The policy URL is a package-info row; this section only carries the data categories.
+  if (!privacy || (!privacy.notCollected && privacy.groups.length === 0)) return null;
 
   return (
     <section className="wx-detail-section wx-privacy-section" data-role="privacy-section">
       <h3 className="wx-detail-section-title">隐私</h3>
-      {privacy.policyUrl ? (
-        <div className="wx-privacy-policy">
-          <span className="wx-privacy-policy-label">隐私政策</span>
-          <a className="wx-privacy-policy-url" href={privacy.policyUrl} target="_blank" rel="noreferrer">
-            {privacy.policyUrl}
-          </a>
-        </div>
-      ) : null}
       {privacy.notCollected ? <p className="wx-privacy-none">未收集数据</p> : null}
       {privacy.groups.map((group) => (
         <div className="wx-privacy-group" key={group.label}>
