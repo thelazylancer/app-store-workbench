@@ -289,7 +289,14 @@ describe("React shelf trend page", () => {
     });
     const dialog = screen.getByRole("dialog");
     expect(dialog.textContent).toContain("全部团队 · 模板站");
+    expect(dialog.querySelector("thead")?.textContent).toContain("隐私协议");
     expect(detailRows()[0]?.textContent).toContain("Alpha App");
+    expect(detailRows()[0]?.textContent).toContain("模板站");
+
+    // The row opens the full package detail in a new tab.
+    const link = detailRows()[0]?.querySelector<HTMLAnchorElement>("a.wx-detail-name");
+    expect(link?.getAttribute("href")).toBe("/package/com.alpha.ios");
+    expect(link?.getAttribute("target")).toBe("_blank");
   });
 
   it("filters to one team from the chart legend chip and back", async () => {

@@ -184,6 +184,14 @@
   color: var(--color-text-primary);
 }
 
+/* Every row opens the full package detail in a new tab. */
+a.wx-detail-name {
+  color: var(--color-text-accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
 .wx-detail-code {
   display: block;
   color: var(--color-text-secondary);

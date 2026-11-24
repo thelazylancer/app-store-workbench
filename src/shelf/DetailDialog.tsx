@@ -1,6 +1,7 @@
 import { Button, Dialog, DialogHeader, Layout, LayoutContent, Text } from "@astryxdesign/core";
 import { Fragment, useEffect, useState } from "react";
 import type { ShelfPackageRow } from "../../shared/shelfTypes";
+import { privacyHostLabel } from "../../shared/privacyHost";
 import { teamLabel } from "../lib/teamLabel";
 import { ShelfApiError, getShelfPackages } from "../lib/shelfApi";
 import { categoryLabel, iapLabel } from "./buckets";
@@ -68,6 +69,15 @@ export function ShelfDetailDialog({ selection, onClose }: {
   const matched = rows.filter((row) => matchesSelection(selection, row));
   const groups = groupByCategory(matched);
   const subtitle = `${selection.team ? teamLabel(selection.team) : "全部团队"}${selection.label ? ` · ${selection.label}` : ""}`;
+  // The clicked dimension gets its own column; iOS and IAP already have theirs.
+  const dimensionTitle = selection.groupBy === "privacy"
+    ? "隐私协议"
+    : selection.groupBy === "category" ? "类目" : null;
+  const dimensionValue = (row: ShelfPackageRow): string => {
+    if (selection.groupBy === "privacy") return privacyHostLabel(row.privacyHost);
+    return row.resolved ? categoryLabel(row.category) : "Unknown";
+  };
+  const columnCount = dimensionTitle ? 6 : 5;
 
   return (
     <Dialog isOpen onOpenChange={(open) => { if (!open) onClose(); }} width={880}>
@@ -101,6 +111,7 @@ export function ShelfDetailDialog({ selection, onClose }: {
                         <tr>
                           <th scope="col">应用</th>
                           <th scope="col">团队</th>
+                          {dimensionTitle ? <th scope="col">{dimensionTitle}</th> : null}
                           <th scope="col">入库日期</th>
                           <th scope="col">最低 iOS</th>
                           <th scope="col">内购</th>
@@ -110,7 +121,7 @@ export function ShelfDetailDialog({ selection, onClose }: {
                         {groups.map((group) => (
                           <Fragment key={group.category}>
                             <tr className="wx-detail-group">
-                              <th scope="colgroup" colSpan={5}>
+                              <th scope="colgroup" colSpan={columnCount}>
                                 {group.category}
                                 <span className="wx-detail-group-count">{group.rows.length}</span>
                               </th>
@@ -118,10 +129,18 @@ export function ShelfDetailDialog({ selection, onClose }: {
                             {group.rows.map((row) => (
                               <tr key={`${row.packageCode}-${row.targetDate}`} data-role="detail-row">
                                 <td>
-                                  <span className="wx-detail-name">{row.name ?? "Unknown"}</span>
+                                  <a
+                                    className="wx-detail-name"
+                                    href={`/package/${encodeURIComponent(row.packageCode)}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                  >
+                                    {row.name ?? "Unknown"}
+                                  </a>
                                   <span className="wx-detail-code wx-mono">{row.packageCode}</span>
                                 </td>
                                 <td>{teamLabel(row.team)}</td>
+                                {dimensionTitle ? <td>{dimensionValue(row)}</td> : null}
                                 <td className="wx-mono">{row.targetDate}</td>
                                 <td className="wx-mono">{row.minimumOsVersion ?? "—"}</td>
                                 <td>{iapLabel(row.iap)}</td>
