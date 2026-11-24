@@ -144,6 +144,18 @@ export function registerCompetitorRoutes(app: FastifyInstance, deps: AppDependen
     }
   });
 
+  app.get("/api/competitor/package/:packageCode/country-hits", async (request, reply) => {
+    const { packageCode } = request.params as { packageCode: string };
+    if (!PACKAGE_CODE_PATTERN.test(packageCode)) {
+      return reply.code(400).send({ message: "A valid package code is required" });
+    }
+    try {
+      return reply.send({ packageCode, hits: await repo.getCountryHits(packageCode) });
+    } catch {
+      return reply.code(500).send({ message: "Competitor query failed" });
+    }
+  });
+
   app.get("/api/competitor/package/:packageCode", async (request, reply) => {
     const { packageCode } = request.params as { packageCode: string };
     if (!PACKAGE_CODE_PATTERN.test(packageCode)) {

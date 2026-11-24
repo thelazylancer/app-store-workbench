@@ -49,7 +49,7 @@ function emptyRepo(): CompetitorQueryRepo {
     getPackage: async () => null,
     getPackageHistory: async () => [],
     getSummary: async () => [],
-    getBatch: async () => null,
+    getBatch: async () => null, getCountryHits: async () => [],
   };
 }
 

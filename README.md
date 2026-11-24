@@ -185,6 +185,16 @@ docker exec -it app-store-workbench-app-1 ipatool auth login
 | `DELETE` | `/api/ipa-download/:id` | 取消排队或运行中的任务 |
 | `GET` | `/api/ipa-download/:id/file` | 下载已完成的 IPA |
 
+## MCP
+
+`POST /mcp` 是 Streamable HTTP 的 MCP 服务，无状态、无鉴权，工具复用上面同一套 API 校验与数据逻辑。给 agent 接入：
+
+```bash
+claude mcp add --transport http app-store-workbench http://stargate.local:7001/mcp
+```
+
+工具：`shelf_trend`、`shelf_packages`（自有货架）；`competitor_days`、`competitor_day`、`competitor_batch`、`competitor_summary`、`competitor_package`、`competitor_package_history`、`competitor_country_hits`（竞品快照）；`search_apps`、`app_details`（实时 App Store）；`ipa_download_start`、`ipa_download_status`、`ipa_download_submit_code`、`ipa_download_cancel`（IPA 下载）。
+
 ## IPA 任务行为
 
 - 单并发队列；同一时间只运行一个 `ipatool` 进程。

@@ -33,6 +33,7 @@ function emptyRepo(): CompetitorQueryRepo {
     getPackageHistory: async () => [],
     getSummary: async () => [],
     getBatch: async () => null,
+    getCountryHits: async () => [],
   };
 }
 

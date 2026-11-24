@@ -8,6 +8,7 @@ import { registerCompetitorRoutes } from "./routes/competitor";
 import { registerIpaDownloadRoutes } from "./routes/ipaDownload";
 import { registerSearchRoutes } from "./routes/search";
 import { registerShelfRoutes } from "./routes/shelf";
+import { registerMcpRoute } from "./lib/mcp";
 import type { CompetitorQueryRepo } from "./lib/competitorRepo";
 import type { ShelfQueryRepo } from "./lib/shelfQueries";
 import type { IpaDownloadManager } from "./lib/ipaDownload";
@@ -91,6 +92,7 @@ export function createApp(deps: AppDependencies): FastifyInstance {
   registerShelfRoutes(app, deps);
   registerSearchRoutes(app, deps);
   registerIpaDownloadRoutes(app, deps);
+  registerMcpRoute(app);
 
   return app;
 }

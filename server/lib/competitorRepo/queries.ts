@@ -30,6 +30,7 @@ import {
   withAssets,
 } from "./rowMap";
 import type { PackageRowResult } from "./rowMap";
+import type { CountryHitRow } from "./writes";
 
 export type CompetitorQueryRepo = {
   listDays(start: string, end: string): Promise<DaySummary[]>;
@@ -39,6 +40,7 @@ export type CompetitorQueryRepo = {
   /** With `from`, aggregates packages from `from` through `date`; without it, only `date`. */
   getSummary(date: string, dateKind: DateKind, groupBy: GroupBy, from?: string): Promise<SummaryGroup[]>;
   getBatch(date: string): Promise<BatchRow | null>;
+  getCountryHits(packageCode: string): Promise<CountryHitRow[]>;
 };
 
 type Queryable = Pick<Pool, "query">;
@@ -362,6 +364,27 @@ export function createCompetitorQueries(pool: Pool): CompetitorQueryRepo {
         [date],
       );
       return rows[0] ? batchFromRow(rows[0]) : null;
+    },
+
+    async getCountryHits(packageCode) {
+      const { rows } = await pool.query<{
+        country: string;
+        status: string;
+        apple_id: string | null;
+        fetched_at: unknown;
+      }>(
+        `SELECT country, status, apple_id, fetched_at
+           FROM competitor_country_hits
+          WHERE package_code = $1
+          ORDER BY country`,
+        [packageCode],
+      );
+      return rows.map((row) => ({
+        country: row.country as CountryHitRow["country"],
+        status: row.status as CountryHitRow["status"],
+        appleId: row.apple_id === null ? null : Number(row.apple_id),
+        fetchedAt: text(row.fetched_at),
+      }));
     },
   };
 
