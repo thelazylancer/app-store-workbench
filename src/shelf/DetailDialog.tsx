@@ -27,13 +27,6 @@ function message(error: unknown): string {
   return error instanceof ShelfApiError ? error.message : "请求失败";
 }
 
-/** Rows we could not resolve locally have no detail page; search 七麦 by Bundle ID instead. */
-function rowHref(row: ShelfPackageRow): string {
-  return row.resolved
-    ? `/package/${encodeURIComponent(row.packageCode)}`
-    : `https://www.qimai.cn/search/index/searchType/app/keyword/${encodeURIComponent(row.packageCode)}`;
-}
-
 export function ShelfDetailDialog({ selection, onClose }: {
   selection: ShelfSelection | null;
   onClose: () => void;
@@ -136,16 +129,21 @@ export function ShelfDetailDialog({ selection, onClose }: {
                             {group.rows.map((row) => (
                               <tr key={`${row.packageCode}-${row.targetDate}`} data-role="detail-row">
                                 <td>
-                                  <a
-                                    className="wx-detail-name"
-                                    href={rowHref(row)}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    title={row.resolved ? "在新窗口打开详情" : "在七麦搜索"}
-                                  >
-                                    {row.name ?? "Unknown"}
-                                  </a>
-                                  <span className="wx-detail-code wx-mono">{row.packageCode}</span>
+                                  {/* No Apple ID locally means no page to open: plain text, no link. */}
+                                  {row.resolved ? (
+                                    <a
+                                      className="wx-detail-name"
+                                      href={`/package/${encodeURIComponent(row.packageCode)}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      title="在新窗口打开详情"
+                                    >
+                                      {row.name ?? row.packageCode}
+                                    </a>
+                                  ) : (
+                                    <span className="wx-detail-name">{row.packageCode}</span>
+                                  )}
+                                  {row.name ? <span className="wx-detail-code wx-mono">{row.packageCode}</span> : null}
                                 </td>
                                 <td>{teamLabel(row.team)}</td>
                                 {dimensionTitle ? <td>{dimensionValue(row)}</td> : null}

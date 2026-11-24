@@ -177,14 +177,15 @@ describe("React shelf trend page", () => {
     expect(detailRows().map((row) => row.textContent).join(" ")).toContain("Beta App");
     expect(detailRows().map((row) => row.textContent).join(" ")).toContain("com.unresolved.ios");
 
-    // An unresolved package has no local detail; its link searches 七麦 by Bundle ID.
-    const unresolvedLink = detailRows()
-      .find((row) => row.textContent?.includes("com.unresolved.ios"))
-      ?.querySelector<HTMLAnchorElement>("a.wx-detail-name");
-    expect(unresolvedLink?.getAttribute("href")).toBe(
-      "https://www.qimai.cn/search/index/searchType/app/keyword/com.unresolved.ios",
-    );
-    expect(unresolvedLink?.getAttribute("target")).toBe("_blank");
+    // Without an Apple ID there is nowhere to open, so the row stays plain text.
+    const unresolvedRow = detailRows().find((row) => row.textContent?.includes("com.unresolved.ios"));
+    expect(unresolvedRow?.querySelector("a.wx-detail-name")).toBeNull();
+    expect(unresolvedRow?.querySelector(".wx-detail-name")?.textContent).toBe("com.unresolved.ios");
+
+    const resolvedRow = detailRows().find((row) => row.textContent?.includes("com.alpha.ios"));
+    const resolvedLink = resolvedRow?.querySelector<HTMLAnchorElement>("a.wx-detail-name");
+    expect(resolvedLink?.getAttribute("href")).toBe("/package/com.alpha.ios");
+    expect(resolvedLink?.getAttribute("target")).toBe("_blank");
 
     const url = new URL(packagesCalls(fetchMock)[0]!, "http://localhost");
     expect(url.searchParams.get("from")).toBe("2026-11-09");

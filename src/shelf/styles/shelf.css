@@ -137,7 +137,9 @@
 }
 
 .wx-detail-table-wrap {
-  overflow-x: auto;
+  overflow: auto;
+  /* Long result lists scroll inside the dialog; the page behind stays locked. */
+  max-height: 60vh;
 }
 
 .wx-detail-table {
@@ -161,6 +163,10 @@
 }
 
 .wx-detail-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--color-background-body);
   color: var(--color-text-secondary);
   font-weight: 600;
 }
