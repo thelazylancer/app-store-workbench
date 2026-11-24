@@ -9,6 +9,7 @@ import {
   iapLabel,
   iosBucketLabel,
   segmentGroups,
+  sourceAppName,
 } from "../../src/shelf/buckets";
 
 describe("privacyHostKind", () => {
@@ -74,6 +75,22 @@ const totals: ShelfGroupCount[] = [
   { key: "Books", count: 3 },
   { key: "unknown", count: 17 },
 ];
+
+describe("sourceAppName", () => {
+  it("strips the source's tracking markers", () => {
+    expect(sourceAppName("iOS-CheezsiiOS")).toBe("Cheezsi");
+    expect(sourceAppName("iOS-luminearniOSjufeng")).toBe("luminearn");
+    expect(sourceAppName("iOS-SmiloeiosL")).toBe("Smiloe");
+    expect(sourceAppName("iOS-BeluniiOS-LC")).toBe("Beluni");
+    expect(sourceAppName("iOS-SloxWuiniOS-S")).toBe("SloxWuin");
+    expect(sourceAppName("iOS-*MilboiOS")).toBe("Milbo");
+    expect(sourceAppName("Plain Name")).toBe("Plain Name");
+  });
+
+  it("falls back to the raw value when stripping leaves nothing", () => {
+    expect(sourceAppName("iOS-iOS")).toBe("iOS-iOS");
+  });
+});
 
 describe("foldTopCategories", () => {
   it("keeps Top 6 by range totals, folds the rest into Other and puts Unknown last", () => {

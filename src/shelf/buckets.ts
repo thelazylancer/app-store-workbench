@@ -33,6 +33,16 @@ export function categoryLabel(value: string | null | undefined): string {
   return raw;
 }
 
+// Source display names carry tracking markers, e.g. "iOS-CheezsiiOSjufeng".
+const SOURCE_NAME_MARKERS = [/-(?:LC|L|S)$/i, /(?:iOS)?jufeng$/i, /iosL$|iO[Ss]$/i, /^[*\s]+|[*\s]+$/g];
+
+/** Readable app name from a source display name; falls back to the raw value. */
+export function sourceAppName(sourceName: string): string {
+  let name = sourceName.trim().replace(/^iOS-/, "");
+  for (const marker of SOURCE_NAME_MARKERS) name = name.replace(marker, "");
+  return name.trim() || sourceName;
+}
+
 function countMap(groups: ShelfGroupCount[]): Map<string, number> {
   const map = new Map<string, number>();
   for (const group of groups) map.set(group.key, (map.get(group.key) ?? 0) + group.count);

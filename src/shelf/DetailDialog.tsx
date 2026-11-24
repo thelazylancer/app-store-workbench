@@ -4,7 +4,7 @@ import type { ShelfPackageRow } from "../../shared/shelfTypes";
 import { privacyHostLabel } from "../../shared/privacyHost";
 import { teamLabel } from "../lib/teamLabel";
 import { ShelfApiError, getShelfPackages } from "../lib/shelfApi";
-import { categoryLabel, iapLabel } from "./buckets";
+import { categoryLabel, iapLabel, sourceAppName } from "./buckets";
 import { matchesSelection, type ShelfSelection } from "./selection";
 
 type Group = { category: string; rows: ShelfPackageRow[] };
@@ -29,7 +29,7 @@ function message(error: unknown): string {
 
 /** App Store name first; an unresolved package only has the source display name. */
 function rowLabel(row: ShelfPackageRow): string {
-  return row.name ?? (row.sourceName || row.packageCode);
+  return row.name ?? (row.sourceName ? sourceAppName(row.sourceName) : row.packageCode);
 }
 
 export function ShelfDetailDialog({ selection, onClose }: {
