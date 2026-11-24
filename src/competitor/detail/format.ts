@@ -55,13 +55,13 @@ export function detailName(packageDetail: PackageDetail): string {
   return storeName(packageDetail);
 }
 
-/** Only a bundle miss hides the App Store sections; pending still renders them. */
+/** Only an unresolved lookup hides the App Store sections; pending still renders them. */
 export function missingStatus(status: LookupStatus): MissingStatus {
-  return status === "bundle_not_found" ? "miss" : null;
+  return status === "bundle_not_found" || status === "offline" ? "miss" : null;
 }
 
 export function appStoreUrl(packageDetail: PackageDetail): string | null {
-  if (packageDetail.lookupStatus === "bundle_not_found") return null;
+  if (packageDetail.lookupStatus === "bundle_not_found" || packageDetail.lookupStatus === "offline") return null;
   const json = packageDetail.appStoreJson;
   return safeExternalUrl(jsonString(json, ["trackViewUrl", "appStoreUrl"]))
     ?? (packageDetail.appleId !== null ? `https://apps.apple.com/app/id${packageDetail.appleId}` : null);

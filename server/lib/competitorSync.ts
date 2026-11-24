@@ -23,11 +23,12 @@ export type SyncReport = {
   total: number;
   hit: number;
   missed: number;
+  offline: number;
   failed: number;
   status: BatchStatus;
 };
 
-type PackageOutcome = "hit" | "miss" | "failed";
+type PackageOutcome = "hit" | "miss" | "offline" | "failed";
 
 /** Yesterday in UTC, formatted as YYYY-MM-DD. */
 export function computeTargetDate(now: Date): string {
@@ -85,7 +86,7 @@ export async function syncCompetitorDay(
         category: null,
         minimumOsVersion: null,
         appVersion: null,
-        lookupStatus: "pending",
+        lookupStatus: row.offlineDate ? "offline" : "pending",
         enrichStatus: "pending",
         assetStatus: "pending",
         appStoreJson: {},
@@ -95,6 +96,9 @@ export async function syncCompetitorDay(
       try {
         // Persist the source row first so a lookup failure still leaves a visible package.
         await deps.repo.upsertPackage(pkg);
+
+        // Already off the store in the source, so no storefront can return it: skip the lookup.
+        if (row.offlineDate) return "offline";
 
         const hits: CountryHitRow[] = [];
         let firstHit: LookupCandidate | null = null;
@@ -177,6 +181,7 @@ export async function syncCompetitorDay(
 
   const hit = outcomes.filter((outcome) => outcome === "hit").length;
   const missed = outcomes.filter((outcome) => outcome === "miss").length;
+  const offline = outcomes.filter((outcome) => outcome === "offline").length;
   const failed = outcomes.filter((outcome) => outcome === "failed").length;
   const status: BatchStatus = failed === 0
     ? "ok"
@@ -194,5 +199,5 @@ export async function syncCompetitorDay(
     fetchedAt,
   });
 
-  return { targetDate, total: source.rows.length, hit, missed, failed, status };
+  return { targetDate, total: source.rows.length, hit, missed, offline, failed, status };
 }

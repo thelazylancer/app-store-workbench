@@ -34,7 +34,7 @@ function fakeOfflineDeps(): OfflineSyncDeps {
 }
 
 function emptyReport(targetDate: string) {
-  return { targetDate, total: 0, hit: 0, missed: 0, failed: 0, status: "ok" as const };
+  return { targetDate, total: 0, hit: 0, missed: 0, offline: 0, failed: 0, status: "ok" as const };
 }
 
 function emptyOfflineReport(start: string, end: string) {

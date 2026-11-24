@@ -1,6 +1,6 @@
 export type DateKind = "first_ad" | "listing";
 export type GroupBy = "team" | "category" | "ios_version";
-export type LookupStatus = "pending" | "hit" | "bundle_not_found";
+export type LookupStatus = "pending" | "hit" | "bundle_not_found" | "offline";
 export type EnrichStatus = "pending" | "ok" | "failed";
 export type AssetStatus = "pending" | "ok" | "partial" | "failed" | "skipped";
 export type BatchStatus = "ok" | "partial" | "failed";

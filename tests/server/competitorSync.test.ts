@@ -82,7 +82,7 @@ describe("syncCompetitorDay", () => {
     });
 
     expect(report).toEqual({
-      targetDate: "2026-11-18", total: 3, hit: 3, missed: 0, failed: 0, status: "ok",
+      targetDate: "2026-11-18", total: 3, hit: 3, missed: 0, offline: 0, failed: 0, status: "ok",
     });
     expect(lookup.mock.calls
       .filter(([bundleId]) => bundleId === "com.a")
@@ -158,6 +158,31 @@ describe("syncCompetitorDay", () => {
     const finalCall = repo.upsertPackage.mock.calls.at(-1)![0];
     expect(finalCall).toMatchObject({ lookupStatus: "bundle_not_found", appStoreJson: {} });
     expect(repo.upsertCountryHits.mock.calls[0]![1].every((hit) => hit.status === "not_found")).toBe(true);
+  });
+
+  it("skips the lookup for packages the source already marks offline", async () => {
+    const repo = fakeRepo();
+    const lookup = vi.fn(async (bundleId: string) => candidate(bundleId));
+    const row = { ...sourceBatch.rows[0]!, offlineDate: "2026-11-17" };
+
+    const report = await syncCompetitorDay("2026-11-18", {
+      fetchSourcePackages: async () => ({ ...sourceBatch, rows: [row] }),
+      lookupAppByBundleId: lookup,
+      fetchProductPageDetails: async () => ({ screenshotUrls: [], iapItems: [], versionHistory: [] }),
+      downloadAssets: fakeDownload(),
+      repo,
+    });
+
+    expect(report).toMatchObject({ total: 1, hit: 0, missed: 0, offline: 1, failed: 0, status: "ok" });
+    expect(lookup).not.toHaveBeenCalled();
+    expect(repo.upsertPackage).toHaveBeenCalledTimes(1);
+    expect(repo.upsertPackage.mock.calls[0]![0]).toMatchObject({
+      lookupStatus: "offline",
+      offlineDate: "2026-11-17",
+      appStoreJson: {},
+    });
+    expect(repo.upsertCountryHits).not.toHaveBeenCalled();
+    expect(repo.upsertAssets).not.toHaveBeenCalled();
   });
 
   it("isolates a single package lookup failure and reports partial completion", async () => {

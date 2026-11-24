@@ -100,7 +100,7 @@ export function groupsFrom(
   }
   return [...buckets.entries()].map(([team, list]) => {
     const hits = list.filter((pkg) => pkg.lookupStatus === "hit");
-    const missed = list.filter((pkg) => pkg.lookupStatus === "bundle_not_found");
+    const missed = list.filter((pkg) => pkg.lookupStatus === "bundle_not_found" || pkg.lookupStatus === "offline");
     const pending = list.filter((pkg) => pkg.lookupStatus === "pending");
     const byKey = new Map<string, PackageDetail[]>();
     for (const pkg of hits) {

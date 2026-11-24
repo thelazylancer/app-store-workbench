@@ -121,7 +121,7 @@ export function createCompetitorQueries(pool: Pool): CompetitorQueryRepo {
            (SELECT count(*)::int FROM competitor_packages p
              WHERE p.target_date = d.target_date AND p.lookup_status = 'hit') AS hit_count,
            (SELECT count(*)::int FROM competitor_packages p
-             WHERE p.target_date = d.target_date AND p.lookup_status = 'bundle_not_found') AS miss_count,
+             WHERE p.target_date = d.target_date AND p.lookup_status IN ('bundle_not_found', 'offline')) AS miss_count,
            b.status AS batch_status
          FROM dates d
          LEFT JOIN competitor_batches b ON b.target_date = d.target_date
@@ -192,7 +192,7 @@ export function createCompetitorQueries(pool: Pool): CompetitorQueryRepo {
         group.packageCount += 1;
         const brief = packageBrief(row, assets.get(row.package_code) ?? []);
 
-        if (row.lookup_status === "bundle_not_found") {
+        if (row.lookup_status === "bundle_not_found" || row.lookup_status === "offline") {
           group.missCount += 1;
           group.missed.push(brief);
           continue;
@@ -227,7 +227,7 @@ export function createCompetitorQueries(pool: Pool): CompetitorQueryRepo {
         const point = counts.get(key) ?? { packageCount: 0, hitCount: 0, missCount: 0 };
         point.packageCount += 1;
         if (row.lookup_status === "hit") point.hitCount += 1;
-        if (row.lookup_status === "bundle_not_found") point.missCount += 1;
+        if (row.lookup_status === "bundle_not_found" || row.lookup_status === "offline") point.missCount += 1;
         counts.set(key, point);
       }
 
