@@ -2,6 +2,8 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
+import type { DayDetail, PackageDetail, SnapshotEntry } from "../../shared/competitorTypes";
+import { compactDayDetail, compactPackageDetail, compactPackageHistory } from "./mcpCompact";
 
 // Tools reuse the HTTP routes through inject, so validation and shape stay in one place.
 async function request(
@@ -38,7 +40,7 @@ function query(params: Record<string, string | number | undefined>): string {
 }
 
 function result(data: unknown) {
-  return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
+  return { content: [{ type: "text" as const, text: JSON.stringify(data) }] };
 }
 
 async function run(action: () => Promise<unknown>) {
@@ -98,15 +100,17 @@ function registerTools(mcp: McpServer, app: FastifyInstance): void {
 
   mcp.registerTool("competitor_day", {
     title: "竞品单日明细",
-    description: "某一天的完整竞品快照：批次信息与所有包（App Store 详情、图标/截图、版本、内购、隐私、命中状态）。日期无数据时返回错误。",
+    description: "某一天的完整竞品快照：批次信息与所有包（App Store 详情、图标/截图、版本、内购、隐私、命中状态）。日期无数据时返回错误。默认返回紧凑投影，传 `compact: false` 可取全量。",
     inputSchema: {
       date: z.string().describe(DATE),
       date_kind: z.enum(["first_ad", "listing"]).optional().describe("按首次投放日或上架日筛选，默认 first_ad"),
+      compact: z.boolean().optional().describe("默认 true：紧凑投影，省略长文本与原始 JSON；传 false 取全量"),
     },
     annotations: READ_ONLY,
-  }, async ({ date, date_kind }) => run(() => request(
-    app, "GET", `/api/competitor/day/${encodeURIComponent(date)}${query({ date_kind })}`,
-  )));
+  }, async ({ date, date_kind, compact }) => run(async () => {
+    const data = await request(app, "GET", `/api/competitor/day/${encodeURIComponent(date)}${query({ date_kind })}`);
+    return compact === false ? data : compactDayDetail(data as DayDetail);
+  }));
 
   mcp.registerTool("competitor_batch", {
     title: "竞品批次状态",
@@ -134,27 +138,33 @@ function registerTools(mcp: McpServer, app: FastifyInstance): void {
 
   mcp.registerTool("competitor_package", {
     title: "竞品包详情",
-    description: "按 Bundle ID（package_code）取竞品最新详情：App Store 信息、版本历史、内购、隐私、图标与商店图。",
+    description: "按 Bundle ID（package_code）取竞品最新详情：App Store 信息、版本历史、内购、隐私、图标与商店图。默认返回紧凑投影，传 `compact: false` 可取全量。",
     inputSchema: {
       packageCode: z.string().describe("Bundle ID，也是系统内的 package_code"),
+      compact: z.boolean().optional().describe("默认 true：紧凑投影，省略长文本与原始 JSON；传 false 取全量"),
     },
     annotations: READ_ONLY,
-  }, async ({ packageCode }) => run(() => request(
-    app, "GET", `/api/competitor/package/${encodeURIComponent(packageCode)}`,
-  )));
+  }, async ({ packageCode, compact }) => run(async () => {
+    const data = await request(app, "GET", `/api/competitor/package/${encodeURIComponent(packageCode)}`);
+    return compact === false ? data : compactPackageDetail(data as PackageDetail);
+  }));
 
   mcp.registerTool("competitor_package_history", {
     title: "竞品包历史快照",
-    description: "某竞品在日期区间内的每日快照，可看上下架、版本、类目、商店信息的变化。",
+    description: "某竞品在日期区间内的每日快照，可看上下架、版本、类目、商店信息的变化。默认返回紧凑投影，传 `compact: false` 可取全量。",
     inputSchema: {
       packageCode: z.string().describe("Bundle ID，也是系统内的 package_code"),
       from: z.string().describe(DATE),
       to: z.string().describe(DATE),
+      compact: z.boolean().optional().describe("默认 true：紧凑投影，省略长文本与原始 JSON；传 false 取全量"),
     },
     annotations: READ_ONLY,
-  }, async ({ packageCode, from, to }) => run(() => request(
-    app, "GET", `/api/competitor/package/${encodeURIComponent(packageCode)}/history${query({ from, to })}`,
-  )));
+  }, async ({ packageCode, from, to, compact }) => run(async () => {
+    const data = await request(
+      app, "GET", `/api/competitor/package/${encodeURIComponent(packageCode)}/history${query({ from, to })}`,
+    ) as { packageCode: string; snapshots: SnapshotEntry[] };
+    return compact === false ? data : compactPackageHistory(data);
+  }));
 
   mcp.registerTool("competitor_country_hits", {
     title: "竞品各国命中",
@@ -169,18 +179,23 @@ function registerTools(mcp: McpServer, app: FastifyInstance): void {
 
   mcp.registerTool("search_apps", {
     title: "App Store 搜索",
-    description: "实时查询 Apple App Store（不读本地库）。按名称搜索或按 Bundle ID 精确查找，返回候选、匹配结果、内购与隐私信息。",
+    description: "实时查询 Apple App Store（不读本地库）。按名称搜索或按 Bundle ID 精确查找，返回候选、匹配结果、内购与隐私信息。每次查询约 5 秒、服务端并发 3，10 条约 16 秒，请耐心等待并分批调用。",
     inputSchema: {
       queries: z.array(z.object({
         name: z.string().optional().describe("应用名，可为空"),
         bundleId: z.string().optional().describe("Bundle ID，可为空"),
-      })).min(1).describe("查询列表，每项至少填 name 或 bundleId"),
+      })).min(1).max(10, {
+        error: (issue) => `queries 数量超过上限 10（当前 ${Array.isArray(issue.input) ? issue.input.length : "未知"}），请拆分为多次调用，每次不超过 10 条`,
+      }).describe("查询列表，每项至少填 name 或 bundleId；每次不超过 10 条"),
       country: z.string().optional().describe("店面代码，如 us/cn/hk/tw/jp/sg/gb/au，默认 us"),
     },
     annotations: { readOnlyHint: true, openWorldHint: true },
-  }, async ({ queries, country }) => run(() => request(
-    app, "POST", "/api/search-apps", { queries, country: country ?? "us" },
-  )));
+  }, async ({ queries, country }) => run(async () => {
+    if (queries.length > 10) {
+      throw new Error(`queries 数量超过上限 10（当前 ${queries.length}），请拆分为多次调用，每次不超过 10 条`);
+    }
+    return request(app, "POST", "/api/search-apps", { queries, country: country ?? "us" });
+  }));
 
   mcp.registerTool("app_details", {
     title: "App Store 详情",
@@ -252,11 +267,36 @@ export function registerMcpRoute(app: FastifyInstance): void {
       sessionIdGenerator: undefined,
       enableJsonResponse: true,
     });
-    await mcp.connect(transport);
+    let connected = false;
     try {
+      await mcp.connect(transport);
+      connected = true;
       await transport.handleRequest(request.raw, reply.raw, request.body);
+    } catch (error) {
+      // After hijack Fastify cannot write the reply; emit a JSON-RPC error or drop the socket.
+      // SDK validation messages can echo request values, so log only the type and stack frames.
+      const name = error instanceof Error ? error.constructor.name : "NonError";
+      // Keep only frames: message lines (which may echo request values) are not frames.
+      const frames = error instanceof Error && typeof error.stack === "string"
+        ? error.stack.split("\n").filter((line) => /^\s+at /.test(line)).join("\n")
+        : "";
+      console.error("[mcp]", name, frames);
+      if (!reply.raw.headersSent) {
+        const body = request.body;
+        const rawId = typeof body === "object" && body !== null ? (body as { id?: unknown }).id : undefined;
+        const id = typeof rawId === "string" || typeof rawId === "number" ? rawId : null;
+        reply.raw.writeHead(500, { "content-type": "application/json" });
+        reply.raw.end(JSON.stringify({
+          jsonrpc: "2.0",
+          error: { code: -32603, message: "Internal error" },
+          id,
+        }));
+      } else {
+        reply.raw.destroy();
+      }
     } finally {
-      await transport.close();
+      // A close failure must not mask the original transport error.
+      if (connected) await transport.close().catch(() => undefined);
     }
   });
 
