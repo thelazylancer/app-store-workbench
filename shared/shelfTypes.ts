@@ -95,13 +95,14 @@ export type ShelfTrendResponse = {
 };
 
 /**
- * One detail row. Unresolved rows carry only packageCode/team/dates:
+ * One detail row. Unresolved rows carry only packageCode/sourceName/team/dates:
  * name, category and minimumOsVersion are null, iap is "unknown", resolved is false.
- * No displayName / firstAdDate / lookup status / batch / raw appStoreJson ever leaves the server.
+ * No firstAdDate / lookup status / batch / raw appStoreJson ever leaves the server.
  */
 export type ShelfPackageRow = {
   packageCode: string; // reliable Bundle ID
   name: string | null; // App Store name (appStoreJson.name → trackName); null when unresolved
+  sourceName: string; // source display_name, the only name we have for an unresolved package
   team: string;
   targetDate: string; // YYYY-MM-DD shelf date
   weekStart: string; // YYYY-MM-DD Monday of the shelf week

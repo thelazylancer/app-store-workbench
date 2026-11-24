@@ -115,6 +115,7 @@ const ROWS: ShelfPackageRow[] = [
   {
     packageCode: "com.alpha.ios",
     name: "Alpha App",
+    sourceName: "iOS-AlphaIOS",
     team: "团队 A",
     targetDate: "2026-11-10",
     weekStart: "2026-11-09",
@@ -130,6 +131,7 @@ const ROWS: ShelfPackageRow[] = [
   {
     packageCode: "com.beta.ios",
     name: "Beta App",
+    sourceName: "iOS-BetaIOS",
     team: "团队 A",
     targetDate: "2026-11-11",
     weekStart: "2026-11-09",
@@ -145,6 +147,7 @@ const ROWS: ShelfPackageRow[] = [
   {
     packageCode: "com.unresolved.ios",
     name: null,
+    sourceName: "iOS-UnresolvedIOS",
     team: "团队 A",
     targetDate: "2026-11-12",
     weekStart: "2026-11-09",
@@ -160,6 +163,7 @@ const ROWS: ShelfPackageRow[] = [
   {
     packageCode: "com.gamma.ios",
     name: "Gamma App",
+    sourceName: "iOS-GammaIOS",
     team: "团队 B",
     targetDate: "2026-11-17",
     weekStart: "2026-11-16",
@@ -175,6 +179,7 @@ const ROWS: ShelfPackageRow[] = [
   {
     packageCode: "com.delta.ios",
     name: null,
+    sourceName: "iOS-DeltaIOS",
     team: "团队 B",
     targetDate: "2026-11-18",
     weekStart: "2026-11-16",

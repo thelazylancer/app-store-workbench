@@ -180,7 +180,7 @@ describe("React shelf trend page", () => {
     // Without an Apple ID there is nowhere to open, so the row stays plain text.
     const unresolvedRow = detailRows().find((row) => row.textContent?.includes("com.unresolved.ios"));
     expect(unresolvedRow?.querySelector("a.wx-detail-name")).toBeNull();
-    expect(unresolvedRow?.querySelector(".wx-detail-name")?.textContent).toBe("com.unresolved.ios");
+    expect(unresolvedRow?.querySelector(".wx-detail-name")?.textContent).toBe("iOS-UnresolvedIOS");
 
     const resolvedRow = detailRows().find((row) => row.textContent?.includes("com.alpha.ios"));
     const resolvedLink = resolvedRow?.querySelector<HTMLAnchorElement>("a.wx-detail-name");

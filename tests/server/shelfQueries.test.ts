@@ -364,6 +364,7 @@ describeDb("shelf queries against PostgreSQL", () => {
     expect(unresolved).toEqual({
       packageCode: codeC,
       name: null,
+      sourceName: "iOS-Source-Display",
       team: beta,
       targetDate: shiftDay(monday, 2),
       weekStart: monday,

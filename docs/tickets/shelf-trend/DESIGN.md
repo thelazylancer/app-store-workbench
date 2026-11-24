@@ -147,6 +147,7 @@ Query：`from`、`to`、`team` 同 3.1；追加 `limit`（可选，整数 1..500
 
 - 守卫前缀仅匹配 `/api/public/shelf`，与 `/api/competitor` 守卫零重叠；现有路由行为不动。
 - 不返回字段黑名单（contract 测试逐项断言）：`firstAdDate`、`displayName`、`syncId`/`snapshotId`/`batchStatus`/`stale`、`lookupStatus`/`enrichStatus`/`assetStatus`、原始 `appStoreJson`。`resolved` 是为「未解析=未知」展示而生的粗粒度布尔，不泄露上述任何状态明细，属白名单允许项。
+- 唯一例外：源 `display_name` 以 `sourceName` 暴露，让未解析包也能显示应用名（App Store 查不到时只剩这一个名字）；不暴露源表的 CamelCase `displayName` 字段本身。
 
 ## 4. 查询策略（`server/lib/shelfQueries.ts`）
 

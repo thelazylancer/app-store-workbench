@@ -63,6 +63,7 @@ const packagesResponse: ShelfPackagesResponse = {
     {
       packageCode: "com.example.app",
       name: "Real App",
+      sourceName: "iOS-RealIOS",
       team: "Alpha",
       targetDate: "2026-11-18",
       weekStart: "2026-11-16",
@@ -78,6 +79,7 @@ const packagesResponse: ShelfPackagesResponse = {
     {
       packageCode: "com.example.missing",
       name: null,
+      sourceName: "iOS-MissingIOS",
       team: "Beta",
       targetDate: "2026-11-19",
       weekStart: "2026-11-16",

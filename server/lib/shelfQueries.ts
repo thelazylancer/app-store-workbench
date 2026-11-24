@@ -57,6 +57,7 @@ type TeamWeekStatsRow = {
 
 type PackageDetailRow = {
   package_code: string;
+  display_name: string;
   target_date: string;
   week_start: string;
   team: string;
@@ -157,6 +158,7 @@ const COUNT_SQL = `
 // guard also keeps jsonb_array_length from erroring on a non-array iapItems.
 const PACKAGES_SQL = `
   SELECT package_code,
+         display_name,
          to_char(target_date, 'YYYY-MM-DD') AS target_date,
          to_char(date_trunc('week', target_date)::date, 'YYYY-MM-DD') AS week_start,
          team,
@@ -330,6 +332,7 @@ export function createShelfQueries(pool: Pool): ShelfQueryRepo {
       const rows: ShelfPackageRow[] = rowResult.rows.map((row) => ({
         packageCode: row.package_code,
         name: row.name,
+        sourceName: row.display_name,
         team: row.team,
         targetDate: row.target_date,
         weekStart: row.week_start,

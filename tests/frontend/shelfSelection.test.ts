@@ -7,6 +7,7 @@ function row(overrides: Partial<ShelfPackageRow>): ShelfPackageRow {
   return {
     packageCode: "com.test.app",
     name: "Test",
+    sourceName: "iOS-TestIOS",
     team: "团队 A",
     targetDate: "2026-11-10",
     weekStart: "2026-11-09",

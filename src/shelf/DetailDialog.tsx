@@ -27,6 +27,11 @@ function message(error: unknown): string {
   return error instanceof ShelfApiError ? error.message : "请求失败";
 }
 
+/** App Store name first; an unresolved package only has the source display name. */
+function rowLabel(row: ShelfPackageRow): string {
+  return row.name ?? (row.sourceName || row.packageCode);
+}
+
 export function ShelfDetailDialog({ selection, onClose }: {
   selection: ShelfSelection | null;
   onClose: () => void;
@@ -138,12 +143,14 @@ export function ShelfDetailDialog({ selection, onClose }: {
                                       rel="noreferrer"
                                       title="在新窗口打开详情"
                                     >
-                                      {row.name ?? row.packageCode}
+                                      {rowLabel(row)}
                                     </a>
                                   ) : (
-                                    <span className="wx-detail-name">{row.packageCode}</span>
+                                    <span className="wx-detail-name">{rowLabel(row)}</span>
                                   )}
-                                  {row.name ? <span className="wx-detail-code wx-mono">{row.packageCode}</span> : null}
+                                  {rowLabel(row) !== row.packageCode
+                                    ? <span className="wx-detail-code wx-mono">{row.packageCode}</span>
+                                    : null}
                                 </td>
                                 <td>{teamLabel(row.team)}</td>
                                 {dimensionTitle ? <td>{dimensionValue(row)}</td> : null}
