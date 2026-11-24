@@ -292,3 +292,26 @@
     gap: 8px;
   }
 }
+
+/* 点开后的全部商店图：大图网格，弹窗内自己滚动。 */
+.wx-shot-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  max-height: 72vh;
+  padding: 4px;
+  overflow: auto;
+}
+
+.wx-shot-gallery-item {
+  display: block;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.wx-shot-gallery-item img {
+  display: block;
+  width: 100%;
+  height: auto;
+}

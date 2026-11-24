@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { Badge, Lightbox } from "@astryxdesign/core";
+import { Badge } from "@astryxdesign/core";
 import type { PackageBrief, PackageDetail, SummaryCompetitor, SummaryGroup } from "../../shared/competitorTypes";
 import { competitorAssetUrl } from "../lib/competitorApi";
 import { teamLabel } from "../lib/teamLabel";
 import type { StatusFilter, ViewMode } from "./format";
+import { ShotGallery } from "./ShotGallery";
 import { groupShown } from "./selectors";
 
 type ExceptionEntry = PackageBrief & { reason: "miss" | "pending" };
@@ -177,7 +178,7 @@ function ShotRow({
     version ? `v${version}` : null,
     firstPackage?.hasIap ? "内购" : null,
   ].filter(Boolean).join(" · ");
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const [galleryOpen, setGalleryOpen] = useState(false);
 
   return (
     <div
@@ -199,8 +200,8 @@ function ShotRow({
               key={url}
               type="button"
               className="wx-shot-btn"
-              aria-label={`放大查看${competitor.name} 截图 ${index + 1}`}
-              onClick={() => setOpenIndex(index)}
+              aria-label={`放大查看${competitor.name} 全部 ${urls.length} 张截图（当前第 ${index + 1} 张）`}
+              onClick={() => setGalleryOpen(true)}
             >
               <img
                 className="wx-shot-img"
@@ -215,17 +216,11 @@ function ShotRow({
       ) : (
         <span className="wx-shot-empty">暂无商店图</span>
       )}
-      <Lightbox
-        isOpen={openIndex !== null}
-        index={openIndex ?? 0}
-        onIndexChange={setOpenIndex}
-        onOpenChange={(open) => { if (!open) setOpenIndex(null); }}
-        media={urls.map((src, index) => ({
-          src,
-          alt: `${competitor.name} 商店截图 ${index + 1}`,
-          caption: `${competitor.name} · ${index + 1}/${urls.length}`,
-        }))}
-        hasZoom
+      <ShotGallery
+        name={competitor.name}
+        urls={urls}
+        isOpen={galleryOpen}
+        onOpenChange={setGalleryOpen}
       />
     </div>
   );

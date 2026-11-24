@@ -33,6 +33,11 @@ beforeAll(() => {
       this.dispatchEvent(new Event("close"));
     };
   }
+  // jsdom ships no CSS.escape(); the dialog uses it to build its title id.
+  if (typeof globalThis.CSS?.escape !== "function") {
+    const css = (globalThis.CSS ??= {} as typeof CSS);
+    css.escape = (value: string) => value.replace(/[^a-zA-Z0-9_-]/g, (character) => `\\${character}`);
+  }
 });
 
 function pkg(overrides: Partial<PackageDetail> & { packageCode: string }): PackageDetail {
@@ -427,17 +432,16 @@ describe("React competitor home", () => {
     expect(missedRow.textContent).toContain("App Store 未命中");
     expect(missedRow.querySelector(".wx-shot-empty")?.textContent).toBe("无商店图");
 
-    fireEvent.click(screen.getByRole("button", { name: "放大查看Shot App 截图 2" }));
-    const dialog = document.querySelector<HTMLDialogElement>("dialog");
-    await waitFor(() => expect(dialog?.hasAttribute("open")).toBe(true));
-    expect(dialog?.querySelectorAll("[data-lightbox-page]")).toHaveLength(2);
-    expect([...dialog!.querySelectorAll("[data-lightbox-page] img")].map((img) => img.getAttribute("src")))
-      .toEqual([
-        `/competitor-assets/${DATE}/com.shot.ios/1.png`,
-        `/competitor-assets/${DATE}/com.shot.ios/2.png`,
-      ]);
-    fireEvent.click(dialog?.querySelector<HTMLButtonElement>("[data-lightbox-chrome] button")!);
-    await waitFor(() => expect(dialog?.hasAttribute("open")).toBe(false));
+    fireEvent.click(screen.getByRole("button", { name: "放大查看Shot App 全部 2 张截图（当前第 1 张）" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog.textContent).toContain("Shot App · 商店图（2）");
+    expect([...dialog.querySelectorAll<HTMLImageElement>('[data-role="shot-gallery"] img')]
+      .map((img) => img.getAttribute("src"))).toEqual([
+      `/competitor-assets/${DATE}/com.shot.ios/1.png`,
+      `/competitor-assets/${DATE}/com.shot.ios/2.png`,
+    ]);
+    fireEvent.click(screen.getByRole("button", { name: /关闭|Close/ }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 
     fireEvent.click(screen.getByRole("radio", { name: /列表/ }));
     await waitFor(() => expect(window.location.search).toBe(""));
