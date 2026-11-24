@@ -388,7 +388,7 @@ describe("React competitor home", () => {
     await waitFor(() => expect(fetchMock.mock.calls.length).toBe(2));
   });
 
-  it("switches to the screenshot strip mode and opens a lightbox", async () => {
+  it("switches to the screenshot strip mode with list details and a full gallery", async () => {
     const shot = pkg({
       packageCode: "com.shot.ios",
       displayName: "Shot Source",
@@ -414,10 +414,10 @@ describe("React competitor home", () => {
     expect(row.textContent).toContain("游戏");
     expect(row.textContent).toContain("v2.0.0");
     expect(row.textContent).toContain("内购");
-    // Compressed: no bundle id, Apple id, dates or version counts.
-    expect(row.textContent).not.toContain("com.shot.ios");
-    expect(row.querySelector(".wx-row-code")).toBeNull();
-    expect(row.querySelector(".wx-row-versions")).toBeNull();
+    expect(row.textContent).toContain("0个版本");
+    // The list-mode details are kept in the left column.
+    expect(row.textContent).toContain("333");
+    expect(row.textContent).toContain("com.shot.ios");
 
     const images = [...row.querySelectorAll<HTMLImageElement>(".wx-shot-img")];
     expect(images.map((img) => img.getAttribute("src"))).toEqual([

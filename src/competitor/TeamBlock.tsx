@@ -177,7 +177,12 @@ function ShotRow({
     facts?.category,
     version ? `v${version}` : null,
     firstPackage?.hasIap ? "内购" : null,
+    firstPackage ? `${firstPackage.versionCount}个版本` : null,
   ].filter(Boolean).join(" · ");
+  const dates = [
+    firstPackage?.earliestReleasedAt && `最早 ${firstPackage.earliestReleasedAt}`,
+    firstPackage?.latestReleasedAt && `最新 ${firstPackage.latestReleasedAt}`,
+  ].filter(Boolean);
   const [galleryOpen, setGalleryOpen] = useState(false);
 
   return (
@@ -188,9 +193,21 @@ function ShotRow({
       data-package={code}
     >
       <div className="wx-shot-head">
-        <Link className="wx-shot-name" to={packageLink(code)} aria-label={`查看 ${competitor.name} 的竞品详情`}>
-          {competitor.name}
-        </Link>
+        <span className="wx-shot-title">
+          <Link className="wx-shot-name" to={packageLink(code)} aria-label={`查看 ${competitor.name} 的竞品详情`}>
+            {competitor.name}
+          </Link>
+          {competitor.packageCount > 1 ? (
+            <span className="wx-count-pill" data-role="package-count">
+              {competitor.packageCount} 个包
+            </span>
+          ) : null}
+        </span>
+        {competitor.appleId !== null ? <span className="wx-shot-line">{competitor.appleId}</span> : null}
+        <span className="wx-shot-line">
+          {competitor.packageCount > 1 ? `${code} 等 ${competitor.packageCount} 个` : code}
+        </span>
+        {dates.length > 0 ? <span className="wx-shot-line">{dates.join(" · ")}</span> : null}
         {meta ? <span className="wx-shot-meta">{meta}</span> : null}
       </div>
       {urls.length > 0 ? (
@@ -236,13 +253,16 @@ function ShotExceptionRow({ entry }: { entry: ExceptionEntry }) {
       data-competitor={`pkg:${entry.packageCode}`}
     >
       <div className="wx-shot-head">
-        <Link className="wx-shot-name" to={packageLink(entry.packageCode)}>
-          {entry.displayName}
-        </Link>
-        <Badge
-          variant={entry.reason === "miss" ? "wx-miss" : "wx-pending"}
-          label={missLabel(entry)}
-        />
+        <span className="wx-shot-title">
+          <Link className="wx-shot-name" to={packageLink(entry.packageCode)}>
+            {entry.displayName}
+          </Link>
+          <Badge
+            variant={entry.reason === "miss" ? "wx-miss" : "wx-pending"}
+            label={missLabel(entry)}
+          />
+        </span>
+        <span className="wx-shot-line">{entry.packageCode}</span>
       </div>
       <span className="wx-shot-empty">无商店图</span>
     </div>

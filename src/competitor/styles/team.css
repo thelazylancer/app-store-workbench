@@ -223,6 +223,14 @@
   padding-top: 2px;
 }
 
+.wx-shot-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+}
+
 .wx-shot-name {
   overflow: hidden;
   max-width: 100%;
@@ -244,6 +252,17 @@
   font-family: var(--font-family-code);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
+}
+
+.wx-shot-line {
+  overflow: hidden;
+  max-width: 100%;
+  color: var(--color-text-secondary);
+  font-family: var(--font-family-code);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .wx-shot-strip {
@@ -278,12 +297,6 @@
   align-self: center;
   color: var(--color-text-disabled);
   font-size: 13px;
-}
-
-.wx-shot-row-exception .wx-shot-head {
-  flex-direction: row;
-  align-items: center;
-  gap: 10px;
 }
 
 @media (max-width: 860px) {
