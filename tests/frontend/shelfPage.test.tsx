@@ -177,6 +177,15 @@ describe("React shelf trend page", () => {
     expect(detailRows().map((row) => row.textContent).join(" ")).toContain("Beta App");
     expect(detailRows().map((row) => row.textContent).join(" ")).toContain("com.unresolved.ios");
 
+    // An unresolved package has no local detail; its link searches 七麦 by Bundle ID.
+    const unresolvedLink = detailRows()
+      .find((row) => row.textContent?.includes("com.unresolved.ios"))
+      ?.querySelector<HTMLAnchorElement>("a.wx-detail-name");
+    expect(unresolvedLink?.getAttribute("href")).toBe(
+      "https://www.qimai.cn/search/index/searchType/app/keyword/com.unresolved.ios",
+    );
+    expect(unresolvedLink?.getAttribute("target")).toBe("_blank");
+
     const url = new URL(packagesCalls(fetchMock)[0]!, "http://localhost");
     expect(url.searchParams.get("from")).toBe("2026-11-09");
     expect(url.searchParams.get("to")).toBe("2026-11-15");

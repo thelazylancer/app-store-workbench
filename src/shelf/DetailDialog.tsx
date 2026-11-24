@@ -27,6 +27,13 @@ function message(error: unknown): string {
   return error instanceof ShelfApiError ? error.message : "请求失败";
 }
 
+/** Rows we could not resolve locally have no detail page; search 七麦 by Bundle ID instead. */
+function rowHref(row: ShelfPackageRow): string {
+  return row.resolved
+    ? `/package/${encodeURIComponent(row.packageCode)}`
+    : `https://www.qimai.cn/search/index/searchType/app/keyword/${encodeURIComponent(row.packageCode)}`;
+}
+
 export function ShelfDetailDialog({ selection, onClose }: {
   selection: ShelfSelection | null;
   onClose: () => void;
@@ -131,9 +138,10 @@ export function ShelfDetailDialog({ selection, onClose }: {
                                 <td>
                                   <a
                                     className="wx-detail-name"
-                                    href={`/package/${encodeURIComponent(row.packageCode)}`}
+                                    href={rowHref(row)}
                                     target="_blank"
                                     rel="noreferrer"
+                                    title={row.resolved ? "在新窗口打开详情" : "在七麦搜索"}
                                   >
                                     {row.name ?? "Unknown"}
                                   </a>
