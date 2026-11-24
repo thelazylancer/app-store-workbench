@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ShelfGroupCount } from "../../shared/shelfTypes";
+import { privacyHostKind, privacyHostLabel } from "../../shared/privacyHost";
 import {
   OTHER_KEY,
   categoryLabel,
@@ -9,6 +10,28 @@ import {
   iosBucketLabel,
   segmentGroups,
 } from "../../src/shelf/buckets";
+
+describe("privacyHostKind", () => {
+  it("buckets the policy URL by hosting domain", () => {
+    expect(privacyHostKind("https://www.freeprivacypolicy.com/live/abc")).toBe("generator");
+    expect(privacyHostKind("https://fitlife-legal.pages.dev/privacy")).toBe("cloudflare");
+    expect(privacyHostKind("https://campcrate.campcrate.workers.dev/privacy")).toBe("cloudflare");
+    expect(privacyHostKind("https://docs.google.com/document/d/abc")).toBe("google");
+    expect(privacyHostKind("https://holmreach.web.app/privacy")).toBe("google");
+    expect(privacyHostKind("https://appprivacy.github.io/privacy")).toBe("github");
+    expect(privacyHostKind("https://fevinex.vercel.app/privacy")).toBe("vercel");
+    expect(privacyHostKind("https://x.chatgpt.site/privacy")).toBe("chatgpt");
+    expect(privacyHostKind("https://gamma.example.com/privacy")).toBe("own");
+    expect(privacyHostKind("https://apps.apple.com/app/id42")).toBe("app_store");
+  });
+
+  it("returns unknown for a missing or unparseable URL", () => {
+    expect(privacyHostKind(null)).toBe("unknown");
+    expect(privacyHostKind("")).toBe("unknown");
+    expect(privacyHostKind("not a url")).toBe("unknown");
+    expect(privacyHostLabel("unknown")).toBe("Unknown");
+  });
+});
 
 describe("iosBucketLabel", () => {
   it("labels every bucket, including 26+ and Unknown", () => {

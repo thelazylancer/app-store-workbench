@@ -29,6 +29,7 @@ const trendResponse: ShelfTrendResponse = {
         category: [{ key: "Games", count: 10 }, { key: "unknown", count: 3 }],
         ios_version: [{ key: "16", count: 12 }, { key: "unknown", count: 3 }],
         iap: [{ key: "yes", count: 20 }, { key: "unknown", count: 3 }],
+        privacy: [{ key: "generator", count: 6 }, { key: "unknown", count: 3 }],
       },
     },
   ],
@@ -37,6 +38,7 @@ const trendResponse: ShelfTrendResponse = {
     category: [{ key: "Games", count: 18 }, { key: "unknown", count: 17 }],
     ios_version: [{ key: "16", count: 20 }, { key: "unknown", count: 17 }],
     iap: [{ key: "yes", count: 40 }, { key: "unknown", count: 17 }],
+    privacy: [{ key: "generator", count: 12 }, { key: "unknown", count: 17 }],
   },
   teamWeekStats: [
     {
@@ -68,6 +70,7 @@ const packagesResponse: ShelfPackagesResponse = {
       minimumOsVersion: "16.0",
       appVersion: "2.3.1",
       iap: "yes",
+      privacyHost: "generator",
       listingDate: "2026-11-15",
       offlineDate: null,
       resolved: true,
@@ -85,6 +88,7 @@ const packagesResponse: ShelfPackagesResponse = {
       listingDate: "2026-10-01",
       offlineDate: "2026-11-10",
       resolved: false,
+      privacyHost: "unknown",
     },
   ],
 };

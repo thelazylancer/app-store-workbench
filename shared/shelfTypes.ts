@@ -4,13 +4,15 @@
  * Types only — no implementation here. See docs/tickets/shelf-trend/DESIGN.md §3.
  */
 
+import type { PrivacyHostKind } from "./privacyHost";
+
 /** Distribution dimensions for the trend chart. */
-export type ShelfGroupBy = "category" | "ios_version" | "iap";
+export type ShelfGroupBy = "category" | "ios_version" | "iap" | "privacy";
 
 /** In-app purchase tri-state: hit+non-empty = yes, hit+empty = no, unresolved = unknown. */
 export type ShelfIap = "yes" | "no" | "unknown";
 
-/** Bucket key for missing/unresolved values, shared by all three dimensions. */
+/** Bucket key for missing/unresolved values, shared by every dimension. */
 export const SHELF_UNKNOWN_KEY = "unknown";
 
 /** iOS minimum-version buckets (major only; Apple jumped 18 → 26). */
@@ -107,6 +109,8 @@ export type ShelfPackageRow = {
   minimumOsVersion: string | null;
   appVersion: string | null;
   iap: ShelfIap;
+  /** Privacy-policy hosting bucket from app_store_json.privacy.policyUrl; unresolved → "unknown". */
+  privacyHost: PrivacyHostKind;
   /** App Store / source shelf dates; never the ad date. */
   listingDate: string | null;
   offlineDate: string | null;

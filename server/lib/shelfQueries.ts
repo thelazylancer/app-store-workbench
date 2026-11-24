@@ -13,6 +13,7 @@ import type {
   ShelfTrendWeek,
 } from "../../shared/shelfTypes";
 import { SHELF_UNKNOWN_KEY } from "../../shared/shelfTypes";
+import { privacyHostKind } from "../../shared/privacyHost";
 
 export type ShelfTrendParams = {
   from: string;
@@ -40,6 +41,7 @@ type TrendAggregateRow = {
   category: string | null;
   minimum_os_version: string | null;
   iap_has: boolean;
+  policy_url: string | null;
   n: number;
 };
 
@@ -63,6 +65,7 @@ type PackageDetailRow = {
   minimum_os_version: string | null;
   app_version: string | null;
   iap: ShelfIap;
+  policy_url: string | null;
   listing_date: string | null;
   offline_date: string | null;
   resolved: boolean;
@@ -80,11 +83,15 @@ const TREND_SQL = `
            THEN jsonb_array_length(app_store_json->'iapItems') > 0
            ELSE false
          END AS iap_has,
+         CASE
+           WHEN lookup_status = 'hit'
+           THEN app_store_json->'privacy'->>'policyUrl'
+         END AS policy_url,
          count(*)::int AS n
     FROM competitor_packages
    WHERE target_date BETWEEN $1::date AND $2::date
      AND ($3::text IS NULL OR team = $3)
-   GROUP BY 1, team, lookup_status, category, minimum_os_version, iap_has
+   GROUP BY 1, team, lookup_status, category, minimum_os_version, iap_has, policy_url
    ORDER BY 1`;
 
 const TEAMS_SQL = `
@@ -167,6 +174,10 @@ const PACKAGES_SQL = `
            THEN CASE WHEN jsonb_array_length(app_store_json->'iapItems') > 0 THEN 'yes' ELSE 'no' END
            ELSE 'no'
          END AS iap,
+         CASE
+           WHEN lookup_status = 'hit'
+           THEN app_store_json->'privacy'->>'policyUrl'
+         END AS policy_url,
          to_char(listing_date, 'YYYY-MM-DD') AS listing_date,
          to_char(offline_date, 'YYYY-MM-DD') AS offline_date,
          lookup_status = 'hit' AS resolved
@@ -195,6 +206,7 @@ function groupKey(row: TrendAggregateRow, groupBy: ShelfGroupBy): string {
   if (groupBy === "ios_version") {
     return row.lookup_status === "hit" ? iosBucket(row.minimum_os_version) : SHELF_UNKNOWN_KEY;
   }
+  if (groupBy === "privacy") return privacyHostKind(row.policy_url);
   if (row.lookup_status !== "hit") return SHELF_UNKNOWN_KEY;
   return row.iap_has ? "yes" : "no";
 }
@@ -212,7 +224,7 @@ function sortedGroups(groups: Map<string, number>): ShelfGroupCount[] {
 }
 
 function emptyDimensions(): Record<ShelfGroupBy, Map<string, number>> {
-  return { category: new Map(), ios_version: new Map(), iap: new Map() };
+  return { category: new Map(), ios_version: new Map(), iap: new Map(), privacy: new Map() };
 }
 
 function foldTrend(rows: TrendAggregateRow[], groupBy: ShelfGroupBy): {
@@ -229,7 +241,7 @@ function foldTrend(rows: TrendAggregateRow[], groupBy: ShelfGroupBy): {
   const weeks = new Map<string, WeekFold>();
   const totalGroups = new Map<string, number>();
   const dimensionTotals = emptyDimensions();
-  const DIMENSIONS: ShelfGroupBy[] = ["category", "ios_version", "iap"];
+  const DIMENSIONS: ShelfGroupBy[] = ["category", "ios_version", "iap", "privacy"];
   let totalCount = 0;
 
   for (const row of rows) {
@@ -266,6 +278,7 @@ function foldTrend(rows: TrendAggregateRow[], groupBy: ShelfGroupBy): {
           category: sortedGroups(week.dimensions.category),
           ios_version: sortedGroups(week.dimensions.ios_version),
           iap: sortedGroups(week.dimensions.iap),
+          privacy: sortedGroups(week.dimensions.privacy),
         },
       })),
     totals: { packageCount: totalCount, groups: sortedGroups(totalGroups) },
@@ -273,6 +286,7 @@ function foldTrend(rows: TrendAggregateRow[], groupBy: ShelfGroupBy): {
       category: sortedGroups(dimensionTotals.category),
       ios_version: sortedGroups(dimensionTotals.ios_version),
       iap: sortedGroups(dimensionTotals.iap),
+      privacy: sortedGroups(dimensionTotals.privacy),
     },
   };
 }
@@ -323,6 +337,7 @@ export function createShelfQueries(pool: Pool): ShelfQueryRepo {
         minimumOsVersion: row.minimum_os_version,
         appVersion: row.app_version,
         iap: row.iap,
+        privacyHost: privacyHostKind(row.policy_url),
         listingDate: row.listing_date,
         offlineDate: row.offline_date,
         resolved: row.resolved,

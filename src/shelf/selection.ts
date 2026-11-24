@@ -39,5 +39,11 @@ export function matchesSelection(selection: ShelfSelection, row: ShelfPackageRow
     return category === key;
   }
   if (groupBy === "ios_version") return iosBucketOf(row) === key;
+  if (groupBy === "privacy") {
+    if (key === OTHER_KEY) {
+      return row.privacyHost !== SHELF_UNKNOWN_KEY && !topKeys.includes(row.privacyHost);
+    }
+    return row.privacyHost === key;
+  }
   return row.iap === key;
 }

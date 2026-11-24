@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { teamLabel } from "../lib/teamLabel";
 import type { ShelfDistributions, ShelfGroupBy, ShelfTrendWeek } from "../../shared/shelfTypes";
+import { privacyHostLabel } from "../../shared/privacyHost";
 import {
   OTHER_KEY,
   foldTopCategories,
@@ -226,10 +227,16 @@ const DISTRIBUTION_ROWS: { title: string; groupBy: ShelfGroupBy }[] = [
   { title: "类目", groupBy: "category" },
   { title: "最低 iOS", groupBy: "ios_version" },
   { title: "内购", groupBy: "iap" },
+  { title: "隐私协议", groupBy: "privacy" },
 ];
 
+/** Dimensions folded to Top 6 + Other, so a long tail cannot crowd the legend. */
+function isFolded(groupBy: ShelfGroupBy): boolean {
+  return groupBy === "category" || groupBy === "privacy";
+}
+
 /**
- * The three dimensions as weekly grouped charts sharing one scroll region, so
+ * The four dimensions as weekly grouped charts sharing one scroll region, so
  * every row stays week-aligned and there is a single scrollbar to drive.
  */
 export function DistributionBoard({ distributions, weeks, from, to, team, onSelect }: DistributionBoardProps) {
@@ -245,8 +252,12 @@ export function DistributionBoard({ distributions, weeks, from, to, team, onSele
               key={groupBy}
               title={title}
               groupBy={groupBy}
-              segments={(groupBy === "category"
-                ? foldTopCategories(distributions.category)
+              segments={(isFolded(groupBy)
+                ? foldTopCategories(
+                  distributions[groupBy],
+                  6,
+                  groupBy === "privacy" ? privacyHostLabel : undefined,
+                )
                 : segmentGroups(groupBy, distributions[groupBy])
               ).filter((segment) => !isUnknownKey(segment.key))}
               weeks={weeks}
@@ -291,8 +302,8 @@ function DistributionRow({ title, groupBy, segments, weeks, from, to, team, tip,
     .filter((key) => key !== OTHER_KEY && !isUnknownKey(key));
   // Each week folded into the same segment keys the legend uses.
   const weekCounts = weeks.map((week) => (
-    groupBy === "category"
-      ? foldWeekGroups(week.distributions.category, segments)
+    isFolded(groupBy)
+      ? foldWeekGroups(week.distributions[groupBy], segments)
       : Object.fromEntries(week.distributions[groupBy].map((group) => [group.key, group.count]))
   ));
   const rowMax = Math.max(1, ...weekCounts.flatMap((counts) =>

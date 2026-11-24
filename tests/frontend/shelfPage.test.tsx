@@ -53,7 +53,7 @@ describe("React shelf trend page", () => {
         count: bar.dataset.count,
       })),
     }));
-    expect(dims.map((row) => row.title)).toEqual(["类目", "最低 iOS", "内购"]);
+    expect(dims.map((row) => row.title)).toEqual(["类目", "最低 iOS", "内购", "隐私协议"]);
     expect(dims[0]!.legend).toEqual([
       { label: "Games", count: "2" },
       { label: "Utilities", count: "1" },
@@ -80,6 +80,16 @@ describe("React shelf trend page", () => {
       { week: WEEKS[0]!.weekStart, key: "yes", count: "1" },
       { week: WEEKS[0]!.weekStart, key: "no", count: "1" },
       { week: WEEKS[1]!.weekStart, key: "no", count: "1" },
+    ]);
+    expect(dims[3]!.legend).toEqual([
+      { label: "Cloudflare", count: "1" },
+      { label: "Template generator", count: "1" },
+      { label: "Own domain", count: "1" },
+    ]);
+    expect(dims[3]!.bars).toEqual([
+      { week: WEEKS[0]!.weekStart, key: "cloudflare", count: "1" },
+      { week: WEEKS[0]!.weekStart, key: "generator", count: "1" },
+      { week: WEEKS[1]!.weekStart, key: "own", count: "1" },
     ]);
 
     expect(screen.getByRole("heading", { level: 2, name: "版本与投放（按团队）" })).toBeTruthy();
@@ -263,6 +273,25 @@ describe("React shelf trend page", () => {
     expect(url.searchParams.get("team")).toBeNull();
   });
 
+  it("opens a week-scoped detail narrowed by privacy hosting", async () => {
+    vi.stubGlobal("fetch", mockShelf());
+    renderPage();
+    await waitForTeamSegments(2);
+
+    const bar = document.querySelector<HTMLElement>(
+      `[data-role="distribution-row"][data-dimension="privacy"] `
+      + `[data-role="dist-bar"][data-week="${WEEKS[0]!.weekStart}"][data-key="generator"]`,
+    );
+    await openDetails(bar!);
+
+    await waitFor(() => {
+      expect(detailRows()).toHaveLength(1);
+    });
+    const dialog = screen.getByRole("dialog");
+    expect(dialog.textContent).toContain("全部团队 · Template generator");
+    expect(detailRows()[0]?.textContent).toContain("Alpha App");
+  });
+
   it("filters to one team from the chart legend chip and back", async () => {
     vi.stubGlobal("fetch", mockShelf());
     renderPage();
@@ -346,7 +375,7 @@ describe("React shelf trend page", () => {
         teams: [],
         weeks: [],
         totals: { packageCount: 0, groups: [] },
-        distributions: { category: [], ios_version: [], iap: [] },
+        distributions: { category: [], ios_version: [], iap: [], privacy: [] },
         teamWeekStats: [],
       })));
     renderPage();

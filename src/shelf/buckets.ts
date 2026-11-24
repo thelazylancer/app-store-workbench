@@ -42,8 +42,13 @@ function countMap(groups: ShelfGroupCount[]): Map<string, number> {
 /**
  * Top N known categories by range totals, then Other, then Unknown last.
  * Zero-count segments are omitted; ties sort by key (zh locale) for stability.
+ * `labelOf` lets other dimensions (privacy hosting) reuse the same folding.
  */
-export function foldTopCategories(groups: ShelfGroupCount[], topN = 6): ShelfSegment[] {
+export function foldTopCategories(
+  groups: ShelfGroupCount[],
+  topN = 6,
+  labelOf: (key: string) => string = categoryLabel,
+): ShelfSegment[] {
   const known = [...countMap(groups)]
     .filter(([key, count]) => key !== SHELF_UNKNOWN_KEY && count > 0)
     .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0], "zh"));
@@ -53,7 +58,7 @@ export function foldTopCategories(groups: ShelfGroupCount[], topN = 6): ShelfSeg
 
   const segments: ShelfSegment[] = top.map(([key, count]) => ({
     key,
-    label: categoryLabel(key),
+    label: labelOf(key),
     count,
   }));
   if (otherCount > 0) segments.push({ key: OTHER_KEY, label: "Other", count: otherCount });

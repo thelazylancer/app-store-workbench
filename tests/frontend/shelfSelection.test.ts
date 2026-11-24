@@ -14,6 +14,7 @@ function row(overrides: Partial<ShelfPackageRow>): ShelfPackageRow {
     minimumOsVersion: "16.0",
     appVersion: "1.0",
     iap: "yes",
+    privacyHost: "own",
     listingDate: null,
     offlineDate: null,
     resolved: true,
@@ -49,7 +50,7 @@ describe("matchesSelection", () => {
     expect(matchesSelection(selection({}), row({}))).toBe(true);
   });
 
-  it("splits categories into top keys, 其他 and 未知", () => {
+  it("splits categories into top keys, Other and Unknown", () => {
     const games = selection({ groupBy: "category", key: "Games", topKeys: ["Games"] });
     expect(matchesSelection(games, row({ category: "Games" }))).toBe(true);
     expect(matchesSelection(games, row({ category: "Utilities" }))).toBe(false);
@@ -81,5 +82,16 @@ describe("matchesSelection", () => {
       selection({ groupBy: "iap", key: "no" }),
       row({ iap: "unknown", resolved: false }),
     )).toBe(false);
+  });
+
+  it("narrows privacy hosting kinds, with Other for the untracked tail", () => {
+    const generator = selection({ groupBy: "privacy", key: "generator", topKeys: ["generator", "own"] });
+    expect(matchesSelection(generator, row({ privacyHost: "generator" }))).toBe(true);
+    expect(matchesSelection(generator, row({ privacyHost: "own" }))).toBe(false);
+
+    const other = selection({ groupBy: "privacy", key: OTHER_KEY, topKeys: ["generator", "own"] });
+    expect(matchesSelection(other, row({ privacyHost: "vercel" }))).toBe(true);
+    expect(matchesSelection(other, row({ privacyHost: "generator" }))).toBe(false);
+    expect(matchesSelection(other, row({ privacyHost: "unknown", resolved: false }))).toBe(false);
   });
 });

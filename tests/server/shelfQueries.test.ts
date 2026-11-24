@@ -121,12 +121,18 @@ describeDb("shelf queries against PostgreSQL", () => {
     await writes.upsertPackage(packageRow({
       packageCode: codeE, targetDate: shiftDay(monday, 4), team: alpha,
       lookupStatus: "hit", category: "Games", minimumOsVersion: "15.1", appVersion: "2.3",
-      appStoreJson: { name: "", trackName: "Track Only", iapItems: { not: "array" } },
+      appStoreJson: {
+        name: "", trackName: "Track Only", iapItems: { not: "array" },
+        privacy: { policyUrl: "https://docs.google.com/document/d/track-only" },
+      },
     }));
     await writes.upsertPackage(packageRow({
       packageCode: codeF, targetDate: shiftDay(monday, 5), team: gamma,
       lookupStatus: "hit", category: null, minimumOsVersion: "garbage",
-      appStoreJson: { name: "Gamma App", iapItems: [] },
+      appStoreJson: {
+        name: "Gamma App", iapItems: [],
+        privacy: { policyUrl: "https://gamma.example.com/privacy" },
+      },
     }));
 
     // Version history: A has one 3-day gap; B a single release; E two 5-day gaps;
@@ -209,7 +215,7 @@ describeDb("shelf queries against PostgreSQL", () => {
       { key: "Games", count: 2 },
       { key: "Utilities", count: 1 },
     ]);
-    // All three dimensions in one response, independent of groupBy.
+    // Every dimension in one response, independent of groupBy.
     expect(trend.distributions).toEqual({
       category: [
         { key: "unknown", count: 3 },
@@ -227,12 +233,18 @@ describeDb("shelf queries against PostgreSQL", () => {
         { key: "unknown", count: 2 },
         { key: "yes", count: 1 },
       ],
+      privacy: [
+        { key: "unknown", count: 4 },
+        { key: "google", count: 1 },
+        { key: "own", count: 1 },
+      ],
     });
-    // Every week also carries all three dimensions, for the per-row weekly trends.
+    // Every week also carries every dimension, for the per-row weekly trends.
     expect(trend.weeks[0]!.distributions).toEqual({
       category: [{ key: "Games", count: 1 }],
       ios_version: [{ key: "16", count: 1 }],
       iap: [{ key: "yes", count: 1 }],
+      privacy: [{ key: "unknown", count: 1 }],
     });
     expect(trend.weeks[1]!.distributions).toEqual({
       category: [
@@ -249,7 +261,26 @@ describeDb("shelf queries against PostgreSQL", () => {
         { key: "no", count: 3 },
         { key: "unknown", count: 2 },
       ],
+      privacy: [
+        { key: "unknown", count: 3 },
+        { key: "google", count: 1 },
+        { key: "own", count: 1 },
+      ],
     });
+  });
+
+  it("buckets privacy policies by hosting domain", async () => {
+    const trend = await repo.getShelfTrend({ from: sunday, to: week2End, team: null, groupBy: "privacy" });
+    expect(trend.weeks[1]!.groups).toEqual([
+      { key: "unknown", count: 3 },
+      { key: "google", count: 1 },
+      { key: "own", count: 1 },
+    ]);
+    expect(trend.totals.groups).toEqual([
+      { key: "unknown", count: 4 },
+      { key: "google", count: 1 },
+      { key: "own", count: 1 },
+    ]);
   });
 
   it("maps minimum OS majors into ios buckets", async () => {
@@ -340,6 +371,7 @@ describeDb("shelf queries against PostgreSQL", () => {
       minimumOsVersion: null,
       appVersion: null,
       iap: "unknown",
+      privacyHost: "unknown",
       listingDate: shiftDay(monday, -40),
       offlineDate: shiftDay(monday, 1),
       resolved: false,
@@ -355,6 +387,7 @@ describeDb("shelf queries against PostgreSQL", () => {
       minimumOsVersion: "15.1",
       appVersion: "2.3",
       iap: "no",
+      privacyHost: "google",
       resolved: true,
     });
 
@@ -365,6 +398,7 @@ describeDb("shelf queries against PostgreSQL", () => {
       minimumOsVersion: "garbage",
       appVersion: null,
       iap: "no",
+      privacyHost: "own",
       resolved: true,
     });
 
