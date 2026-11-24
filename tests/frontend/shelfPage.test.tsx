@@ -163,7 +163,7 @@ describe("React shelf trend page", () => {
     expect(dialog.textContent).toContain("共 3 包");
 
     const categories = [...dialog.querySelectorAll(".wx-detail-group th")].map((heading) => heading.textContent);
-    expect(categories).toEqual(["Games2", "未知1"]);
+    expect(categories).toEqual(["Games2", "Unknown1"]);
     expect(detailRows().map((row) => row.textContent).join(" ")).toContain("Beta App");
     expect(detailRows().map((row) => row.textContent).join(" ")).toContain("com.unresolved.ios");
 

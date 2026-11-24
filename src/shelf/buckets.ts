@@ -16,20 +16,20 @@ export type ShelfSegment = {
 export function iosBucketLabel(bucket: string): string {
   if (bucket === "lte14") return "≤14";
   if (bucket === "26plus") return "26+";
-  if (bucket === SHELF_UNKNOWN_KEY) return "未知";
+  if (bucket === SHELF_UNKNOWN_KEY) return "Unknown";
   return bucket;
 }
 
 export function iapLabel(value: string): string {
   if (value === "yes") return "有";
   if (value === "no") return "无";
-  return "未知";
+  return "Unknown";
 }
 
-/** App Store's own category name, shown as-is; a missing value renders as 未知. */
+/** App Store's own category name, shown as-is; a missing value renders as Unknown. */
 export function categoryLabel(value: string | null | undefined): string {
   const raw = value?.trim();
-  if (!raw || raw === SHELF_UNKNOWN_KEY) return "未知";
+  if (!raw || raw === SHELF_UNKNOWN_KEY) return "Unknown";
   return raw;
 }
 
@@ -40,7 +40,7 @@ function countMap(groups: ShelfGroupCount[]): Map<string, number> {
 }
 
 /**
- * Top N known categories by range totals, then 其他, then 未知 last.
+ * Top N known categories by range totals, then Other, then Unknown last.
  * Zero-count segments are omitted; ties sort by key (zh locale) for stability.
  */
 export function foldTopCategories(groups: ShelfGroupCount[], topN = 6): ShelfSegment[] {
@@ -56,9 +56,9 @@ export function foldTopCategories(groups: ShelfGroupCount[], topN = 6): ShelfSeg
     label: categoryLabel(key),
     count,
   }));
-  if (otherCount > 0) segments.push({ key: OTHER_KEY, label: "其他", count: otherCount });
+  if (otherCount > 0) segments.push({ key: OTHER_KEY, label: "Other", count: otherCount });
   if (unknownCount > 0) {
-    segments.push({ key: SHELF_UNKNOWN_KEY, label: "未知", count: unknownCount });
+    segments.push({ key: SHELF_UNKNOWN_KEY, label: "Unknown", count: unknownCount });
   }
   return segments;
 }

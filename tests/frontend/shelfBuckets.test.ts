@@ -11,14 +11,14 @@ import {
 } from "../../src/shelf/buckets";
 
 describe("iosBucketLabel", () => {
-  it("labels every bucket, including 26+ and 未知", () => {
+  it("labels every bucket, including 26+ and Unknown", () => {
     expect(iosBucketLabel("lte14")).toBe("≤14");
     expect(iosBucketLabel("26plus")).toBe("26+");
-    expect(iosBucketLabel("unknown")).toBe("未知");
+    expect(iosBucketLabel("unknown")).toBe("Unknown");
     expect(iosBucketLabel("17")).toBe("17");
     expect(iapLabel("yes")).toBe("有");
     expect(iapLabel("no")).toBe("无");
-    expect(iapLabel("unknown")).toBe("未知");
+    expect(iapLabel("unknown")).toBe("Unknown");
   });
 });
 
@@ -29,10 +29,10 @@ describe("categoryLabel", () => {
     expect(categoryLabel("Photo & Video")).toBe("Photo & Video");
   });
 
-  it("renders missing values as 未知", () => {
-    expect(categoryLabel(null)).toBe("未知");
-    expect(categoryLabel("")).toBe("未知");
-    expect(categoryLabel("unknown")).toBe("未知");
+  it("renders missing values as Unknown", () => {
+    expect(categoryLabel(null)).toBe("Unknown");
+    expect(categoryLabel("")).toBe("Unknown");
+    expect(categoryLabel("unknown")).toBe("Unknown");
   });
 });
 
@@ -49,7 +49,7 @@ const totals: ShelfGroupCount[] = [
 ];
 
 describe("foldTopCategories", () => {
-  it("keeps Top 6 by range totals, folds the rest into 其他 and puts 未知 last", () => {
+  it("keeps Top 6 by range totals, folds the rest into Other and puts Unknown last", () => {
     const segments = foldTopCategories(totals);
     expect(segments.map((segment) => segment.key)).toEqual([
       "Games",
@@ -62,11 +62,11 @@ describe("foldTopCategories", () => {
       "unknown",
     ]);
     expect(segments[0]).toEqual({ key: "Games", label: "Games", count: 30 });
-    expect(segments[6]).toEqual({ key: OTHER_KEY, label: "其他", count: 8 });
-    expect(segments[7]).toEqual({ key: "unknown", label: "未知", count: 17 });
+    expect(segments[6]).toEqual({ key: OTHER_KEY, label: "Other", count: 8 });
+    expect(segments[7]).toEqual({ key: "unknown", label: "Unknown", count: 17 });
   });
 
-  it("omits 其他 when there are exactly six known categories", () => {
+  it("omits Other when there are exactly six known categories", () => {
     const segments = foldTopCategories(totals.slice(0, 6));
     expect(segments).toHaveLength(6);
     expect(segments.some((segment) => segment.key === OTHER_KEY)).toBe(false);
@@ -74,7 +74,7 @@ describe("foldTopCategories", () => {
 
   it("handles all-unknown and empty groups", () => {
     expect(foldTopCategories([{ key: "unknown", count: 4 }])).toEqual([
-      { key: "unknown", label: "未知", count: 4 },
+      { key: "unknown", label: "Unknown", count: 4 },
     ]);
     expect(foldTopCategories([])).toEqual([]);
   });
@@ -91,13 +91,13 @@ describe("foldTopCategories", () => {
 describe("segmentGroups", () => {
   it("uses the fixed iOS and IAP orders", () => {
     expect(segmentGroups("ios_version", [{ key: "16", count: 3 }]).map((segment) => segment.label))
-      .toEqual(["≤14", "15", "16", "17", "18", "26+", "未知"]);
-    expect(segmentGroups("iap", []).map((segment) => segment.label)).toEqual(["有", "无", "未知"]);
+      .toEqual(["≤14", "15", "16", "17", "18", "26+", "Unknown"]);
+    expect(segmentGroups("iap", []).map((segment) => segment.label)).toEqual(["有", "无", "Unknown"]);
   });
 });
 
 describe("foldWeekGroups", () => {
-  it("folds below-top categories into 其他 and keeps 未知 apart", () => {
+  it("folds below-top categories into Other and keeps Unknown apart", () => {
     const segments = foldTopCategories([
       { key: "Games", count: 10 },
       { key: "Utilities", count: 8 },

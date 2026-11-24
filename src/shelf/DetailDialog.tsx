@@ -12,7 +12,7 @@ type Group = { category: string; rows: ShelfPackageRow[] };
 function groupByCategory(rows: ShelfPackageRow[]): Group[] {
   const groups = new Map<string, ShelfPackageRow[]>();
   for (const row of rows) {
-    const label = row.resolved ? categoryLabel(row.category) : "未知";
+    const label = row.resolved ? categoryLabel(row.category) : "Unknown";
     const list = groups.get(label) ?? [];
     list.push(row);
     groups.set(label, list);
@@ -118,7 +118,7 @@ export function ShelfDetailDialog({ selection, onClose }: {
                             {group.rows.map((row) => (
                               <tr key={`${row.packageCode}-${row.targetDate}`} data-role="detail-row">
                                 <td>
-                                  <span className="wx-detail-name">{row.name ?? "未知"}</span>
+                                  <span className="wx-detail-name">{row.name ?? "Unknown"}</span>
                                   <span className="wx-detail-code wx-mono">{row.packageCode}</span>
                                 </td>
                                 <td>{teamLabel(row.team)}</td>
