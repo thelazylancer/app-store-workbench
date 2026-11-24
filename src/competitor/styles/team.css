@@ -203,7 +203,7 @@
 /* 商店图模式 — name on the left, one fixed-height strip of screenshots on the right. */
 .wx-shot-row {
   display: grid;
-  grid-template-columns: minmax(180px, 240px) 1fr;
+  grid-template-columns: minmax(200px, 280px) 1fr;
   align-items: start;
   gap: 24px;
   padding: 12px 4px;
@@ -263,6 +263,12 @@
   font-variant-numeric: tabular-nums;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Long bundle ids wrap instead of truncating, so they stay readable. */
+.wx-shot-code {
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .wx-shot-strip {

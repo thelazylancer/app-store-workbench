@@ -204,7 +204,7 @@ function ShotRow({
           ) : null}
         </span>
         {competitor.appleId !== null ? <span className="wx-shot-line">{competitor.appleId}</span> : null}
-        <span className="wx-shot-line">
+        <span className="wx-shot-line wx-shot-code">
           {competitor.packageCount > 1 ? `${code} 等 ${competitor.packageCount} 个` : code}
         </span>
         {dates.length > 0 ? <span className="wx-shot-line">{dates.join(" · ")}</span> : null}
@@ -262,7 +262,7 @@ function ShotExceptionRow({ entry }: { entry: ExceptionEntry }) {
             label={missLabel(entry)}
           />
         </span>
-        <span className="wx-shot-line">{entry.packageCode}</span>
+        <span className="wx-shot-line wx-shot-code">{entry.packageCode}</span>
       </div>
       <span className="wx-shot-empty">无商店图</span>
     </div>
