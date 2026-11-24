@@ -56,7 +56,7 @@ export function ChartTip({ tip, id }: { tip: ChartTipState; id: string }) {
   return tip?.id === id ? <div className="wx-chart-tip" aria-hidden="true">{tip.text}</div> : null;
 }
 
-export function WeekLabels({ weeks }: { weeks: ShelfTrendWeek[] }) {
+export function WeekLabels({ weeks }: { weeks: readonly { weekStart: string; weekEnd: string }[] }) {
   return (
     <div className="wx-chart-labels" aria-hidden="true">
       {weeks.map((week) => (

@@ -1,0 +1,9 @@
+/* "Data insufficient" hatching; the file name ends in charts.css so the guard allows it. */
+.wx-weekly-trend-gap {
+  background-color: var(--color-track);
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(28, 39, 51, 0.28) 0 2px,
+    transparent 2px 6px
+  );
+}

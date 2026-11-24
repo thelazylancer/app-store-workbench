@@ -11,6 +11,7 @@ import { registerShelfRoutes } from "./routes/shelf";
 import { registerMcpRoute } from "./lib/mcp";
 import type { CompetitorQueryRepo } from "./lib/competitorRepo";
 import type { ShelfQueryRepo } from "./lib/shelfQueries";
+import type { WeeklyReportRepo } from "./lib/weeklyReport";
 import type { IpaDownloadManager } from "./lib/ipaDownload";
 import type { IapHints, LookupCandidate, StoreCountry } from "../shared/types";
 import type { ProductPageDetails } from "./lib/productPage";
@@ -24,6 +25,7 @@ export type AppDependencies = {
   ipaDownload?: IpaDownloadManager;
   competitorRepo?: CompetitorQueryRepo;
   shelfQueries?: ShelfQueryRepo;
+  weeklyReport?: WeeklyReportRepo;
   competitorAssetsDir?: string;
 };
 

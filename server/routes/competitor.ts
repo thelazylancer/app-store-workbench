@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { DateKind, GroupBy } from "../../shared/competitorTypes";
 import type { CompetitorQueryRepo } from "../lib/competitorRepo";
+import { addWeeks, isoWeekStart, shanghaiToday, type WeeklyReportRepo } from "../lib/weeklyReport";
 import type { AppDependencies } from "../app";
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -42,6 +43,34 @@ export function registerCompetitorRoutes(app: FastifyInstance, deps: AppDependen
 
   if (!deps.competitorRepo) return;
   const repo: CompetitorQueryRepo = deps.competitorRepo;
+
+  app.get("/api/competitor/weekly-report", async (request, reply) => {
+    const weekly: WeeklyReportRepo | undefined = deps.weeklyReport;
+    if (!weekly) return reply.code(503).send({ message: "Competitor data is unavailable" });
+
+    const query = request.query as Query;
+    let weekStart: string;
+    if (query.week !== undefined) {
+      const week = dateParam(query.week);
+      if (!week) return reply.code(400).send({ message: "A valid week is required" });
+      weekStart = isoWeekStart(week);
+    } else {
+      try {
+        const today = shanghaiToday();
+        const latest = await weekly.latestCompleteDataWeek(today);
+        // No hit data before this week → fall back to the last complete week (empty state).
+        weekStart = latest ?? addWeeks(isoWeekStart(today), -1);
+      } catch {
+        return reply.code(500).send({ message: "Competitor query failed" });
+      }
+    }
+
+    try {
+      return reply.send(await weekly.getWeeklyReport(weekStart));
+    } catch {
+      return reply.code(500).send({ message: "Competitor query failed" });
+    }
+  });
 
   app.get("/api/competitor/days", async (request, reply) => {
     const query = request.query as Query;

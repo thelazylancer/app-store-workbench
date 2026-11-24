@@ -10,6 +10,7 @@ import { CompetitorHomePage } from "../competitor/App";
 import { CompetitorDetailPage } from "../competitor/Detail";
 import { SearchPage as SearchPageView } from "../search/App";
 import { ShelfTrendPage } from "../shelf/App";
+import { WeeklyPage } from "../weekly/App";
 
 type RouterLinkProps = Omit<ComponentProps<typeof Link>, "to"> & { href?: string };
 
@@ -81,6 +82,10 @@ export function ShelfPage() {
   return <ShelfTrendPage />;
 }
 
+export function WeeklyReportPage() {
+  return <WeeklyPage />;
+}
+
 export function NotFoundPage() {
   return <Placeholder title="页面不存在" description="没有找到这个地址，请回到竞品日报。" />;
 }
@@ -93,6 +98,7 @@ export function App() {
           <Routes>
             <Route path="/" element={<CompetitorPage />} />
             <Route path="/shelf" element={<ShelfPage />} />
+            <Route path="/weekly" element={<WeeklyReportPage />} />
             <Route path="/search" element={<SearchPage />} />
             <Route path="/package/:code" element={<PackagePage />} />
             <Route path="*" element={<NotFoundPage />} />
