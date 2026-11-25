@@ -45,6 +45,14 @@ export async function startIpaDownload(
   return (await response.json()) as IpaDownloadJob;
 }
 
+/** The retained local IPA for a bundle, if the server already has one on disk. */
+export async function getCachedIpaDownload(bundleId: string): Promise<IpaDownloadJob | null> {
+  const response = await fetch(`/api/ipa-download?bundleId=${encodeURIComponent(bundleId)}`);
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error("IPA cache status request failed");
+  return (await response.json()) as IpaDownloadJob;
+}
+
 export async function getIpaDownload(id: string): Promise<IpaDownloadJob> {
   const response = await fetch(`/api/ipa-download/${encodeURIComponent(id)}`);
   if (!response.ok) throw new Error("IPA download status request failed");

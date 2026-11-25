@@ -35,6 +35,14 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
+/** Answer the mount-time cache probe without consuming the sequenced responses. */
+function stubFetch(mock: (input: string | URL | Request, init?: RequestInit) => Promise<Response>) {
+  vi.stubGlobal("fetch", vi.fn((input: string | URL | Request, init?: RequestInit) =>
+    String(input).startsWith("/api/ipa-download?bundleId=")
+      ? Promise.resolve(json({ message: "No cached IPA" }, 404))
+      : init ? mock(input, init) : mock(input)));
+}
+
 function renderControl(
   bundleId = "com.example.app",
   props: { team?: string; appName?: string } = {},
@@ -100,7 +108,7 @@ describe("React IPA download control", () => {
           }),
         ),
       );
-    vi.stubGlobal("fetch", fetchMock);
+    stubFetch(fetchMock);
     renderControl();
 
     fireEvent.click(screen.getByRole("button", { name: "下载 IPA" }));
@@ -138,7 +146,7 @@ describe("React IPA download control", () => {
         202,
       ),
     );
-    vi.stubGlobal("fetch", fetchMock);
+    stubFetch(fetchMock);
     renderControl("com.example.app", { team: "LC", appName: "Misate" });
 
     let saved: HTMLAnchorElement | null = null;
@@ -158,7 +166,7 @@ describe("React IPA download control", () => {
 
   it("sends team and app name so the server can name the file", async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(json(job(), 202));
-    vi.stubGlobal("fetch", fetchMock);
+    stubFetch(fetchMock);
     renderControl("com.example.app", { team: "LC", appName: "Misate" });
 
     fireEvent.click(screen.getByRole("button", { name: "下载 IPA" }));
@@ -174,7 +182,7 @@ describe("React IPA download control", () => {
 
   it("reattaches to the stored job after a page reload", async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(json(job({ status: "running", progress: 30 })));
-    vi.stubGlobal("fetch", fetchMock);
+    stubFetch(fetchMock);
     localStorage.setItem("wx.ipa.job.com.example.app", "job-1");
 
     renderControl();
@@ -189,7 +197,7 @@ describe("React IPA download control", () => {
       .fn()
       .mockResolvedValueOnce(json(job(), 202))
       .mockResolvedValueOnce(json(job({ status: "done", progress: 100, fileUrl: "/api/ipa-download/job-1/file" })));
-    vi.stubGlobal("fetch", fetchMock);
+    stubFetch(fetchMock);
     renderControl();
 
     fireEvent.click(screen.getByRole("button", { name: "下载 IPA" }));
@@ -207,7 +215,7 @@ describe("React IPA download control", () => {
       .fn()
       .mockResolvedValueOnce(json(job(), 202))
       .mockResolvedValue(json(job({ status: "running", progress: 12 })));
-    vi.stubGlobal("fetch", fetchMock);
+    stubFetch(fetchMock);
     const { unmount } = renderControl();
 
     fireEvent.click(screen.getByRole("button", { name: "下载 IPA" }));
@@ -225,7 +233,7 @@ describe("React IPA download control", () => {
       .fn()
       .mockResolvedValueOnce(json(job(), 202))
       .mockResolvedValue(json(job({ status: "running", progress: 30 })));
-    vi.stubGlobal("fetch", fetchMock);
+    stubFetch(fetchMock);
     const first = renderControl();
 
     fireEvent.click(screen.getByRole("button", { name: "下载 IPA" }));
@@ -245,7 +253,7 @@ describe("React IPA download control", () => {
       .mockResolvedValueOnce(json(job(), 202))
       .mockResolvedValueOnce(json(job({ status: "running", progress: 12 })))
       .mockResolvedValueOnce(json(job({ status: "cancelled", errorCode: "cancelled" })));
-    vi.stubGlobal("fetch", fetchMock);
+    stubFetch(fetchMock);
     renderControl();
 
     fireEvent.click(screen.getByRole("button", { name: "下载 IPA" }));
@@ -276,7 +284,7 @@ describe("React IPA download control", () => {
           }),
         ),
       );
-    vi.stubGlobal("fetch", fetchMock);
+    stubFetch(fetchMock);
     renderControl();
 
     fireEvent.click(screen.getByRole("button", { name: "下载 IPA" }));
@@ -294,7 +302,7 @@ describe("React IPA download control", () => {
       .fn()
       .mockResolvedValueOnce(json(job(), 202))
       .mockResolvedValue(json(job({ status: "running" })));
-    vi.stubGlobal("fetch", fetchMock);
+    stubFetch(fetchMock);
     renderControl();
 
     fireEvent.click(screen.getByRole("button", { name: "下载 IPA" }));
@@ -316,7 +324,7 @@ describe("React IPA download control", () => {
       .mockResolvedValueOnce(json(job({ status: "queued" }), 202))
       .mockResolvedValueOnce(json(job({ status: "running", progress: 10 })))
       .mockResolvedValueOnce(json(job({ status: "done", progress: 100, fileUrl: "/api/ipa-download/job-1/file" })));
-    vi.stubGlobal("fetch", fetchMock);
+    stubFetch(fetchMock);
     renderControl();
 
     fireEvent.click(screen.getByRole("button", { name: "下载 IPA" }));
@@ -358,7 +366,7 @@ describe("React IPA download control", () => {
       .mockResolvedValueOnce(json(job(), 202))
       .mockResolvedValueOnce(json(job({ status: "awaiting_auth_code", errorCode: "purchase_auth_required" })))
       .mockResolvedValueOnce(json(job({ status: "awaiting_auth_code", errorCode: "auth_code_invalid" })));
-    vi.stubGlobal("fetch", fetchMock);
+    stubFetch(fetchMock);
     renderControl();
 
     fireEvent.click(screen.getByRole("button", { name: "下载 IPA" }));
@@ -380,7 +388,7 @@ describe("React IPA download control", () => {
       .mockResolvedValueOnce(json(job(), 202))
       .mockResolvedValueOnce(json(job({ status: "awaiting_auth_code", errorCode: "purchase_auth_required" })))
       .mockResolvedValueOnce(json({ message: "Job is not awaiting an auth code" }, 409));
-    vi.stubGlobal("fetch", fetchMock);
+    stubFetch(fetchMock);
     renderControl();
 
     fireEvent.click(screen.getByRole("button", { name: "下载 IPA" }));
@@ -401,7 +409,7 @@ describe("React IPA download control", () => {
       .mockResolvedValueOnce(json(job(), 202))
       .mockResolvedValueOnce(json(job({ status: "awaiting_auth_code", errorCode: "purchase_auth_required" })))
       .mockResolvedValueOnce(json(job({ status: "cancelled", errorCode: "cancelled" })));
-    vi.stubGlobal("fetch", fetchMock);
+    stubFetch(fetchMock);
     renderControl();
 
     fireEvent.click(screen.getByRole("button", { name: "下载 IPA" }));
@@ -425,7 +433,7 @@ describe("React IPA download control", () => {
       .fn()
       .mockResolvedValueOnce(json(job(), 202))
       .mockResolvedValueOnce(json(job({ status: "failed", errorCode: "terms_required" })));
-    vi.stubGlobal("fetch", fetchMock);
+    stubFetch(fetchMock);
     renderControl();
 
     fireEvent.click(screen.getByRole("button", { name: "下载 IPA" }));
@@ -441,7 +449,8 @@ describe("React IPA download control", () => {
   });
 
   it("shows the unavailable message when the IPA backend returns 503", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(json({ message: "IPA download is unavailable" }, 503)));
+    const fetchMock = vi.fn().mockResolvedValueOnce(json({ message: "IPA download is unavailable" }, 503));
+    stubFetch(fetchMock);
     renderControl();
 
     fireEvent.click(screen.getByRole("button", { name: "下载 IPA" }));
@@ -452,7 +461,8 @@ describe("React IPA download control", () => {
   });
 
   it("shows a generic failure when starting the download fails for another reason", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(json({ message: "bad" }, 500)));
+    const fetchMock = vi.fn().mockResolvedValueOnce(json({ message: "bad" }, 500));
+    stubFetch(fetchMock);
     renderControl();
 
     fireEvent.click(screen.getByRole("button", { name: "下载 IPA" }));
@@ -464,7 +474,7 @@ describe("React IPA download control", () => {
   it("tries a failed poll at most five times before surfacing an error", async () => {
     const failing = vi.fn(async () => json({ message: "nope" }, 500));
     const fetchMock = vi.fn().mockResolvedValueOnce(json(job(), 202)).mockImplementation(failing);
-    vi.stubGlobal("fetch", fetchMock);
+    stubFetch(fetchMock);
     renderControl();
 
     fireEvent.click(screen.getByRole("button", { name: "下载 IPA" }));

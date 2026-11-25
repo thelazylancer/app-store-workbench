@@ -7,6 +7,7 @@ import type {
 } from "../../shared/types";
 import {
   cancelIpaDownload,
+  getCachedIpaDownload,
   getIpaDownload,
   startIpaDownload,
   submitIpaAuthCode,
@@ -281,17 +282,28 @@ export function useIpaDownload(bundleId: string, meta: IpaDownloadMeta = {}): Ip
 
   // After a reload the in-memory store is gone; reattach to the job the server
   // is still running (or already finished) instead of starting a duplicate.
+  // With nothing in flight, ask for the retained local IPA so the control reads
+  // 保存 IPA instead of offering another download.
   useEffect(() => {
     if (jobStore.get(bundleId)) return;
-    const storedId = recallJob(bundleId);
-    if (!storedId) return;
     let cancelled = false;
     void (async () => {
+      const storedId = recallJob(bundleId);
+      if (storedId) {
+        try {
+          const next = await getIpaDownload(storedId);
+          if (!cancelled && !disposed.current) applyJob(next);
+          return;
+        } catch {
+          if (cancelled) return;
+          forgetJob(bundleId);
+        }
+      }
       try {
-        const next = await getIpaDownload(storedId);
-        if (!cancelled && !disposed.current) applyJob(next);
+        const cached = await getCachedIpaDownload(bundleId);
+        if (cached && !cancelled && !disposed.current && !jobStore.get(bundleId)) applyJob(cached);
       } catch {
-        if (!cancelled) forgetJob(bundleId);
+        // Cache probe is best-effort: the control just stays on 下载 IPA.
       }
     })();
     return () => {

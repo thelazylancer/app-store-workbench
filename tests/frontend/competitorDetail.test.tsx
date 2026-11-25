@@ -265,6 +265,25 @@ describe("React competitor detail", () => {
     await waitFor(() => expect(writeText).toHaveBeenCalledWith("com.alpha.ios"));
   });
 
+  it("offers 保存 IPA when a local IPA already exists for the bundle", async () => {
+    const base = mockPackage(alpha);
+    vi.stubGlobal("fetch", vi.fn((input: string | URL | Request) => {
+      const url = new URL(String(input), "http://localhost");
+      if (url.pathname === "/api/ipa-download" && url.searchParams.get("bundleId") === alpha.packageCode) {
+        return Promise.resolve(json({
+          id: "job-1", bundleId: alpha.packageCode, status: "done", progress: 100,
+          fileName: "2026-11-23_LC_Misate.ipa", fileUrl: "/api/ipa-download/job-1/file",
+        }));
+      }
+      return base(input);
+    }));
+    renderAt("/package/com.alpha.ios");
+    await waitForDetail();
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "保存 IPA" })).toBeTruthy());
+    expect(screen.queryByRole("button", { name: "下载 IPA" })).toBeNull();
+  });
+
   it("opens screenshots in the Astryx Lightbox and reports a failed image", async () => {
     vi.stubGlobal("fetch", mockPackage(alpha));
     renderAt("/package/com.alpha.ios");

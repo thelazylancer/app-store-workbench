@@ -47,6 +47,7 @@ describe("IPA download API", () => {
   it("reports unavailability when no manager is configured", async () => {
     const app = await buildApp();
     expect((await request(app.server).post("/api/ipa-download").send({ bundleId: "com.example.app" })).status).toBe(503);
+    expect((await request(app.server).get("/api/ipa-download?bundleId=com.example.app")).status).toBe(503);
     expect((await request(app.server).get("/api/ipa-download/abc")).status).toBe(503);
     expect((await request(app.server).get("/api/ipa-download/abc/file")).status).toBe(503);
     expect((await request(app.server).post("/api/ipa-download/abc/auth-code").send({ code: "123456" })).status).toBe(503);
@@ -118,6 +119,26 @@ describe("IPA download API", () => {
     const status = await request(app.server).get(`/api/ipa-download/${created.body.id}`);
     expect(status.status).toBe(200);
     expect(status.body.bundleId).toBe("com.example.app");
+  });
+
+  it("reports the retained local IPA for a Bundle ID", async () => {
+    const dir = await tempDir();
+    const manager = createIpaDownloadManager({ ipatoolBin: "ipatool", downloadsDir: dir, runner: successRunner });
+    const app = await buildApp(manager);
+
+    expect((await request(app.server).get("/api/ipa-download?bundleId=com.example.app")).status).toBe(404);
+    expect((await request(app.server).get("/api/ipa-download?bundleId=bad id")).status).toBe(400);
+
+    const created = await request(app.server).post("/api/ipa-download").send({ bundleId: "com.example.app" });
+    await vi.waitFor(() => expect(manager.getJob(created.body.id)?.status).toBe("done"));
+
+    const cached = await request(app.server).get("/api/ipa-download?bundleId=com.example.app");
+    expect(cached.status).toBe(200);
+    expect(cached.body).toMatchObject({
+      id: created.body.id,
+      status: "done",
+      fileUrl: `/api/ipa-download/${created.body.id}/file`,
+    });
   });
 
   it("serves the finished IPA as an attachment and 404s before it is ready", async () => {

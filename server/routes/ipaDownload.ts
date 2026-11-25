@@ -58,6 +58,21 @@ export function registerIpaDownloadRoutes(app: FastifyInstance, deps: AppDepende
     }));
   });
 
+  app.get("/api/ipa-download", async (request, reply) => {
+    if (!deps.ipaDownload) {
+      return reply.code(503).send({ message: "IPA download is unavailable" });
+    }
+    const bundleId = (request.query as { bundleId?: unknown }).bundleId;
+    const value = typeof bundleId === "string" ? bundleId.trim() : "";
+    if (!BUNDLE_ID_PATTERN.test(value)) {
+      return reply.code(400).send({ message: "A valid Bundle ID is required" });
+    }
+    const cached = deps.ipaDownload.getCachedJob?.(value) ?? null;
+    return cached
+      ? reply.send(cached)
+      : reply.code(404).send({ message: "No cached IPA for this Bundle ID" });
+  });
+
   app.get("/api/ipa-download/:id", async (request, reply) => {
     if (!deps.ipaDownload) {
       return reply.code(503).send({ message: "IPA download is unavailable" });

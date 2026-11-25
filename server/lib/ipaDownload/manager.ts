@@ -36,6 +36,8 @@ export type IpaJobMeta = {
 export type IpaDownloadManager = {
   createJob(bundleId: string, meta?: IpaJobMeta): IpaDownloadJob;
   getJob(id: string): IpaDownloadJob | null;
+  /** A finished, still-retained download for the bundle, if the file is on disk. Optional for alternate backends. */
+  getCachedJob?(bundleId: string): IpaDownloadJob | null;
   getFilePath(id: string): string | null;
   submitAuthCode(id: string, code: string): Promise<IpaDownloadJob | null>;
   cancelJob(id: string): IpaDownloadJob | null;
@@ -382,6 +384,11 @@ export function createIpaDownloadManager(options: IpaDownloadManagerOptions): Ip
     getJob(id: string) {
       const record = jobs.get(id);
       return record ? store.toView(record) : null;
+    },
+
+    getCachedJob(bundleId: string) {
+      const cached = cachedJob(bundleId);
+      return cached ? store.toView(cached) : null;
     },
 
     getFilePath(id: string) {
