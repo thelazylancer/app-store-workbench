@@ -375,6 +375,32 @@ describeDb("weekly report against PostgreSQL", () => {
     ]);
   });
 
+  it("derives IAP share, mean versions and weekly Top distributions", async () => {
+    const report = await repo.getWeeklyReport(week3);
+
+    expect(report.trends.iapShare).toEqual([
+      { weekStart: week2, iapPackages: 0, resolvedPackages: 4, share: 0 },
+      { weekStart: week3, iapPackages: 1, resolvedPackages: 7, share: 1 / 7 },
+    ]);
+    // Only week3 has version records; no-version packages leave the denominator.
+    expect(report.trends.avgVersions).toEqual([
+      { weekStart: week3, versionedPackages: 6, totalVersions: 13, value: 13 / 6 },
+    ]);
+
+    expect(report.trends.categoryWeeks.map((week) => [week.weekStart, week.resolvedPackages]))
+      .toEqual([[week2, 4], [week3, 7]]);
+    expect(report.trends.categoryWeeks[1]!.buckets.map((bucket) => [bucket.key, bucket.count]))
+      .toEqual([["Games", 4], ["Utilities", 2], ["unknown", 1]]);
+
+    expect(report.trends.privacyWeeks.map((week) => week.weekStart)).toEqual([week2, week3]);
+    const privacy = new Map(
+      report.trends.privacyWeeks[1]!.buckets.map((bucket) => [bucket.key, bucket.count]),
+    );
+    expect(privacy.get("own")).toBe(1);
+    expect(privacy.get("google")).toBe(1);
+    expect(privacy.get("unknown")).toBe(5);
+  });
+
   it("builds highlights from team and category changes", async () => {
     const report = await repo.getWeeklyReport(week3);
 

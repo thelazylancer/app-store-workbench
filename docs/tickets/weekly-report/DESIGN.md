@@ -70,6 +70,9 @@ export type WeeklyTrendWeek = { weekStart: string; weekEnd: string; resolvedPack
 export type WeeklyMetricPoint = { weekStart: string; team: string; value: number; packageCount: number; offlineCount: number };
 export type WeeklyMetricKey = "avgVersionGapDays" | "avgLatestVersionToAdDays" | "avgAdToOfflineDays";
 export type WeeklyMetricSeries = { key: WeeklyMetricKey; title: string; points: WeeklyMetricPoint[] };
+export type WeeklyIapPoint = { weekStart: string; iapPackages: number; resolvedPackages: number; share: number };
+export type WeeklyVersionAveragePoint = { weekStart: string; versionedPackages: number; totalVersions: number; value: number };
+export type WeeklyDistributionWeek = { weekStart: string; resolvedPackages: number; buckets: WeeklyBucket[] };
 export type WeeklyHighlight = | { kind: "team_change"; ... } | { kind: "category_change"; ... };   // REQUIREMENTS §5.2 原样
 export type WeeklyReportResponse = { /* REQUIREMENTS §5.2 原样，另加顶层 latestCompleteWeek */ };
 ```
@@ -102,12 +105,16 @@ export function addWeeks(weekStart: string, n: number): string; // ±7n 天
 
 1. **WEEK_MAIN_SQL**（主干聚合，覆盖 4 周窗口）：
    `GROUP BY date_trunc('week', first_ad_date::date), team, lookup_status, category, minimum_os_version, iap_has(CASE), policy_url(CASE)` + `count(*)`。
-   形状抄 `TREND_SQL`（`shelfQueries.ts:75`）但日期列换 `first_ad_date`。TS 折叠出：4 周 `resolvedPackages/ingestedPackages`、本周 teams/category/ios/iap/privacy、上周 teams/category（环比 + 品类变化）。
+   形状抄 `TREND_SQL`（`shelfQueries.ts:75`）但日期列换 `first_ad_date`。TS 折叠出：4 周 `resolvedPackages/ingestedPackages`、本周 teams/category/ios/iap/privacy、上周 teams/category（环比 + 品类变化），以及 4 周 `iapShare/categoryWeeks/privacyWeeks`。
 2. **VERSION_COUNTS_SQL**（仅本周窗口，hit-only）：
    `competitor_packages LEFT JOIN (SELECT package_code, count(DISTINCT version) FROM competitor_versions GROUP BY 1)` → `GROUP BY team, bucket(0/1/2/3/4+)`。TS 折叠出整体 + 团队两层分布。
 3. **METRICS_SQL**（4 周窗口，hit-only，按 `first_ad_date` 分周）：
    抄 `TEAM_WEEK_STATS_SQL`（`shelfQueries.ts:109`）的结构，改动三点：日期列换 `first_ad_date`、加 `lookup_status='hit'` 过滤、增列 `count(ad_to_offline_days) AS offline_count` 与 `count(*) FILTER (gap 有值且 ≤30)`。gap >30 丢弃用 `avg(gap_days) FILTER (WHERE gap_days <= 30)`（同 shelf 现行实现）。
 4. **BATCH_SQL**：`SELECT to_char(target_date,...), status FROM competitor_batches ORDER BY target_date DESC, fetched_at DESC LIMIT 1` → `dataThrough/batchStatus`。
+5. **VERSION_TREND_SQL**（4 周窗口，hit-only）：
+   `pkg_versions = competitor_versions GROUP BY package_code` → 左连 `competitor_packages`，按周统计 `versionedPackages = count(*) FILTER (version_count > 0)` 与 `totalVersions = sum(version_count)`；TS 算 `value = total / versioned`，只保留 `versioned > 0` 的周。无版本记录的包分子分母都不计。
+
+`iapShare` 复用 WEEK_MAIN_SQL 的 iap_has 计数（`yesCount / resolvedPackages`），只保留 `resolved > 0` 的周；`categoryWeeks/privacyWeeks` 复用同一行的 category / policy_url 折叠，排序与 `distributions.*` 相同（count 降序、unknown 最后）。
 
 不聚合 `app_store_json` 以外的任何包级明细；单响应一次返回全部区块，前端不再二次请求。
 
@@ -137,8 +144,10 @@ src/lib/weeklyApi.ts        getWeeklyReport(week?) + WeeklyApiError（抄 shelfA
 src/weekly/App.tsx          状态机 + 周头 + 摘要 + 关注项 + 脚注 + 组装（~260）
 src/weekly/TeamCards.tsx    团队卡网格（§4.3，含 <3 包的 — 规则）（~170）
 src/weekly/StructureBars.tsx 单周结构 4 条 100% 横条 + 版本数分布横条（§4.5）（~150）
-src/weekly/TrendBars.tsx    近 4 周新增柱 + 数据不足斜纹柱（§4.6）（~90）
-src/weekly/MetricBars.tsx   三指标 × 近 4 周只读柱组（§4.4，无筛选无下钻）（~180）
+src/weekly/TrendBars.tsx    近 4 周新增柱 + 数据不足斜纹柱（§4.6）（~80）
+src/weekly/TrendScale.tsx   新增与结构：新增包数通栏 + 内购比例 / 包版本数（~140）
+src/weekly/TopChanges.tsx   品类 / 隐私域名 Top10 变化（~120）
+src/weekly/MetricBars.tsx   三指标 × 近 4 周整体只读柱（§4.4，无团队层）（~105）
 src/weekly/states.tsx       Loading/Error/Empty 薄壳（data-role="weekly-*"）（~60）
 src/weekly/styles/weekly.css 页面布局、团队卡、结构条、图表几何（≤300）
 src/weekly/styles/weekly-charts.css 仅「数据不足」斜纹（文件名命中 charts.css 守卫豁免）

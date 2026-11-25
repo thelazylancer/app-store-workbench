@@ -1,11 +1,14 @@
 import { vi } from "vitest";
 import type {
   WeeklyBucket,
+  WeeklyDistributionWeek,
   WeeklyHighlight,
+  WeeklyIapPoint,
   WeeklyMetricSeries,
   WeeklyReportResponse,
   WeeklyTeam,
   WeeklyTrendWeek,
+  WeeklyVersionAveragePoint,
 } from "../../shared/weeklyReportTypes";
 import { addDays } from "../../src/lib/reportDate";
 
@@ -163,6 +166,125 @@ function metricsFor(weekStart: string): WeeklyMetricSeries[] {
   ];
 }
 
+function trendIap(weekStart: string): WeeklyIapPoint[] {
+  const starts = [-14, -7, 0].map((offset) => addDays(weekStart, offset));
+  const values: [number, number][] = [[5, 18], [9, 50], [7, 52]];
+  return starts.map((start, index) => ({
+    weekStart: start,
+    iapPackages: values[index]![0],
+    resolvedPackages: values[index]![1],
+    share: values[index]![0] / values[index]![1],
+  }));
+}
+
+function trendAvgVersions(weekStart: string): WeeklyVersionAveragePoint[] {
+  const starts = [-14, -7, 0].map((offset) => addDays(weekStart, offset));
+  const values: [number, number][] = [[18, 30], [50, 90], [52, 100]];
+  return starts.map((start, index) => ({
+    weekStart: start,
+    versionedPackages: values[index]![0],
+    totalVersions: values[index]![1],
+    value: values[index]![1] / values[index]![0],
+  }));
+}
+
+function categoryWeeksFor(weekStart: string): WeeklyDistributionWeek[] {
+  const starts = [-14, -7, 0].map((offset) => addDays(weekStart, offset));
+  return [
+    {
+      weekStart: starts[0]!,
+      resolvedPackages: 18,
+      buckets: [
+        bucket("Utilities", "Utilities", 6, 6 / 18),
+        bucket("Games", "Games", 4, 4 / 18),
+        bucket("Lifestyle", "Lifestyle", 3, 3 / 18),
+        bucket("Finance", "Finance", 2, 2 / 18),
+        bucket("unknown", "未知", 3, 3 / 18),
+      ],
+    },
+    {
+      weekStart: starts[1]!,
+      resolvedPackages: 50,
+      buckets: [
+        bucket("Utilities", "Utilities", 14, 14 / 50),
+        bucket("Lifestyle", "Lifestyle", 9, 9 / 50),
+        bucket("Games", "Games", 8, 8 / 50),
+        bucket("Finance", "Finance", 6, 6 / 50),
+        bucket("Productivity", "Productivity", 5, 5 / 50),
+        bucket("Photo", "Photo", 4, 4 / 50),
+        bucket("unknown", "未知", 4, 4 / 50),
+      ],
+    },
+    {
+      weekStart: starts[2]!,
+      resolvedPackages: 52,
+      buckets: [
+        bucket("Utilities", "Utilities", 14, 14 / 52),
+        bucket("Lifestyle", "Lifestyle", 10, 10 / 52),
+        bucket("Games", "Games", 8, 8 / 52),
+        bucket("Finance", "Finance", 6, 6 / 52),
+        bucket("Productivity", "Productivity", 5, 5 / 52),
+        bucket("Photo", "Photo", 4, 4 / 52),
+        bucket("Music", "Music", 3, 3 / 52),
+        bucket("unknown", "未知", 2, 2 / 52),
+      ],
+    },
+  ];
+}
+
+function privacyWeeksFor(weekStart: string): WeeklyDistributionWeek[] {
+  const starts = [-14, -7, 0].map((offset) => addDays(weekStart, offset));
+  return [
+    {
+      weekStart: starts[0]!,
+      resolvedPackages: 18,
+      buckets: [
+        bucket("own", "自有域名", 8, 8 / 18),
+        bucket("generator", "模板站", 4, 4 / 18),
+        bucket("cloudflare", "Cloudflare", 2, 2 / 18),
+        bucket("google", "Google", 2, 2 / 18),
+        bucket("unknown", "未知", 2, 2 / 18),
+      ],
+    },
+    {
+      weekStart: starts[1]!,
+      resolvedPackages: 50,
+      buckets: [
+        bucket("own", "自有域名", 22, 22 / 50),
+        bucket("generator", "模板站", 9, 9 / 50),
+        bucket("cloudflare", "Cloudflare", 6, 6 / 50),
+        bucket("google", "Google", 5, 5 / 50),
+        bucket("github", "Github", 4, 4 / 50),
+        bucket("unknown", "未知", 4, 4 / 50),
+      ],
+    },
+    {
+      weekStart: starts[2]!,
+      resolvedPackages: 52,
+      buckets: [
+        bucket("own", "自有域名", 24, 24 / 52),
+        bucket("generator", "模板站", 9, 9 / 52),
+        bucket("cloudflare", "Cloudflare", 6, 6 / 52),
+        bucket("google", "Google", 5, 5 / 52),
+        bucket("github", "Github", 4, 4 / 52),
+        bucket("vercel", "Vercel", 2, 2 / 52),
+        bucket("unknown", "未知", 2, 2 / 52),
+      ],
+    },
+  ];
+}
+
+function trendsFor(weekStart: string) {
+  return {
+    weeks: trendWeeks(weekStart),
+    metrics: metricsFor(weekStart),
+    iapShare: trendIap(weekStart),
+    avgVersions: trendAvgVersions(weekStart),
+    categoryWeeks: categoryWeeksFor(weekStart),
+    privacyWeeks: privacyWeeksFor(weekStart),
+  };
+}
+
 export function weeklyReport(overrides: Partial<WeeklyReportResponse> = {}): WeeklyReportResponse {
   const base: WeeklyReportResponse = {
     weekStart: WEEK_START,
@@ -217,7 +339,7 @@ export function weeklyReport(overrides: Partial<WeeklyReportResponse> = {}): Wee
         bucket("unknown", "未知", 2, 2 / 52),
       ],
     },
-    trends: { weeks: trendWeeks(WEEK_START), metrics: metricsFor(WEEK_START) },
+    trends: trendsFor(WEEK_START),
     highlights: HIGHLIGHTS,
   };
   return { ...base, ...overrides };
@@ -228,7 +350,7 @@ export function reportForWeek(weekStart: string, latestCompleteWeek = weekStart)
     weekStart,
     weekEnd: addDays(weekStart, 6),
     latestCompleteWeek,
-    trends: { weeks: trendWeeks(weekStart), metrics: metricsFor(weekStart) },
+    trends: trendsFor(weekStart),
   });
 }
 
@@ -256,6 +378,10 @@ export function emptyReportForWeek(weekStart: string, latestCompleteWeek = weekS
           : week
       )),
       metrics: [],
+      iapShare: [],
+      avgVersions: [],
+      categoryWeeks: [],
+      privacyWeeks: [],
     },
     highlights: [],
   };

@@ -189,16 +189,15 @@
   .wx-weekly-facts-grid { grid-template-columns: 1fr; gap: 12px; }
 }
 
-/* Metric chart: flat, with click-to-read values instead of hover-only tooltips. */
-.wx-weekly .wx-chart-plot.wx-weekly-metric-plot { height: 96px; padding-top: 20px; }
-.wx-weekly-metric-canvas { --wx-chart-slot-w: 120px; }
-.wx-weekly-metric-canvas .wx-metric-track { width: 72px; }
-.wx-weekly .wx-metric-bar { background-image: none; cursor: pointer; transition: none; }
-.wx-weekly .wx-metric-bar:hover { filter: none; }
+/* Item 1–3 panel grid: new packages full width, IAP and versions side by side. */
+.wx-weekly-scale-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 40px; }
+.wx-weekly-trend-panel { min-width: 0; }
+.wx-weekly-trend-panel-wide { grid-column: 1 / -1; }
+.wx-weekly-panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.wx-weekly-panel-note { color: var(--color-text-secondary); font-size: 11px; }
+.wx-weekly-ratio .wx-weekly-overall-plot { height: 88px; }
 
-/* Version/delivery metrics split into all-team aggregate and per-team charts. */
-.wx-weekly-metric-scope { margin: 0 0 10px; color: var(--color-text-secondary); font-size: 12px; font-weight: 600; }
-.wx-weekly-metric-scope-team { margin-top: 24px; }
+/* Version/delivery metrics, overall only. */
 .wx-weekly-overall { max-width: 560px; }
 .wx-weekly-overall-row + .wx-weekly-overall-row { margin-top: 16px; }
 .wx-weekly-overall-plot { position: relative; display: flex; align-items: flex-end; height: 76px; padding-top: 20px; border-bottom: 1px solid var(--color-border); }
@@ -216,15 +215,6 @@
 .wx-weekly-overall-column:focus-visible { outline: var(--focus-outline-width) solid var(--focus-outline-color); outline-offset: 2px; }
 .wx-weekly-overall-column:hover .wx-weekly-overall-bar { filter: brightness(0.92); }
 .wx-weekly .wx-chart-plot .wx-chart-slot:hover { background: transparent; }
-.wx-weekly-metric-bar { min-height: 1px; }
-
-.wx-weekly-team-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0 0 16px; padding: 0; list-style: none; font-size: 12px; }
-.wx-weekly-team-legend li { display: flex; align-items: center; gap: 4px; }
-.wx-weekly-values-wrap { max-width: 100%; margin-top: 8px; overflow: auto; }
-.wx-weekly-values { border-collapse: collapse; font-size: 12px; line-height: 1.5; }
-.wx-weekly-values caption { padding-bottom: 6px; color: var(--color-text-secondary); text-align: left; }
-.wx-weekly-values th, .wx-weekly-values td { padding: 4px 12px 4px 0; border-bottom: 1px solid var(--color-border); text-align: left; white-space: nowrap; }
-.wx-weekly-values thead th { color: var(--color-text-secondary); font-weight: 600; }
 .wx-weekly-metric-empty { margin: 0 0 20px; color: var(--color-text-secondary); font-size: 12px; }
 
 /* Trend geometry (the hatch itself stays in weekly-charts.css). */
@@ -244,9 +234,29 @@
 .wx-weekly-current-week { color: var(--color-text-accent); font-weight: 600; }
 .wx-weekly-trend-label .wx-weekly-date-short { display: none; }
 
+/* Item 7: Top10 rows with a four-week sparkline and Δpp vs the base week. */
+.wx-weekly-top-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 40px; }
+.wx-weekly-top-panel { min-width: 0; }
+.wx-weekly-top-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.wx-weekly-top-base { color: var(--color-text-secondary); font-family: var(--font-family-code); font-size: 11px; white-space: nowrap; }
+.wx-weekly-top-rows { position: relative; display: flex; flex-direction: column; gap: 4px; }
+.wx-weekly-top-row { display: grid; grid-template-columns: minmax(0, 1fr) 46px 64px 56px; align-items: center; gap: 10px; padding: 1px 0; }
+.wx-weekly-top-label { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.wx-weekly-top-share { color: var(--color-text-secondary); font-family: var(--font-family-code); font-size: 11px; text-align: right; font-variant-numeric: tabular-nums; }
+.wx-weekly-top-spark { display: flex; align-items: stretch; gap: 2px; height: 20px; border-bottom: 1px solid var(--color-border); }
+.wx-weekly-top-slot { position: relative; display: block; flex: 1 1 0; height: 100%; margin: 0; padding: 0; border: 0; background: none; }
+button.wx-weekly-top-slot { cursor: pointer; }
+.wx-weekly-top-bar { position: absolute; right: 20%; bottom: 0; left: 20%; min-height: 1px; border-radius: 2px 2px 0 0; background: rgba(46, 111, 163, 0.45); }
+.wx-weekly-top-bar-current { background: var(--color-accent); }
+.wx-weekly-top-delta { font-family: var(--font-family-code); font-size: 11px; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.wx-weekly-top-tip { position: absolute; inset: 0; pointer-events: none; }
+.wx-weekly-top-tip .wx-chart-tip { top: 0; right: 0; left: auto; transform: none; }
+.wx-weekly-top-slot:focus-visible { outline: var(--focus-outline-width) solid var(--focus-outline-color); outline-offset: 1px; }
+.wx-weekly-top-slot:hover .wx-weekly-top-bar { filter: brightness(0.92); }
+
 @media (max-width: 840px) {
-  .wx-weekly-metric-canvas { --wx-chart-slot-w: 96px; }
-  .wx-weekly .wx-chart-plot.wx-weekly-metric-plot { height: 96px; }
+  .wx-weekly-scale-grid, .wx-weekly-top-grid { grid-template-columns: 1fr; gap: 24px; }
+  .wx-weekly-trend-panel-wide { grid-column: auto; }
 }
 
 @media (max-width: 640px) {
@@ -256,4 +266,5 @@
   .wx-weekly-trend-column, .wx-weekly-trend-gap-wrap, .wx-weekly-trend-gap { width: 56px; }
   .wx-weekly-trend-label .wx-weekly-date-full { display: none; }
   .wx-weekly-trend-label .wx-weekly-date-short { display: block; }
+  .wx-weekly-top-row { grid-template-columns: minmax(0, 1fr) 40px 52px 48px; gap: 8px; }
 }

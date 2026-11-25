@@ -1,45 +1,13 @@
-import { Theme } from "@astryxdesign/core";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { BrowserRouter } from "react-router";
+import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { WeeklyPage } from "../../src/weekly/App";
-import { wxTheme } from "../../src/theme/wxTheme";
-import {
-  WEEK_START,
-  json,
-  mockWeekly,
-  reportForWeek,
-  weeklyReport,
-} from "./weeklyFixtures";
+import { WEEK_START, json, mockWeekly, reportForWeek, weeklyReport } from "./weeklyFixtures";
+import { byRole, renderPage, teamCards, waitForCards } from "./weeklyHarness";
 
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   window.history.replaceState({}, "", "/");
 });
-
-function renderPage(search = "") {
-  window.history.replaceState({}, "", `/weekly${search}`);
-  return render(
-    <Theme theme={wxTheme} mode="light">
-      <BrowserRouter>
-        <WeeklyPage />
-      </BrowserRouter>
-    </Theme>,
-  );
-}
-
-function teamCards(): HTMLElement[] {
-  return [...document.querySelectorAll<HTMLElement>('[data-role="weekly-team-card"]')];
-}
-
-function byRole<T extends HTMLElement>(role: string, attribute = "data-role"): T | null {
-  return document.querySelector<T>(`[${attribute}="${role}"]`);
-}
-
-async function waitForCards(count: number) {
-  await waitFor(() => expect(teamCards()).toHaveLength(count));
-}
 
 describe("weekly page", () => {
   it("renders the full report in page order", async () => {
@@ -81,10 +49,10 @@ describe("weekly page", () => {
     expect(byRole("weekly-metric-facts")?.textContent).toContain("2.5");
     expect(byRole("weekly-metric-facts")?.textContent).toContain("已下架 2/52");
     expect(groups[1]!.querySelector('[data-role="weekly-team-cards"]')).toBeTruthy();
-    expect(groups[2]!.querySelector('[data-role="weekly-metric-row"]')).toBeTruthy();
+    expect(groups[2]!.querySelector('[data-role="weekly-metric-overall-row"]')).toBeTruthy();
     expect(groups[2]!.querySelector('[data-role="weekly-trend"]')).toBeTruthy();
     expect([...groups[2]!.querySelectorAll("h3")].map((heading) => heading.textContent))
-      .toEqual(["新增包数", "版本与投放"]);
+      .toEqual(["新增与结构", "版本与投放", "品类与隐私变化"]);
   });
 
   it("shows the <3 package sample rule and API highlight direction", async () => {
@@ -282,7 +250,7 @@ describe("weekly page", () => {
       "版本数",
       "内购",
       "品类 Top5",
-      "隐私 Top5",
+      "隐私域名 Top5",
       "iOS",
     ]);
 
@@ -416,82 +384,4 @@ describe("weekly page", () => {
     expect(gamma.querySelector('[data-role="weekly-card-metrics"]')?.textContent).toContain("—");
   });
 
-  it("renders the three metric rows, missing values and offline context", async () => {
-    vi.stubGlobal("fetch", mockWeekly());
-    renderPage();
-    await waitForCards(3);
-
-    const rows = [...document.querySelectorAll<HTMLElement>('[data-role="weekly-metric-row"]')];
-    expect(rows.map((row) => row.dataset.metric)).toEqual([
-      "avgVersionGapDays",
-      "avgLatestVersionToAdDays",
-      "avgAdToOfflineDays",
-    ]);
-
-    const gapTable = byRole("weekly-metric-table-hidden");
-    expect(gapTable).toBeTruthy();
-    expect(
-      document.querySelector<HTMLElement>(
-        '[data-role="weekly-metric-table-hidden"][data-metric="avgVersionGapDays"]',
-      )?.textContent,
-    ).toContain("—");
-    expect(
-      document.querySelector<HTMLElement>(
-        '[data-role="weekly-metric-table-hidden"][data-metric="avgAdToOfflineDays"]',
-      )?.textContent,
-    ).toContain("0 天（已下架 0/30）");
-    expect(
-      rows[2]!.querySelector('[role="img"]')?.getAttribute("aria-label"),
-    ).toContain("0 天表示该团队该周没有已下架包");
-
-    const toggle = document.querySelector<HTMLElement>(
-      '[data-role="weekly-metric-toggle"][data-metric="avgVersionGapDays"]',
-    )!;
-    expect(toggle.getAttribute("aria-expanded")).toBe("false");
-    fireEvent.click(toggle);
-    expect(toggle.getAttribute("aria-expanded")).toBe("true");
-    expect(
-      document.querySelector(
-        '[data-role="weekly-metric-table"][data-metric="avgVersionGapDays"]',
-      ),
-    ).toBeTruthy();
-
-    const gapBar = document.querySelector<HTMLElement>(
-      `[data-role="weekly-metric-bar"][data-metric="avgVersionGapDays"][data-week="${WEEK_START}"]`,
-    )!;
-    fireEvent.click(gapBar);
-    expect(document.querySelector(".wx-chart-tip")?.textContent).toBe("A：8.5");
-
-    const overallRows = [...document.querySelectorAll<HTMLElement>(
-      '[data-role="weekly-metric-overall-row"]',
-    )];
-    expect(overallRows.map((row) => row.dataset.metric)).toEqual([
-      "avgVersionGapDays",
-      "avgLatestVersionToAdDays",
-      "avgAdToOfflineDays",
-    ]);
-    expect(overallRows[0]!.textContent).toContain("6.5");
-    expect(overallRows[0]!.textContent).toContain("8.5");
-    fireEvent.click(document.querySelector<HTMLElement>(
-      `[data-role="weekly-metric-overall-bar"][data-metric="avgVersionGapDays"][data-week="${WEEK_START}"]`,
-    )!);
-    expect(overallRows[0]!.querySelector(".wx-chart-tip")?.textContent).toBe("整体：8.5");
-  });
-
-  it("hatches weeks with insufficient data and keeps the current-week marker", async () => {
-    vi.stubGlobal("fetch", mockWeekly());
-    renderPage();
-    await waitForCards(3);
-
-    const gaps = document.querySelectorAll('[data-role="weekly-trend-gap"]');
-    expect(gaps).toHaveLength(1);
-    expect(byRole("weekly-trend-gap-wrap")?.textContent).toContain("数据不足");
-
-    const bars = [...document.querySelectorAll<HTMLElement>('[data-role="weekly-trend-bar"]')];
-    expect(bars.map((bar) => bar.dataset.value)).toEqual(["40", "100", "112"]);
-    expect(document.querySelector(".wx-weekly-current-week")?.textContent).toBe("本周");
-
-    fireEvent.click(bars[2]!);
-    expect(document.querySelector(".wx-chart-tip")?.textContent).toContain("112 包");
-  });
 });

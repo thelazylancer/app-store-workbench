@@ -11,7 +11,8 @@ import { TeamCards } from "./TeamCards";
 import { MetricBars } from "./MetricBars";
 import { MetricFacts } from "./MetricFacts";
 import { StructureBars } from "./StructureBars";
-import { TrendBars } from "./TrendBars";
+import { TrendScale } from "./TrendScale";
+import { TopChanges } from "./TopChanges";
 import { Highlights } from "./Highlights";
 import { batchStatusLabel, type BatchStatus } from "./format";
 import { useWeeklyWeek } from "./filters";
@@ -73,7 +74,7 @@ function Footnote({ summary }: { summary: WeeklyReportResponse["summary"] }) {
     <footer className="wx-weekly-footnote">
       <p data-role="weekly-footnote">
         本周共入库 <span className="wx-weekly-mono">{summary.ingestedPackages}</span> 个包，其中{" "}
-        <span className="wx-weekly-mono">{summary.unresolvedPackages}</span> 个未解析，未计入统计；数据截至{" "}
+        <span className="wx-weekly-mono">{summary.unresolvedPackages}</span> 个未解析；新增包数计入未解析，比例与结构仅按已解析包计算；数据截至{" "}
         <span className="wx-weekly-mono">{summary.dataThrough ?? "—"}</span>，批次状态{" "}
         {batchStatusLabel(summary.batchStatus as BatchStatus)}。
       </p>
@@ -210,11 +211,16 @@ export function WeeklyPage() {
             />
           </Group>
           <Group id="trends" title="过去 4 周趋势">
-            <TrendBars weeks={report.trends.weeks} />
-            <MetricBars
+            <TrendScale
               weeks={report.trends.weeks}
-              metrics={report.trends.metrics}
-              teams={report.teams.map((team) => team.team)}
+              iapShare={report.trends.iapShare}
+              avgVersions={report.trends.avgVersions}
+            />
+            <MetricBars weeks={report.trends.weeks} metrics={report.trends.metrics} />
+            <TopChanges
+              weeks={report.trends.weeks}
+              categoryWeeks={report.trends.categoryWeeks}
+              privacyWeeks={report.trends.privacyWeeks}
             />
           </Group>
           <Footnote summary={report.summary} />

@@ -2,8 +2,9 @@ import type { Pool } from "pg";
 import { privacyHostKind, privacyHostLabel } from "../../shared/privacyHost";
 import { SHELF_IOS_BUCKET_ORDER, SHELF_UNKNOWN_KEY } from "../../shared/shelfTypes";
 import type {
-  WeeklyHighlight, WeeklyMetricKey, WeeklyMetricOverallPoint, WeeklyMetricPoint,
-  WeeklyMetricSeries, WeeklyReportResponse, WeeklyTeam, WeeklyTrendWeek,
+  WeeklyDistributionWeek, WeeklyHighlight, WeeklyIapPoint, WeeklyMetricKey,
+  WeeklyMetricOverallPoint, WeeklyMetricPoint, WeeklyMetricSeries, WeeklyReportResponse,
+  WeeklyTeam, WeeklyTrendWeek, WeeklyVersionAveragePoint,
 } from "../../shared/weeklyReportTypes";
 import {
   CATEGORY_LABEL, distributionBuckets, iapBuckets, increment, iosLabel, share, topBuckets, versionBuckets,
@@ -36,6 +37,7 @@ type WeekMainRow = {
 };
 
 type VersionCountRow = { team: string; bucket: string; n: number };
+type VersionTrendRow = { week_start: string; versioned_packages: number; total_versions: number };
 
 type MetricRow = {
   week_start: string; team: string | null; package_count: number; avg_gap_days: number | null;
@@ -73,6 +75,20 @@ const VERSION_COUNTS_SQL = `
     LEFT JOIN pkg_versions pv ON pv.package_code = p.package_code
    WHERE p.lookup_status = 'hit' AND p.first_ad_date BETWEEN $1::date AND $2::date
    GROUP BY 1, 2 ORDER BY 1, 2`;
+
+// Mean versions per package, over packages that have at least one version record.
+const VERSION_TREND_SQL = `
+  WITH pkg_versions AS (
+    SELECT package_code, count(DISTINCT version)::int AS version_count
+      FROM competitor_versions GROUP BY package_code
+  )
+  SELECT to_char(date_trunc('week', p.first_ad_date::date)::date, 'YYYY-MM-DD') AS week_start,
+         count(*) FILTER (WHERE COALESCE(pv.version_count, 0) > 0)::int AS versioned_packages,
+         COALESCE(sum(pv.version_count) FILTER (WHERE pv.version_count > 0), 0)::int AS total_versions
+    FROM competitor_packages p
+    LEFT JOIN pkg_versions pv ON pv.package_code = p.package_code
+   WHERE p.lookup_status = 'hit' AND p.first_ad_date BETWEEN $1::date AND $2::date
+   GROUP BY 1 ORDER BY 1`;
 
 // Same timing shape as shelf's TEAM_WEEK_STATS_SQL, keyed by first_ad_date and
 // hit-only. Gaps over 30 days are dormant-app outliers and are dropped.
@@ -209,6 +225,8 @@ function foldWeekRows(rows: WeekMainRow[], selectedWeek: string) {
   const weekTotals = new Map<string, WeekTotals>();
   const teamCounts = new Map<string, Map<string, number>>();
   const categoryCounts = new Map<string, Map<string, number>>();
+  const iapCounts = new Map<string, Map<string, number>>();
+  const privacyCounts = new Map<string, Map<string, number>>();
   const currentTeams = new Map<string, TeamStats>();
   const distributions = {
     category: new Map<string, number>(), ios: new Map<string, number>(),
@@ -231,15 +249,23 @@ function foldWeekRows(rows: WeekMainRow[], selectedWeek: string) {
     increment(categoryMap, category, row.n);
     categoryCounts.set(row.week_start, categoryMap);
 
+    const iap = row.iap_has ? "yes" : "no";
+    const iapMap = iapCounts.get(row.week_start) ?? new Map<string, number>();
+    increment(iapMap, iap, row.n);
+    iapCounts.set(row.week_start, iapMap);
+
+    const privacy = privacyHostKind(row.policy_url);
+    const privacyMap = privacyCounts.get(row.week_start) ?? new Map<string, number>();
+    increment(privacyMap, privacy, row.n);
+    privacyCounts.set(row.week_start, privacyMap);
+
     if (row.week_start !== selectedWeek) continue;
     const stats = currentTeams.get(row.team) ?? emptyTeamStats();
     stats.resolved += row.n;
     increment(stats.categories, category, row.n);
     const ios = iosBucket(row.minimum_os_version);
     increment(stats.ios, ios, row.n);
-    const iap = row.iap_has ? "yes" : "no";
     increment(stats.iap, iap, row.n);
-    const privacy = privacyHostKind(row.policy_url);
     increment(stats.privacy, privacy, row.n);
     currentTeams.set(row.team, stats);
 
@@ -249,7 +275,7 @@ function foldWeekRows(rows: WeekMainRow[], selectedWeek: string) {
     increment(distributions.privacy, privacy, row.n);
   }
 
-  return { weekTotals, teamCounts, categoryCounts, currentTeams, distributions };
+  return { weekTotals, teamCounts, categoryCounts, iapCounts, privacyCounts, currentTeams, distributions };
 }
 
 function sharesByTotal(counts: Map<string, number> | undefined, total: number): Map<string, number> {
@@ -279,9 +305,10 @@ export function createWeeklyReport(pool: Pool): WeeklyReportRepo {
       const from = addWeeks(weekStart, -3);
       const previousWeek = addWeeks(weekStart, -1);
 
-      const [mainResult, versionResult, metricResult, batchResult] = await Promise.all([
+      const [mainResult, versionResult, versionTrendResult, metricResult, batchResult] = await Promise.all([
         pool.query<WeekMainRow>(WEEK_MAIN_SQL, [from, weekEnd]),
         pool.query<VersionCountRow>(VERSION_COUNTS_SQL, [weekStart, weekEnd]),
+        pool.query<VersionTrendRow>(VERSION_TREND_SQL, [from, weekEnd]),
         pool.query<MetricRow>(METRICS_SQL, [from, weekEnd]),
         pool.query<BatchRow>(BATCH_SQL),
       ]);
@@ -330,6 +357,41 @@ export function createWeeklyReport(pool: Pool): WeeklyReportRepo {
           dataSufficient: totals.ingested > 0,
         };
       });
+      const trendWeekStarts = trendWeeks.map((week) => week.weekStart);
+
+      const iapShare: WeeklyIapPoint[] = trendWeekStarts.flatMap((start) => {
+        const totals = folded.weekTotals.get(start);
+        if (!totals || totals.resolved === 0) return [];
+        const iapPackages = folded.iapCounts.get(start)?.get("yes") ?? 0;
+        return [{
+          weekStart: start, iapPackages, resolvedPackages: totals.resolved,
+          share: iapPackages / totals.resolved,
+        }];
+      });
+
+      const avgVersions: WeeklyVersionAveragePoint[] = versionTrendResult.rows
+        .filter((row) => row.versioned_packages > 0)
+        .map((row) => ({
+          weekStart: row.week_start,
+          versionedPackages: row.versioned_packages,
+          totalVersions: row.total_versions,
+          value: row.total_versions / row.versioned_packages,
+        }));
+
+      const weeklyDistribution = (
+        counts: Map<string, Map<string, number>>,
+        labelOf: (key: string) => string,
+      ): WeeklyDistributionWeek[] => trendWeekStarts.flatMap((start) => {
+        const totals = folded.weekTotals.get(start);
+        if (!totals || totals.resolved === 0) return [];
+        return [{
+          weekStart: start,
+          resolvedPackages: totals.resolved,
+          buckets: distributionBuckets(counts.get(start) ?? new Map(), totals.resolved, labelOf),
+        }];
+      });
+      const categoryWeeks = weeklyDistribution(folded.categoryCounts, CATEGORY_LABEL);
+      const privacyWeeks = weeklyDistribution(folded.privacyCounts, privacyHostLabel);
 
       const metricPoints: Record<WeeklyMetricKey, WeeklyMetricPoint[]> = {
         avgVersionGapDays: [], avgLatestVersionToAdDays: [], avgAdToOfflineDays: [],
@@ -429,7 +491,7 @@ export function createWeeklyReport(pool: Pool): WeeklyReportRepo {
           iap: iapBuckets(folded.distributions.iap, resolvedPackages),
           privacy: distributionBuckets(folded.distributions.privacy, resolvedPackages, privacyHostLabel),
         },
-        trends: { weeks: trendWeeks, metrics },
+        trends: { weeks: trendWeeks, metrics, iapShare, avgVersions, categoryWeeks, privacyWeeks },
         highlights,
       };
     },

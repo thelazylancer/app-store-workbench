@@ -283,7 +283,7 @@ export function StructureBars({ versionCounts, distributions, total }: Structure
         <VerticalPanel id="version" title="版本数" bars={versionBars(versionCounts, total)} total={total} />
         <VerticalPanel id="iap" title="内购" bars={iapBars(distributions.iap, total)} total={total} />
         <HorizontalPanel id="category" title="品类 Top5" bars={topBars(distributions.category, total, 5)} total={total} />
-        <HorizontalPanel id="privacy" title="隐私 Top5" bars={topBars(distributions.privacy, total, 5)} total={total} />
+        <HorizontalPanel id="privacy" title="隐私域名 Top5" bars={topBars(distributions.privacy, total, 5)} total={total} />
         <HorizontalPanel id="ios" title="iOS" bars={iosBars(distributions.ios, total)} total={total} wide />
       </div>
     </section>

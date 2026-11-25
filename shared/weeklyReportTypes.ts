@@ -82,6 +82,30 @@ export type WeeklyMetricSeries = {
   overall: WeeklyMetricOverallPoint[];
 };
 
+/** One week's IAP share over resolved packages. */
+export type WeeklyIapPoint = {
+  weekStart: string;
+  iapPackages: number;
+  resolvedPackages: number;
+  /** 0..1. */
+  share: number;
+};
+
+/** One week's mean versions per package that has version records. */
+export type WeeklyVersionAveragePoint = {
+  weekStart: string;
+  versionedPackages: number;
+  totalVersions: number;
+  value: number;
+};
+
+/** One week's resolved-only distribution (category or privacy). */
+export type WeeklyDistributionWeek = {
+  weekStart: string;
+  resolvedPackages: number;
+  buckets: WeeklyBucket[];
+};
+
 export type WeeklyHighlight =
   | {
       kind: "team_change";
@@ -140,6 +164,12 @@ export type WeeklyReportResponse = {
     /** Always four Monday-start weeks ending at the selected week, ascending. */
     weeks: WeeklyTrendWeek[];
     metrics: WeeklyMetricSeries[];
+    /** Weeks with resolved packages only. */
+    iapShare: WeeklyIapPoint[];
+    /** Weeks with at least one versioned package. */
+    avgVersions: WeeklyVersionAveragePoint[];
+    categoryWeeks: WeeklyDistributionWeek[];
+    privacyWeeks: WeeklyDistributionWeek[];
   };
   /** Team change first, then category change. */
   highlights: WeeklyHighlight[];

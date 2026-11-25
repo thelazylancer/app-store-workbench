@@ -17,70 +17,64 @@ export function TrendBars({ weeks }: { weeks: WeeklyTrendWeek[] }) {
   const lastIndex = weeks.length - 1;
 
   return (
-    <section className="wx-weekly-section" aria-labelledby="weekly-trend-title">
-      <div className="wx-weekly-section-head">
-        <h3 id="weekly-trend-title" className="wx-weekly-h3">新增包数</h3>
-        <p className="wx-weekly-section-meta">全部新增包 · 最后一根为本周 · 点击查看明细</p>
-      </div>
-      <figure className="wx-weekly-trend-figure">
-        <div
-          className="wx-weekly-trend-plot"
-          role="img"
-          aria-label={trendAriaLabel(weeks)}
-          data-role="weekly-trend"
-        >
-          {weeks.map((week) => (
-            <div className="wx-weekly-trend-slot" key={week.weekStart}>
-              <div className="wx-weekly-trend-track">
-                {week.dataSufficient ? (
-                  <div
-                    className="wx-weekly-trend-column"
-                    style={{ height: `${(week.ingestedPackages / max) * 100}%` }}
-                    data-role="weekly-trend-bar"
+    <figure className="wx-weekly-trend-figure">
+      <div
+        className="wx-weekly-trend-plot"
+        role="img"
+        aria-label={trendAriaLabel(weeks)}
+        data-role="weekly-trend"
+      >
+        {weeks.map((week) => (
+          <div className="wx-weekly-trend-slot" key={week.weekStart}>
+            <div className="wx-weekly-trend-track">
+              {week.dataSufficient ? (
+                <div
+                  className="wx-weekly-trend-column"
+                  style={{ height: `${(week.ingestedPackages / max) * 100}%` }}
+                  data-role="weekly-trend-bar"
+                  data-week={week.weekStart}
+                  data-value={week.ingestedPackages}
+                  {...bind(
+                    week.weekStart,
+                    `${week.weekStart.slice(5)} ~ ${week.weekEnd.slice(5)}：${week.ingestedPackages} 包`,
+                  )}
+                >
+                  <span className="wx-weekly-trend-value" aria-hidden="true">
+                    {week.ingestedPackages}
+                  </span>
+                  <span className="wx-weekly-trend-bar" aria-hidden="true" />
+                </div>
+              ) : (
+                <div
+                  className="wx-weekly-trend-gap-wrap"
+                  data-role="weekly-trend-gap-wrap"
+                  {...bind(week.weekStart, `${week.weekStart.slice(5)}：数据不足`)}
+                >
+                  <span className="wx-weekly-trend-insufficient" aria-hidden="true">数据不足</span>
+                  <span
+                    className="wx-weekly-trend-gap"
+                    data-role="weekly-trend-gap"
                     data-week={week.weekStart}
-                    data-value={week.ingestedPackages}
-                    {...bind(
-                      week.weekStart,
-                      `${week.weekStart.slice(5)} ~ ${week.weekEnd.slice(5)}：${week.ingestedPackages} 包`,
-                    )}
-                  >
-                    <span className="wx-weekly-trend-value" aria-hidden="true">
-                      {week.ingestedPackages}
-                    </span>
-                    <span className="wx-weekly-trend-bar" aria-hidden="true" />
-                  </div>
-                ) : (
-                  <div
-                    className="wx-weekly-trend-gap-wrap"
-                    data-role="weekly-trend-gap-wrap"
-                    {...bind(week.weekStart, `${week.weekStart.slice(5)}：数据不足`)}
-                  >
-                    <span className="wx-weekly-trend-insufficient" aria-hidden="true">数据不足</span>
-                    <span
-                      className="wx-weekly-trend-gap"
-                      data-role="weekly-trend-gap"
-                      data-week={week.weekStart}
-                      aria-hidden="true"
-                    />
-                  </div>
-                )}
-              </div>
-              <ChartTip tip={tip} id={week.weekStart} />
+                    aria-hidden="true"
+                  />
+                </div>
+              )}
             </div>
-          ))}
-        </div>
-        <div className="wx-weekly-trend-labels" aria-hidden="true">
-          {weeks.map((week, index) => (
-            <div className="wx-weekly-trend-label" key={week.weekStart}>
-              <span className="wx-weekly-date-full">{week.weekStart}</span>
-              <span className="wx-weekly-date-short">{week.weekStart.slice(5)}</span>
-              <span className="wx-weekly-date-full">~ {week.weekEnd}</span>
-              <span className="wx-weekly-date-short">~ {week.weekEnd.slice(5)}</span>
-              {index === lastIndex ? <span className="wx-weekly-current-week">本周</span> : null}
-            </div>
-          ))}
-        </div>
-      </figure>
-    </section>
+            <ChartTip tip={tip} id={week.weekStart} />
+          </div>
+        ))}
+      </div>
+      <div className="wx-weekly-trend-labels" aria-hidden="true">
+        {weeks.map((week, index) => (
+          <div className="wx-weekly-trend-label" key={week.weekStart}>
+            <span className="wx-weekly-date-full">{week.weekStart}</span>
+            <span className="wx-weekly-date-short">{week.weekStart.slice(5)}</span>
+            <span className="wx-weekly-date-full">~ {week.weekEnd}</span>
+            <span className="wx-weekly-date-short">~ {week.weekEnd.slice(5)}</span>
+            {index === lastIndex ? <span className="wx-weekly-current-week">本周</span> : null}
+          </div>
+        ))}
+      </div>
+    </figure>
   );
 }

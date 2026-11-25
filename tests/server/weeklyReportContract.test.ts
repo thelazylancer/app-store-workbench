@@ -121,6 +121,30 @@ const reportResponse: WeeklyReportResponse = {
         overall: [{ weekStart: "2026-11-16", value: 0, packageCount: 52, offlineCount: 0 }],
       },
     ],
+    iapShare: [
+      { weekStart: "2026-11-02", iapPackages: 5, resolvedPackages: 18, share: 5 / 18 },
+      { weekStart: "2026-11-09", iapPackages: 9, resolvedPackages: 50, share: 9 / 50 },
+      { weekStart: "2026-11-16", iapPackages: 7, resolvedPackages: 52, share: 7 / 52 },
+    ],
+    avgVersions: [
+      { weekStart: "2026-11-02", versionedPackages: 18, totalVersions: 30, value: 30 / 18 },
+      { weekStart: "2026-11-09", versionedPackages: 50, totalVersions: 90, value: 90 / 50 },
+      { weekStart: "2026-11-16", versionedPackages: 52, totalVersions: 100, value: 100 / 52 },
+    ],
+    categoryWeeks: [
+      {
+        weekStart: "2026-11-16",
+        resolvedPackages: 52,
+        buckets: [bucket("Utilities", "Utilities", 14, 14 / 52), bucket("unknown", "未知", 1, 1 / 52)],
+      },
+    ],
+    privacyWeeks: [
+      {
+        weekStart: "2026-11-16",
+        resolvedPackages: 52,
+        buckets: [bucket("own", "自有域名", 30, 30 / 52), bucket("unknown", "未知", 2, 2 / 52)],
+      },
+    ],
   },
   highlights: [
     {
