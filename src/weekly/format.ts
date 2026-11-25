@@ -50,17 +50,3 @@ export function weekRange(weekStart: string): string {
 export function shortDate(date: string): string {
   return date.slice(5);
 }
-
-/** Fixed short version labels for the card fingerprint and structure row. */
-export function versionLabel(key: string): string {
-  if (key === "0") return "无记录";
-  if (key === "4+") return "4+";
-  return `${key}个`;
-}
-
-/** Version bucket → the shared weekly palette class. */
-export function versionClassName(key: string): string {
-  if (key === "0") return "wx-weekly-v0";
-  if (key === "4+") return "wx-weekly-v4";
-  return `wx-weekly-v${key}`;
-}

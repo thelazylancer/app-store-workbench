@@ -38,7 +38,11 @@ const TEAMS: WeeklyTeam[] = [
     topCategories: [bucket("Utilities", "Utilities", 12, 12 / 30), bucket("Lifestyle", "Lifestyle", 10, 10 / 30), bucket("Productivity", "Productivity", 8, 8 / 30)],
     iap: { yes: 6, no: 24, yesShare: 6 / 30 },
     topIos: bucket("16", "16", 18, 18 / 30),
-    topPrivacy: bucket("own", "自有域名", 20, 20 / 30),
+    topPrivacies: [
+      bucket("own", "自有域名", 20, 20 / 30),
+      bucket("generator", "模板站", 5, 5 / 30),
+      bucket("cloudflare", "Cloudflare", 3, 3 / 30),
+    ],
   },
   {
     team: "Beta",
@@ -52,7 +56,11 @@ const TEAMS: WeeklyTeam[] = [
     topCategories: [bucket("Games", "Games", 8, 8 / 20), bucket("Finance", "Finance", 6, 6 / 20), bucket("Photo", "Photo", 6, 6 / 20)],
     iap: { yes: 1, no: 19, yesShare: 1 / 20 },
     topIos: bucket("15", "15", 12, 12 / 20),
-    topPrivacy: bucket("generator", "模板站", 12, 12 / 20),
+    topPrivacies: [
+      bucket("generator", "模板站", 12, 12 / 20),
+      bucket("google", "Google", 4, 4 / 20),
+      bucket("own", "自有域名", 2, 2 / 20),
+    ],
   },
   {
     team: "Gamma",
@@ -66,7 +74,7 @@ const TEAMS: WeeklyTeam[] = [
     topCategories: [bucket("Utilities", "Utilities", 2, 1)],
     iap: { yes: 0, no: 2, yesShare: 0 },
     topIos: null,
-    topPrivacy: null,
+    topPrivacies: [],
   },
 ];
 

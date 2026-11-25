@@ -309,8 +309,8 @@ describeDb("weekly report against PostgreSQL", () => {
     expect(alpha.iap).toMatchObject({ yes: 1, no: 5 });
     expect(alpha.iap.yesShare).toBeCloseTo(1 / 6);
     expect(alpha.topIos).toMatchObject({ key: "15", count: 1 });
-    expect(alpha.topPrivacy).toMatchObject({ key: "google", count: 1 });
-    expect(beta.topPrivacy).toBeNull();
+    expect(alpha.topPrivacies[0]).toMatchObject({ key: "google", count: 1 });
+    expect(beta.topPrivacies).toEqual([]);
 
     expect(report.distributions.category.map((bucket) => [bucket.key, bucket.count])).toEqual([
       ["Games", 4], ["Utilities", 2], ["unknown", 1],

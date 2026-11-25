@@ -388,7 +388,7 @@ export function createWeeklyReport(pool: Pool): WeeklyReportRepo {
             topCategories: topBuckets(stats.categories, stats.resolved, 3, CATEGORY_LABEL),
             iap: { yes: iapYes, no: iapNo, yesShare: share(iapYes, stats.resolved) },
             topIos: topBuckets(stats.ios, stats.resolved, 1, iosLabel, SHELF_IOS_BUCKET_ORDER)[0] ?? null,
-            topPrivacy: topBuckets(stats.privacy, stats.resolved, 1, privacyHostLabel)[0] ?? null,
+            topPrivacies: topBuckets(stats.privacy, stats.resolved, 3, privacyHostLabel),
           };
         });
 

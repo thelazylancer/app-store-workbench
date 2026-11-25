@@ -40,8 +40,8 @@ export type WeeklyTeam = {
   iap: { yes: number; no: number; yesShare: number };
   /** Highest-count known iOS bucket; null when every package is unknown. */
   topIos: WeeklyBucket | null;
-  /** Highest-count known privacy host; null when every package is unknown. */
-  topPrivacy: WeeklyBucket | null;
+  /** Top 3 known privacy hosts, count desc; "unknown" never chosen. */
+  topPrivacies: WeeklyBucket[];
 };
 
 export type WeeklyTrendWeek = {

@@ -301,6 +301,47 @@ describe("weekly page", () => {
       .toBe("3+ 个版本：6 包 · 11.5%");
   });
 
+  it("renders a clickable mini chart set inside every team card", async () => {
+    vi.stubGlobal("fetch", mockWeekly());
+    renderPage();
+    await waitForCards(3);
+
+    const alpha = document.querySelector<HTMLElement>(
+      '[data-role="weekly-team-card"][data-team="Alpha"]',
+    )!;
+    const chart = (name: string) => alpha.querySelector<HTMLElement>(
+      `[data-role="weekly-card-chart"][data-chart="${name}"]`,
+    )!;
+    expect([...alpha.querySelectorAll<HTMLElement>('[data-role="weekly-card-chart"]')]
+      .map((node) => node.dataset.chart)).toEqual(["version", "iap", "category", "privacy"]);
+
+    const version = chart("version");
+    expect(version.textContent).toContain("1个");
+    expect(version.textContent).toContain("2个");
+    expect(version.textContent).toContain("16.7%");
+    expect(version.textContent).toContain("66.7%");
+    expect(version.textContent).not.toContain("4+");
+
+    expect(chart("iap").textContent).toContain("20.0%");
+    expect(chart("iap").textContent).toContain("80.0%");
+    expect(chart("category").textContent).toContain("12 · 40.0%");
+    expect(chart("privacy").textContent).toContain("20 · 66.7%");
+
+    fireEvent.click(alpha.querySelector<HTMLElement>(
+      '[data-role="weekly-card-bar"][data-chart="version"][data-key="3+"]',
+    )!);
+    expect(alpha.querySelector(".wx-chart-tip")?.textContent)
+      .toBe("3+ 个版本：5 包 · 16.7%");
+
+    const gamma = document.querySelector<HTMLElement>(
+      '[data-role="weekly-team-card"][data-team="Gamma"]',
+    )!;
+    expect(gamma.querySelector('[data-role="weekly-card-chart"][data-chart="privacy"]')
+      ?.textContent).toContain("—");
+    expect(gamma.querySelector('[data-role="weekly-card-chart"][data-chart="category"]')
+      ?.textContent).toContain("2 · —");
+  });
+
   it("renders the three metric rows, missing values and offline context", async () => {
     vi.stubGlobal("fetch", mockWeekly());
     renderPage();

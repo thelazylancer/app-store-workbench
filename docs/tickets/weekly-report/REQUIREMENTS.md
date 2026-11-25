@@ -107,12 +107,13 @@
 - 本周已解析入库：N。
 - 环比：`+4（+100.0%）` / `-5（-27.8%）` / `0`。
 - 本周占比：`N / 52`。
-- 版本数分布：`1 个版本 10%、2 个 70%、3 个 12%、4+ 8%`（团队内分母）。
-- 品类 Top3：名称 + 包数；不足 3 个按实际。
-- IAP：`有 6 / 无 0`（团队内分母）。
-- iOS 主流版本：如 `16.0（6 包）`。
-- 隐私主类型：如 `自有域名（4 包）`。
-- 团队已解析包少于 3 个时，比例类字段显示 `—`。
+- 版本数迷你竖柱：`1 个 / 2 个 / 3+`（`3` 与 `4+` 合并），柱顶标百分比（团队内分母）；`无记录` 仅在 >0 时出现。
+- 内购迷你竖柱：`有 / 无` 两根，柱顶标百分比。
+- 品类 Top3 迷你横条：名称 + `包数 · 百分比`；不足 3 个按实际。
+- 隐私 Top3 迷你横条：`privacyHostLabel` + `包数 · 百分比`。
+- iOS 主流版本文字事实：如 `16.0 · 6 包`。
+- 所有柱 / 条可 hover、focus、点击查看完整数值；柱上 / 条上直接标数值，不只藏在 tooltip。
+- 团队已解析包少于 3 个时，比例类字段显示 `—`，柱高按组内计数归一化。
 
 ### 4.4 版本与投放（近 4 周）
 
@@ -200,7 +201,7 @@ type WeeklyTeam = {
   topCategories: WeeklyBucket[];
   iap: { yes: number; no: number; yesShare: number };
   topIos: WeeklyBucket | null;
-  topPrivacy: WeeklyBucket | null;
+  topPrivacies: WeeklyBucket[]; // Top3 known hosts, count desc
 };
 
 type WeeklyTrendWeek = {

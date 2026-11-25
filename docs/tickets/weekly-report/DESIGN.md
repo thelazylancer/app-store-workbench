@@ -75,7 +75,7 @@ export type WeeklyReportResponse = { /* REQUIREMENTS §5.2 原样，另加顶层
 ```
 
 - `distributions` 键为 `"category" | "ios" | "iap" | "privacy"`（不是 shelf 的 `ios_version`）；`ios` 桶键即 `ShelfIosBucket`，`privacy` 桶键即 `PrivacyHostKind`，iap 键 `yes | no`（resolved-only，无 unknown 桶）。
-- 排序遵守 §5.3：teams 按已解析包数降序再团队名升序；`versionCounts` 固定序 `1 / 2 / 3 / 4+ / 0`；`distributions.*` count 降序、`unknown` 排最后；`topCategories`/`topIos`/`topPrivacy` count 降序、并列按 `SHELF_IOS_BUCKET_ORDER` / locale 序取前，`unknown` 不当选。
+- 排序遵守 §5.3：teams 按已解析包数降序再团队名升序；`versionCounts` 固定序 `1 / 2 / 3 / 4+ / 0`；`distributions.*` count 降序、`unknown` 排最后；`topCategories`/`topIos`/`topPrivacies` count 降序、并列按 `SHELF_IOS_BUCKET_ORDER` / locale 序取前，`unknown` 不当选。
 - 脚注数据在 `summary`（ingested/unresolved/dataThrough/batchStatus），响应不含包明细，永不携带 `display_name`、`app_store_json`、`lookup_status` 原值——沿用 `tests/server/shelfContract.test.ts` 的敏感字段断言。
 
 ## 4. 周规范化与聚合策略
@@ -167,7 +167,7 @@ src/weekly/styles/weekly-charts.css 仅「数据不足」斜纹（文件名命�
 
 - 「数据不足」斜纹柱：`--color-track` 底 + CSS repeating-linear-gradient 斜纹（唯一新增装饰性 CSS；颜色仍是中性墨系，非琥珀）。
 - 100% 横条：段高固定，宽度按 `share`；分母文案写在条头。已知桶配色沿用 shelf 蓝阶（§4.4 配色表）；`unknown` 永远最后。
-- 团队卡 `<3` 包时，团队内比例类字段（versionCounts share、iap yesShare）显示 `—`；计数类（`N / 52`、品类包数、IAP 有/无、topIos/topPrivacy 包数）照常显示。
+- 团队卡 `<3` 包时，团队内比例类字段（versionCounts share、iap yesShare）显示 `—`；计数类（`N / 52`、品类包数、IAP 有/无、topIos/topPrivacies 包数）照常显示。
 - 手机宽度：卡片单列；指标图容器 `useScrollRegion` 同款横向滚动。
 
 ## 6. 错误与空状态矩阵

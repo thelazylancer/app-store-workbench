@@ -55,7 +55,7 @@ const reportResponse: WeeklyReportResponse = {
       topCategories: [bucket("Utilities", "Utilities", 12, 12 / 30)],
       iap: { yes: 6, no: 24, yesShare: 6 / 30 },
       topIos: bucket("16", "16", 18, 18 / 30),
-      topPrivacy: bucket("own", "自有域名", 20, 20 / 30),
+      topPrivacies: [bucket("own", "自有域名", 20, 20 / 30)],
     },
     {
       team: "Beta",
@@ -75,7 +75,7 @@ const reportResponse: WeeklyReportResponse = {
       topCategories: [bucket("Lifestyle", "Lifestyle", 10, 10 / 22)],
       iap: { yes: 1, no: 21, yesShare: 1 / 22 },
       topIos: null,
-      topPrivacy: null,
+      topPrivacies: [],
     },
   ],
   versionCounts: [
