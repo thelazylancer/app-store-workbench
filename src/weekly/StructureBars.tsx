@@ -180,7 +180,9 @@ function VerticalPanel({
                   className="wx-weekly-column-bar-wrap"
                   style={{ height: `${Math.max(bar.share * 100, 2)}%` }}
                 >
-                  <span className="wx-weekly-column-value">{formatPercent(bar.share)}</span>
+                  <span className="wx-weekly-column-value">
+                    {bar.count} · {formatPercent(bar.share)}
+                  </span>
                   <span className={`wx-weekly-column-bar ${bar.className}`} />
                 </span>
               </span>

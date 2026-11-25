@@ -265,16 +265,16 @@ describe("weekly page", () => {
       `[data-role="weekly-structure-chart"][data-chart="${name}"]`,
     )!;
     const version = chart("version");
-    expect(version.textContent).toContain("19.2%");
-    expect(version.textContent).toContain("69.2%");
-    expect(version.textContent).toContain("11.5%");
+    expect(version.textContent).toContain("10 · 19.2%");
+    expect(version.textContent).toContain("36 · 69.2%");
+    expect(version.textContent).toContain("6 · 11.5%");
     expect(version.textContent).toContain("3+");
     expect(version.textContent).not.toContain("4+");
 
     const iap = chart("iap");
     expect(iap.textContent).toContain("有");
-    expect(iap.textContent).toContain("13.5%");
-    expect(iap.textContent).toContain("86.5%");
+    expect(iap.textContent).toContain("7 · 13.5%");
+    expect(iap.textContent).toContain("45 · 86.5%");
 
     const category = chart("category");
     expect(category.textContent).toContain("Utilities");
