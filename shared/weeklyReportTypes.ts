@@ -26,13 +26,17 @@ export type WeeklyBucket = {
 export type WeeklyTeam = {
   team: string;
   rank: number;
-  resolvedPackages: number;
-  previousResolvedPackages: number;
+  /** Every ingested package this week (resolved + unresolved); drives count, rank, share and change. */
+  ingestedPackages: number;
+  previousIngestedPackages: number;
+  /** ingestedPackages − previousIngestedPackages. */
   change: number;
-  /** null when last week had zero resolved packages (display "新增"). */
+  /** null when last week had zero ingested packages (display "新增"). */
   changePct: number | null;
-  /** Share of this week's resolved packages, 0..1. */
+  /** Share of this week's ingested packages, 0..1. */
   share: number;
+  /** Resolved packages; the denominator for every mix stat below. */
+  resolvedPackages: number;
   /** Fixed order: 1 / 2 / 3 / 4+ / 0 (no version records). */
   versionCounts: WeeklyBucket[];
   /** Top 3 known categories, count desc then category name; "unknown" never chosen. */

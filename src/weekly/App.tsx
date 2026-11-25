@@ -199,13 +199,13 @@ export function WeeklyPage() {
             meta={
               <>
                 <span className="wx-weekly-mono">{report.summary.teamCount}</span> 个团队 ·{" "}
-                <span className="wx-weekly-mono">{report.summary.resolvedPackages}</span> 个已解析包
+                <span className="wx-weekly-mono">{report.summary.ingestedPackages}</span> 个新增包
               </>
             }
           >
             <TeamCards
               teams={report.teams}
-              total={report.summary.resolvedPackages}
+              total={report.summary.ingestedPackages}
               weeks={report.trends.weeks}
               metrics={report.trends.metrics}
             />

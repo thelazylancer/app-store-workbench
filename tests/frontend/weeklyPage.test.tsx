@@ -66,8 +66,8 @@ describe("weekly page", () => {
     expect(gamma?.querySelector(".wx-weekly-team-label")?.textContent).toBe("G");
     expect(gamma?.querySelector<HTMLElement>(".wx-weekly-team-label")?.title).toBe("Gamma");
     expect(gamma?.textContent).toContain("样本不足（<3 包），占比不计算。");
-    expect(gamma?.textContent).toContain("新增 2");
-    expect(gamma?.textContent).toContain("2 / 52");
+    expect(gamma?.textContent).toContain("新增 4");
+    expect(gamma?.textContent).toContain("4 / 112");
     expect(gamma?.textContent).not.toContain("0.0%");
 
     const cardHighlights = byRole("weekly-highlights");

@@ -342,6 +342,7 @@ function TeamCard({
   metrics,
 }: {
   team: WeeklyTeam;
+  /** This week's ingested packages; the denominator for the card's share. */
   total: number;
   weeks: WeeklyTrendWeek[];
   metrics: WeeklyMetricSeries[];
@@ -367,11 +368,11 @@ function TeamCard({
 
       <div className="wx-weekly-card-main">
         <p className="wx-weekly-team-count">
-          <span className="wx-weekly-count-value">{team.resolvedPackages}</span>
+          <span className="wx-weekly-count-value">{team.ingestedPackages}</span>
           <span className="wx-weekly-count-unit">包</span>
         </p>
         <p className="wx-weekly-team-share">
-          {team.resolvedPackages} / {total} · {formatPercent(team.share)}
+          {team.ingestedPackages} / {total} · {formatPercent(team.share)}
         </p>
       </div>
       <div className="wx-weekly-share-track" aria-hidden="true">

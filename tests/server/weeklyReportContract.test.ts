@@ -43,11 +43,12 @@ const reportResponse: WeeklyReportResponse = {
     {
       team: "Alpha",
       rank: 1,
-      resolvedPackages: 30,
-      previousResolvedPackages: 28,
+      ingestedPackages: 68,
+      previousIngestedPackages: 66,
       change: 2,
-      changePct: 2 / 28,
-      share: 30 / 52,
+      changePct: 2 / 66,
+      share: 68 / 112,
+      resolvedPackages: 30,
       versionCounts: [
         bucket("1", "1 个版本", 5, 5 / 30),
         bucket("2", "2 个版本", 20, 20 / 30),
@@ -63,11 +64,12 @@ const reportResponse: WeeklyReportResponse = {
     {
       team: "Beta",
       rank: 2,
-      resolvedPackages: 22,
-      previousResolvedPackages: 22,
+      ingestedPackages: 44,
+      previousIngestedPackages: 44,
       change: 0,
       changePct: 0,
-      share: 22 / 52,
+      share: 44 / 112,
+      resolvedPackages: 22,
       versionCounts: [
         bucket("1", "1 个版本", 2, 2 / 22),
         bucket("2", "2 个版本", 16, 16 / 22),

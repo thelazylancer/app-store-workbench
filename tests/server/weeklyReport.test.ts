@@ -255,7 +255,7 @@ describeDb("weekly report against PostgreSQL", () => {
     await pool!.end();
   });
 
-  it("counts resolved-only teams and keeps unresolved rows in ingested totals", async () => {
+  it("counts every ingested package per team and keeps mix stats resolved-only", async () => {
     const report = await repo.getWeeklyReport(week3);
 
     expect(report.weekStart).toBe(week3);
@@ -277,13 +277,38 @@ describeDb("weekly report against PostgreSQL", () => {
       resolvedRate: 0.7,
     });
     expect(report.teams.map((team) => [
-      team.team, team.rank, team.resolvedPackages, team.previousResolvedPackages, team.change, team.changePct,
+      team.team, team.rank, team.ingestedPackages, team.previousIngestedPackages,
+      team.change, team.changePct, team.resolvedPackages,
     ])).toEqual([
-      [teamAlpha, 1, 6, 3, 3, 1],
-      [teamBeta, 2, 1, 0, 1, null],
+      [teamAlpha, 1, 8, 3, 5, 5 / 3, 6],
+      [teamBeta, 2, 2, 0, 2, null, 1],
     ]);
-    expect(report.teams[0]!.share).toBeCloseTo(6 / 7);
-    expect(report.teams[1]!.share).toBeCloseTo(1 / 7);
+    expect(report.teams[0]!.share).toBeCloseTo(8 / 10);
+    expect(report.teams[1]!.share).toBeCloseTo(2 / 10);
+  });
+
+  it("lists a team with only unresolved packages at its ingested rank", async () => {
+    const teamDelta = `Weekly Delta ${suffix}`;
+    const deltaCode = code("d1");
+    await writes.upsertPackage(packageRow({
+      packageCode: deltaCode, targetDate: week3, firstAdDate: week3, team: teamDelta,
+      lookupStatus: "pending",
+    }));
+    try {
+      const report = await repo.getWeeklyReport(week3);
+
+      expect(report.summary.ingestedPackages).toBe(11);
+      expect(report.summary.teamCount).toBe(3);
+      const delta = report.teams[2]!;
+      expect(delta).toMatchObject({
+        team: teamDelta, rank: 3, ingestedPackages: 1, previousIngestedPackages: 0,
+        change: 1, changePct: null, resolvedPackages: 0,
+        iap: { yes: 0, no: 0, yesShare: 0 }, topIos: null, topPrivacies: [],
+      });
+      expect(delta.share).toBeCloseTo(1 / 11);
+    } finally {
+      await pool!.query("DELETE FROM competitor_packages WHERE package_code = $1", [deltaCode]);
+    }
   });
 
   it("folds version counts into 1 / 2 / 3 / 4+ / 0 at overall and team level", async () => {
@@ -407,7 +432,7 @@ describeDb("weekly report against PostgreSQL", () => {
     expect(report.highlights).toHaveLength(2);
     expect(report.highlights[0]).toEqual({
       kind: "team_change", team: teamAlpha, direction: "up",
-      change: 3, changePct: 1, current: 6, previous: 3,
+      change: 5, changePct: 5 / 3, current: 8, previous: 3,
     });
     expect(report.highlights[1]).toMatchObject({
       kind: "category_change", category: "Games", direction: "down", deltaPp: -17.9,

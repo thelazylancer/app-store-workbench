@@ -1,5 +1,5 @@
 import type { Pool } from "pg";
-import { privacyHostKind, privacyHostLabel } from "../../shared/privacyHost";
+import { privacyHostLabel } from "../../shared/privacyHost";
 import { SHELF_IOS_BUCKET_ORDER, SHELF_UNKNOWN_KEY } from "../../shared/shelfTypes";
 import type {
   WeeklyDistributionWeek, WeeklyHighlight, WeeklyIapPoint, WeeklyMetricKey,
@@ -9,10 +9,12 @@ import type {
 import {
   CATEGORY_LABEL, distributionBuckets, iapBuckets, increment, iosLabel, share, topBuckets, versionBuckets,
 } from "./weeklyBuckets";
-import { iosBucket } from "./shelfQueries";
+import { foldWeekRows } from "./weeklyFold";
+import type { WeekMainRow } from "./weeklyFold";
 
 /**
- * Weekly report seam: resolved-only, first_ad_date based, ISO-week normalized.
+ * Weekly report seam: first_ad_date based, ISO-week normalized. Counts cover
+ * every ingested package; structure, shares and metrics stay hit-only.
  * Kept out of competitorRepo (frozen daily contract) and shelfQueries (public
  * trend namespace, target_date + all packages). See DESIGN.md §1/§4.
  */
@@ -29,11 +31,6 @@ export type HighlightInput = {
   /** Fractions (0..1) keyed by category. */
   currentCategories: Map<string, number>;
   previousCategories: Map<string, number>;
-};
-
-type WeekMainRow = {
-  week_start: string; team: string; lookup_status: string; category: string | null;
-  minimum_os_version: string | null; iap_has: boolean; policy_url: string | null; n: number;
 };
 
 type VersionCountRow = { team: string; bucket: string; n: number };
@@ -210,74 +207,6 @@ export function buildHighlights(input: HighlightInput): WeeklyHighlight[] {
   return highlights;
 }
 
-type WeekTotals = { ingested: number; resolved: number };
-
-type TeamStats = {
-  resolved: number; categories: Map<string, number>; ios: Map<string, number>;
-  iap: Map<string, number>; privacy: Map<string, number>;
-};
-
-function emptyTeamStats(): TeamStats {
-  return { resolved: 0, categories: new Map(), ios: new Map(), iap: new Map(), privacy: new Map() };
-}
-
-function foldWeekRows(rows: WeekMainRow[], selectedWeek: string) {
-  const weekTotals = new Map<string, WeekTotals>();
-  const teamCounts = new Map<string, Map<string, number>>();
-  const categoryCounts = new Map<string, Map<string, number>>();
-  const iapCounts = new Map<string, Map<string, number>>();
-  const privacyCounts = new Map<string, Map<string, number>>();
-  const currentTeams = new Map<string, TeamStats>();
-  const distributions = {
-    category: new Map<string, number>(), ios: new Map<string, number>(),
-    iap: new Map<string, number>(), privacy: new Map<string, number>(),
-  };
-
-  for (const row of rows) {
-    const totals = weekTotals.get(row.week_start) ?? { ingested: 0, resolved: 0 };
-    totals.ingested += row.n;
-    weekTotals.set(row.week_start, totals);
-    if (row.lookup_status !== "hit") continue;
-
-    totals.resolved += row.n;
-    const teamMap = teamCounts.get(row.week_start) ?? new Map<string, number>();
-    increment(teamMap, row.team, row.n);
-    teamCounts.set(row.week_start, teamMap);
-
-    const category = row.category?.trim() || SHELF_UNKNOWN_KEY;
-    const categoryMap = categoryCounts.get(row.week_start) ?? new Map<string, number>();
-    increment(categoryMap, category, row.n);
-    categoryCounts.set(row.week_start, categoryMap);
-
-    const iap = row.iap_has ? "yes" : "no";
-    const iapMap = iapCounts.get(row.week_start) ?? new Map<string, number>();
-    increment(iapMap, iap, row.n);
-    iapCounts.set(row.week_start, iapMap);
-
-    const privacy = privacyHostKind(row.policy_url);
-    const privacyMap = privacyCounts.get(row.week_start) ?? new Map<string, number>();
-    increment(privacyMap, privacy, row.n);
-    privacyCounts.set(row.week_start, privacyMap);
-
-    if (row.week_start !== selectedWeek) continue;
-    const stats = currentTeams.get(row.team) ?? emptyTeamStats();
-    stats.resolved += row.n;
-    increment(stats.categories, category, row.n);
-    const ios = iosBucket(row.minimum_os_version);
-    increment(stats.ios, ios, row.n);
-    increment(stats.iap, iap, row.n);
-    increment(stats.privacy, privacy, row.n);
-    currentTeams.set(row.team, stats);
-
-    increment(distributions.category, category, row.n);
-    increment(distributions.ios, ios, row.n);
-    increment(distributions.iap, iap, row.n);
-    increment(distributions.privacy, privacy, row.n);
-  }
-
-  return { weekTotals, teamCounts, categoryCounts, iapCounts, privacyCounts, currentTeams, distributions };
-}
-
 function sharesByTotal(counts: Map<string, number> | undefined, total: number): Map<string, number> {
   const result = new Map<string, number>();
   if (!counts || total <= 0) return result;
@@ -316,7 +245,7 @@ export function createWeeklyReport(pool: Pool): WeeklyReportRepo {
       const folded = foldWeekRows(mainResult.rows, weekStart);
       const currentTotals = folded.weekTotals.get(weekStart) ?? { ingested: 0, resolved: 0 };
       const previousTotals = folded.weekTotals.get(previousWeek) ?? { ingested: 0, resolved: 0 };
-      const previousTeams = folded.teamCounts.get(previousWeek) ?? new Map<string, number>();
+      const previousTeams = folded.teamIngested.get(previousWeek) ?? new Map<string, number>();
       const resolvedPackages = currentTotals.resolved;
 
       const overallVersionCounts = new Map<string, number>();
@@ -330,16 +259,20 @@ export function createWeeklyReport(pool: Pool): WeeklyReportRepo {
 
       const teams: WeeklyTeam[] = [...folded.currentTeams]
         .sort(([leftTeam, left], [rightTeam, right]) =>
-          right.resolved - left.resolved || leftTeam.localeCompare(rightTeam))
+          right.ingested - left.ingested || leftTeam.localeCompare(rightTeam))
         .map(([team, stats], index) => {
-          const previousResolvedPackages = previousTeams.get(team) ?? 0;
-          const change = stats.resolved - previousResolvedPackages;
+          const previousIngestedPackages = previousTeams.get(team) ?? 0;
+          const change = stats.ingested - previousIngestedPackages;
           const iapYes = stats.iap.get("yes") ?? 0;
           const iapNo = stats.iap.get("no") ?? 0;
           return {
-            team, rank: index + 1, resolvedPackages: stats.resolved, previousResolvedPackages, change,
-            changePct: previousResolvedPackages > 0 ? change / previousResolvedPackages : null,
-            share: share(stats.resolved, resolvedPackages),
+            team, rank: index + 1,
+            ingestedPackages: stats.ingested,
+            previousIngestedPackages,
+            change,
+            changePct: previousIngestedPackages > 0 ? change / previousIngestedPackages : null,
+            share: share(stats.ingested, currentTotals.ingested),
+            resolvedPackages: stats.resolved,
             versionCounts: versionBuckets(teamVersionCounts.get(team) ?? new Map(), stats.resolved),
             topCategories: topBuckets(stats.categories, stats.resolved, 3, CATEGORY_LABEL),
             iap: { yes: iapYes, no: iapNo, yesShare: share(iapYes, stats.resolved) },
@@ -451,7 +384,7 @@ export function createWeeklyReport(pool: Pool): WeeklyReportRepo {
         ? batch.status
         : null;
       const highlights = buildHighlights({
-        currentTeams: new Map([...folded.currentTeams].map(([team, stats]) => [team, stats.resolved])),
+        currentTeams: new Map([...folded.currentTeams].map(([team, stats]) => [team, stats.ingested])),
         previousTeams,
         currentCategories: sharesByTotal(folded.categoryCounts.get(weekStart), resolvedPackages),
         previousCategories: sharesByTotal(folded.categoryCounts.get(previousWeek), previousTotals.resolved),
