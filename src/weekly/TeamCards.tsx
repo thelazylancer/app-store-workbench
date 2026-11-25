@@ -262,20 +262,12 @@ function TeamCard({ team, total }: { team: WeeklyTeam; total: number }) {
 
 type TeamCardsProps = {
   teams: WeeklyTeam[];
-  teamCount: number;
   total: number;
 };
 
-export function TeamCards({ teams, teamCount, total }: TeamCardsProps) {
+export function TeamCards({ teams, total }: TeamCardsProps) {
   return (
-    <section className="wx-weekly-section" aria-labelledby="weekly-teams-title">
-      <div className="wx-weekly-section-head">
-        <h2 id="weekly-teams-title" className="wx-weekly-h2">团队</h2>
-        <p className="wx-weekly-section-meta">
-          <span className="wx-weekly-mono">{teamCount}</span> 个团队 ·{" "}
-          <span className="wx-weekly-mono">{total}</span> 个已解析包
-        </p>
-      </div>
+    <div className="wx-weekly-section">
       <ul className="wx-weekly-cards" data-role="weekly-team-cards">
         {teams.map((team) => (
           <li key={team.team}>
@@ -283,6 +275,6 @@ export function TeamCards({ teams, teamCount, total }: TeamCardsProps) {
           </li>
         ))}
       </ul>
-    </section>
+    </div>
   );
 }

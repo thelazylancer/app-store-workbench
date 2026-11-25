@@ -19,8 +19,8 @@ export function TrendBars({ weeks }: { weeks: WeeklyTrendWeek[] }) {
   return (
     <section className="wx-weekly-section" aria-labelledby="weekly-trend-title">
       <div className="wx-weekly-section-head">
-        <h2 id="weekly-trend-title" className="wx-weekly-h2">近 4 周新增趋势</h2>
-        <p className="wx-weekly-section-meta">已解析新增包数 · 最后一根为本周 · 点击查看明细</p>
+        <h3 id="weekly-trend-title" className="wx-weekly-h3">新增包数</h3>
+        <p className="wx-weekly-section-meta">已解析新增 · 最后一根为本周 · 点击查看明细</p>
       </div>
       <figure className="wx-weekly-trend-figure">
         <div

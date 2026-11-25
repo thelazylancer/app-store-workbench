@@ -65,6 +65,16 @@ describe("weekly page", () => {
     expect(highlight?.textContent).toContain("增幅 · A");
     expect(highlight?.textContent).toContain("降幅 · P");
     expect(highlight?.textContent).toContain("-10.4pp");
+
+    const groups = [...document.querySelectorAll<HTMLElement>('[data-role="weekly-group"]')];
+    expect(groups.map((group) => group.dataset.group)).toEqual(["overview", "teams", "trends"]);
+    expect(groups.map((group) => group.querySelector(".wx-weekly-group-title")?.textContent))
+      .toEqual(["整体情况", "团队情况", "过去 4 周趋势"]);
+    expect(groups[0]!.querySelector('[data-role="weekly-structure-panel"]')).toBeTruthy();
+    expect(groups[0]!.querySelector('[data-role="weekly-highlights"]')).toBeTruthy();
+    expect(groups[1]!.querySelector('[data-role="weekly-team-cards"]')).toBeTruthy();
+    expect(groups[2]!.querySelector('[data-role="weekly-metric-row"]')).toBeTruthy();
+    expect(groups[2]!.querySelector('[data-role="weekly-trend"]')).toBeTruthy();
   });
 
   it("shows the <3 package sample rule and API highlight direction", async () => {
@@ -253,7 +263,7 @@ describe("weekly page", () => {
     await waitForCards(3);
 
     const panels = [...document.querySelectorAll<HTMLElement>('[data-role="weekly-structure-panel"]')];
-    expect(panels.map((panel) => panel.querySelector("h3")?.textContent)).toEqual([
+    expect(panels.map((panel) => panel.querySelector("h4")?.textContent)).toEqual([
       "版本数",
       "内购",
       "品类 Top3",

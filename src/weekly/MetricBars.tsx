@@ -120,7 +120,7 @@ function MetricRow({
     return (
       <div className="wx-metric-row" data-role="weekly-metric-row" data-metric={series.key}>
         <div className="wx-dist-head">
-          <h3 className="wx-dist-title">{series.title}</h3>
+          <h4 className="wx-dist-title">{series.title}</h4>
         </div>
         <p className="wx-weekly-metric-empty">近 4 周无可用数据。</p>
       </div>
@@ -136,7 +136,7 @@ function MetricRow({
   return (
     <div className="wx-metric-row" data-role="weekly-metric-row" data-metric={series.key}>
       <div className="wx-dist-head">
-        <h3 className="wx-dist-title">{series.title}</h3>
+        <h4 className="wx-dist-title">{series.title}</h4>
         <Button
           variant="ghost"
           size="sm"
@@ -253,7 +253,7 @@ export function MetricBars({ weeks, metrics, teams }: MetricBarsProps) {
   return (
     <section className="wx-weekly-section" aria-labelledby="weekly-metrics-title">
       <div className="wx-weekly-section-head">
-        <h2 id="weekly-metrics-title" className="wx-weekly-h2">版本与投放（近 4 周）</h2>
+        <h3 id="weekly-metrics-title" className="wx-weekly-h3">版本与投放</h3>
         <p className="wx-weekly-section-meta">只读 · 点击柱查看数值 · — 表示无可用包</p>
       </div>
       <ul className="wx-weekly-team-legend" aria-label="团队图例">

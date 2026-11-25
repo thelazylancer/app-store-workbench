@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import type { WeeklyReportResponse } from "../../shared/weeklyReportTypes";
 import { useDocumentTitle } from "../app/useDocumentTitle";
 import { addDays } from "../lib/reportDate";
@@ -42,6 +43,28 @@ function errorCopy(error: unknown) {
     action: "重试",
     status,
   };
+}
+
+function Group({
+  id,
+  title,
+  meta,
+  children,
+}: {
+  id: "overview" | "teams" | "trends";
+  title: string;
+  meta?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="wx-weekly-group" aria-labelledby={`weekly-group-${id}`} data-role="weekly-group" data-group={id}>
+      <div className="wx-weekly-group-head">
+        <h2 id={`weekly-group-${id}`} className="wx-weekly-group-title">{title}</h2>
+        {meta ? <p className="wx-weekly-section-meta">{meta}</p> : null}
+      </div>
+      {children}
+    </section>
+  );
 }
 
 function Footnote({ summary }: { summary: WeeklyReportResponse["summary"] }) {
@@ -158,24 +181,35 @@ export function WeeklyPage() {
 
       {!loading && !copy && report && !empty ? (
         <>
-          <Summary summary={report.summary} weekStart={report.weekStart} weekEnd={report.weekEnd} />
-          <TeamCards
-            teams={report.teams}
-            teamCount={report.summary.teamCount}
-            total={report.summary.resolvedPackages}
-          />
-          <MetricBars
-            weeks={report.trends.weeks}
-            metrics={report.trends.metrics}
-            teams={report.teams.map((team) => team.team)}
-          />
-          <StructureBars
-            versionCounts={report.versionCounts}
-            distributions={report.distributions}
-            total={report.summary.resolvedPackages}
-          />
-          <TrendBars weeks={report.trends.weeks} />
-          <Highlights highlights={report.highlights} />
+          <Group id="overview" title="整体情况">
+            <Summary summary={report.summary} weekStart={report.weekStart} weekEnd={report.weekEnd} />
+            <StructureBars
+              versionCounts={report.versionCounts}
+              distributions={report.distributions}
+              total={report.summary.resolvedPackages}
+            />
+            <Highlights highlights={report.highlights} />
+          </Group>
+          <Group
+            id="teams"
+            title="团队情况"
+            meta={
+              <>
+                <span className="wx-weekly-mono">{report.summary.teamCount}</span> 个团队 ·{" "}
+                <span className="wx-weekly-mono">{report.summary.resolvedPackages}</span> 个已解析包
+              </>
+            }
+          >
+            <TeamCards teams={report.teams} total={report.summary.resolvedPackages} />
+          </Group>
+          <Group id="trends" title="过去 4 周趋势">
+            <MetricBars
+              weeks={report.trends.weeks}
+              metrics={report.trends.metrics}
+              teams={report.teams.map((team) => team.team)}
+            />
+            <TrendBars weeks={report.trends.weeks} />
+          </Group>
           <Footnote summary={report.summary} />
         </>
       ) : null}

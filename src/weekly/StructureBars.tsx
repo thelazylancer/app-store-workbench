@@ -127,7 +127,7 @@ function iosBars(buckets: WeeklyBucket[], total: number): Bar[] {
 function PanelHead({ id, title, total }: { id: string; title: string; total: number }) {
   return (
     <div className="wx-weekly-structure-head">
-      <h3 className="wx-weekly-structure-title" id={`weekly-structure-${id}`}>{title}</h3>
+      <h4 className="wx-weekly-structure-title" id={`weekly-structure-${id}`}>{title}</h4>
       <span className="wx-weekly-structure-denominator">分母 {total} 包</span>
     </div>
   );
@@ -274,7 +274,7 @@ export function StructureBars({ versionCounts, distributions, total }: Structure
   return (
     <section className="wx-weekly-section" aria-labelledby="weekly-structure-title">
       <div className="wx-weekly-section-head">
-        <h2 id="weekly-structure-title" className="wx-weekly-h2">单周结构</h2>
+        <h3 id="weekly-structure-title" className="wx-weekly-h3">单周结构</h3>
         <p className="wx-weekly-section-meta">
           分母 <span className="wx-weekly-mono">{total}</span> 个已解析包 · 点击图表查看明细
         </p>

@@ -24,7 +24,11 @@
 /* Sections */
 .wx-weekly-section { padding: 24px 0 28px; border-bottom: 1px solid var(--color-border); }
 .wx-weekly-section-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 12px 16px; margin-bottom: 16px; }
-.wx-weekly-h2 { margin: 0; font-size: 14px; font-weight: 600; line-height: 1.5; }
+.wx-weekly-group-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; padding-top: 24px; }
+.wx-weekly-group-title { margin: 0; font-size: 16px; font-weight: 600; line-height: 1.4; }
+.wx-weekly-group-head + .wx-weekly-summary,
+.wx-weekly-group-head + .wx-weekly-section { padding-top: 12px; }
+.wx-weekly-h3 { margin: 0; font-size: 14px; font-weight: 600; line-height: 1.5; }
 .wx-weekly-section-meta { margin: 0; color: var(--color-text-secondary); font-size: 12px; }
 
 /* Team cards */

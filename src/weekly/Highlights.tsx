@@ -43,7 +43,7 @@ export function Highlights({ highlights }: { highlights: WeeklyHighlight[] }) {
   return (
     <section className="wx-weekly-section" aria-labelledby="weekly-highlights-title">
       <div className="wx-weekly-section-head">
-        <h2 id="weekly-highlights-title" className="wx-weekly-h2">本周值得关注</h2>
+        <h3 id="weekly-highlights-title" className="wx-weekly-h3">本周值得关注</h3>
         <p className="wx-weekly-section-meta">最多 2 条 · 规则生成</p>
       </div>
       {highlights.length === 0 ? (
