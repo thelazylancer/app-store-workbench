@@ -30,20 +30,14 @@ describe("weekly page", () => {
     expect(next?.getAttribute("aria-disabled")).toBe("true");
     expect(screen.getByText("已是最新完整周")).toBeTruthy();
 
-    const highlight = byRole("weekly-highlights");
-    expect(highlight?.textContent).toContain("增幅 · A");
-    expect(highlight?.textContent).toContain("降幅 · P");
-    expect(highlight?.textContent).toContain("-10.4pp");
-
     const groups = [...document.querySelectorAll<HTMLElement>('[data-role="weekly-group"]')];
     expect(groups.map((group) => group.dataset.group)).toEqual(["overview", "teams", "trends"]);
     expect(groups.map((group) => group.querySelector(".wx-weekly-group-title")?.textContent))
       .toEqual(["整体情况", "团队情况", "过去 4 周趋势"]);
     expect(groups[0]!.querySelector('[data-role="weekly-structure-panel"]')).toBeTruthy();
     expect(groups[0]!.querySelector('[data-role="weekly-metric-facts"]')).toBeTruthy();
-    expect(groups[0]!.querySelector('[data-role="weekly-highlights"]')).toBeTruthy();
     expect([...groups[0]!.querySelectorAll("h3")].map((heading) => heading.textContent))
-      .toEqual(["本周结构", "版本与投放（本周）", "本周值得关注"]);
+      .toEqual(["本周结构", "版本与投放（本周）"]);
     expect(byRole("weekly-metric-facts")?.textContent).toContain("8.5");
     expect(byRole("weekly-metric-facts")?.textContent).toContain("7.2");
     expect(byRole("weekly-metric-facts")?.textContent).toContain("2.5");
@@ -55,7 +49,7 @@ describe("weekly page", () => {
       .toEqual(["新增与结构", "版本与投放", "品类与隐私变化"]);
   });
 
-  it("shows the <3 package sample rule and API highlight direction", async () => {
+  it("shows the <3 package sample rule", async () => {
     vi.stubGlobal("fetch", mockWeekly());
     renderPage();
     await waitForCards(3);
@@ -69,10 +63,6 @@ describe("weekly page", () => {
     expect(gamma?.textContent).toContain("新增 4");
     expect(gamma?.textContent).toContain("4 / 112");
     expect(gamma?.textContent).not.toContain("0.0%");
-
-    const cardHighlights = byRole("weekly-highlights");
-    expect(cardHighlights?.textContent).not.toContain("大容");
-    expect(cardHighlights?.textContent).not.toContain("巨风");
   });
 
   it("uses all three summary branches", async () => {

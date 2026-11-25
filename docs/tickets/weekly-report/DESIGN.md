@@ -130,6 +130,8 @@ export function addWeeks(weekStart: string, n: number): string; // ±7n 天
 
 ### 4.5 关注项（纯函数 `buildHighlights`，server 导出直测）
 
+页面已不展示关注项；函数与 `highlights` 字段保留在 API 中（兼容既有契约）。
+
 - 输入：本周/上周 `Map<team, ingested>`（含未解析）、本周/上周 `Map<category, share>`。
 - 团队变化：`|Δ|` 最大且 ≥3；`direction = Δ>0 ? up : down`；上周 0 → `changePct = null`（文案「新增」语义由前端处理）。
 - 品类变化：`|Δpp|` 最大且 ≥5，`deltaPp = (curShare - prevShare) * 100`。
@@ -141,7 +143,7 @@ export function addWeeks(weekStart: string, n: number): string; // ±7n 天
 
 ```text
 src/lib/weeklyApi.ts        getWeeklyReport(week?) + WeeklyApiError（抄 shelfApi.ts 错误分类：503/400/网络）
-src/weekly/App.tsx          状态机 + 周头 + 摘要 + 关注项 + 脚注 + 组装（~260）
+src/weekly/App.tsx          状态机 + 周头 + 摘要 + 脚注 + 组装（~260）
 src/weekly/TeamCards.tsx    团队卡网格（§4.3，含 <3 包的 — 规则）（~170）
 src/weekly/StructureBars.tsx 单周结构 4 条 100% 横条 + 版本数分布横条（§4.5）（~150）
 src/weekly/TrendBars.tsx    近 4 周新增柱 + 数据不足斜纹柱（§4.6）（~80）

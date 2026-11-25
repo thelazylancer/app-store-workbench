@@ -13,7 +13,6 @@ import { MetricFacts } from "./MetricFacts";
 import { StructureBars } from "./StructureBars";
 import { TrendScale } from "./TrendScale";
 import { TopChanges } from "./TopChanges";
-import { Highlights } from "./Highlights";
 import { batchStatusLabel, type BatchStatus } from "./format";
 import { useWeeklyWeek } from "./filters";
 import "../shelf/styles/charts.css";
@@ -191,7 +190,6 @@ export function WeeklyPage() {
               total={report.summary.resolvedPackages}
             />
             <MetricFacts metrics={report.trends.metrics} weekStart={report.weekStart} />
-            <Highlights highlights={report.highlights} />
           </Group>
           <Group
             id="teams"
