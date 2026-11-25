@@ -237,9 +237,9 @@
 /* Item 7: one full-width panel per row; each Top10 row carries a four-week sparkline with values. */
 .wx-weekly-top-grid { display: grid; grid-template-columns: 1fr; gap: 32px; }
 .wx-weekly-top-panel { min-width: 0; }
-.wx-weekly-top-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; max-width: 900px; margin-bottom: 10px; }
+.wx-weekly-top-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; max-width: 780px; margin-bottom: 10px; }
 .wx-weekly-top-base { color: var(--color-text-secondary); font-family: var(--font-family-code); font-size: 11px; white-space: nowrap; }
-.wx-weekly-top-rows { position: relative; display: flex; flex-direction: column; gap: 2px; max-width: 900px; }
+.wx-weekly-top-rows { position: relative; display: flex; flex-direction: column; gap: 2px; max-width: 780px; }
 .wx-weekly-top-row { display: grid; grid-template-columns: minmax(0, 1fr) 118px 320px 64px; align-items: center; gap: 12px; padding: 2px 0; }
 .wx-weekly-top-label { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .wx-weekly-top-share { color: var(--color-text-secondary); font-family: var(--font-family-code); font-size: 11px; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
