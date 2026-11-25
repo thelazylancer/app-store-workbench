@@ -33,7 +33,7 @@
 /* Team cards */
 .wx-weekly-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin: 0; padding: 0; list-style: none; }
 .wx-weekly-cards > li { min-width: 0; }
-.wx-weekly-card { height: 100%; min-height: 320px; padding: 20px; border: 1px solid var(--color-border); border-radius: 8px; background: transparent; }
+.wx-weekly-card { display: flex; flex-direction: column; height: 100%; min-height: 320px; padding: 20px; border: 1px solid var(--color-border); border-radius: 8px; background: transparent; }
 .wx-weekly-card-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px 12px; }
 .wx-weekly-team-name { display: flex; align-items: baseline; gap: 8px; min-width: 0; margin: 0; }
 .wx-weekly-rank { color: var(--color-text-secondary); font-family: var(--font-family-code); font-size: 12px; font-weight: 600; }
@@ -49,7 +49,8 @@
 .wx-weekly-share-track > span { display: block; height: 100%; border-radius: 1px; background: var(--color-accent); }
 .wx-weekly-card-divider { height: 1px; margin: 16px 0; background: var(--color-border); }
 .wx-weekly-sample-note { margin: 8px 0 0; color: var(--color-text-secondary); font-size: 12px; }
-.wx-weekly-facts { margin-top: 12px; font-size: 12px; line-height: 1.7; }
+/* Anchor the iOS fact + metric block to the card bottom so the three cards line up. */
+.wx-weekly-facts { margin-top: auto; padding-top: 12px; font-size: 12px; line-height: 1.7; }
 .wx-weekly-facts p { margin: 0; }
 .wx-weekly-fact-label { color: var(--color-text-secondary); font-weight: 600; }
 
