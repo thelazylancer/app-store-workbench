@@ -75,6 +75,8 @@ describe("weekly page", () => {
     expect(groups[1]!.querySelector('[data-role="weekly-team-cards"]')).toBeTruthy();
     expect(groups[2]!.querySelector('[data-role="weekly-metric-row"]')).toBeTruthy();
     expect(groups[2]!.querySelector('[data-role="weekly-trend"]')).toBeTruthy();
+    expect([...groups[2]!.querySelectorAll("h3")].map((heading) => heading.textContent))
+      .toEqual(["新增包数", "版本与投放"]);
   });
 
   it("shows the <3 package sample rule and API highlight direction", async () => {

@@ -203,12 +203,12 @@ export function WeeklyPage() {
             <TeamCards teams={report.teams} total={report.summary.resolvedPackages} />
           </Group>
           <Group id="trends" title="过去 4 周趋势">
+            <TrendBars weeks={report.trends.weeks} />
             <MetricBars
               weeks={report.trends.weeks}
               metrics={report.trends.metrics}
               teams={report.teams.map((team) => team.team)}
             />
-            <TrendBars weeks={report.trends.weeks} />
           </Group>
           <Footnote summary={report.summary} />
         </>
