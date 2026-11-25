@@ -158,7 +158,7 @@ function MiniRows({
   tip,
   bind,
 }: {
-  chart: "category" | "privacy";
+  chart: "category" | "privacy" | "attribution";
   title: string;
   bars: MiniBar[];
   sufficient: boolean;
@@ -387,6 +387,7 @@ function TeamCard({
       </div>
       <MiniRows chart="category" title="品类 Top3" bars={topBars(team.topCategories, sufficient, 3)} sufficient={sufficient} tip={tip} bind={bind} />
       <MiniRows chart="privacy" title="隐私 Top3" bars={topBars(team.topPrivacies, sufficient, 3)} sufficient={sufficient} tip={tip} bind={bind} />
+      <MiniRows chart="attribution" title="归因 Top3" bars={topBars(team.topAttributions, sufficient, 3)} sufficient={sufficient} tip={tip} bind={bind} />
 
       {!sufficient ? <p className="wx-weekly-sample-note">样本不足（&lt;3 包），占比不计算。</p> : null}
 

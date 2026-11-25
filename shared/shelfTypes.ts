@@ -7,7 +7,7 @@
 import type { PrivacyHostKind } from "./privacyHost";
 
 /** Distribution dimensions for the trend chart. */
-export type ShelfGroupBy = "category" | "ios_version" | "iap" | "privacy";
+export type ShelfGroupBy = "category" | "ios_version" | "iap" | "privacy" | "attribution";
 
 /** In-app purchase tri-state: hit+non-empty = yes, hit+empty = no, unresolved = unknown. */
 export type ShelfIap = "yes" | "no" | "unknown";
@@ -112,6 +112,8 @@ export type ShelfPackageRow = {
   iap: ShelfIap;
   /** Privacy-policy hosting bucket from app_store_json.privacy.policyUrl; unresolved → "unknown". */
   privacyHost: PrivacyHostKind;
+  /** Analysis-derived attribution vendor, lowercased; unresolved or not analyzed → null. */
+  attribution: string | null;
   /** App Store / source shelf dates; never the ad date. */
   listingDate: string | null;
   offlineDate: string | null;

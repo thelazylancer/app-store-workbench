@@ -16,6 +16,7 @@ function row(overrides: Partial<ShelfPackageRow>): ShelfPackageRow {
     appVersion: "1.0",
     iap: "yes",
     privacyHost: "own",
+    attribution: "adjust",
     listingDate: null,
     offlineDate: null,
     resolved: true,
@@ -94,5 +95,22 @@ describe("matchesSelection", () => {
     expect(matchesSelection(other, row({ privacyHost: "vercel" }))).toBe(true);
     expect(matchesSelection(other, row({ privacyHost: "generator" }))).toBe(false);
     expect(matchesSelection(other, row({ privacyHost: "unknown", resolved: false }))).toBe(false);
+  });
+
+  it("narrows attribution vendors, excluding unresolved rows", () => {
+    const adjust = selection({ groupBy: "attribution", key: "adjust", topKeys: ["adjust"] });
+    expect(matchesSelection(adjust, row({ attribution: "adjust" }))).toBe(true);
+    expect(matchesSelection(adjust, row({ attribution: "appsflyer" }))).toBe(false);
+    expect(matchesSelection(adjust, row({ attribution: "adjust", resolved: false }))).toBe(false);
+
+    const unknown = selection({ groupBy: "attribution", key: "unknown", topKeys: ["adjust"] });
+    expect(matchesSelection(unknown, row({ attribution: null }))).toBe(true);
+    expect(matchesSelection(unknown, row({ attribution: null, resolved: false }))).toBe(false);
+    expect(matchesSelection(unknown, row({ attribution: "adjust" }))).toBe(false);
+
+    const other = selection({ groupBy: "attribution", key: OTHER_KEY, topKeys: ["adjust"] });
+    expect(matchesSelection(other, row({ attribution: "appsflyer" }))).toBe(true);
+    expect(matchesSelection(other, row({ attribution: "adjust" }))).toBe(false);
+    expect(matchesSelection(other, row({ attribution: null }))).toBe(false);
   });
 });

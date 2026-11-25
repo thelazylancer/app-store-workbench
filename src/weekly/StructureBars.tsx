@@ -266,7 +266,7 @@ function HorizontalPanel({
 
 type StructureBarsProps = {
   versionCounts: WeeklyBucket[];
-  distributions: Record<"category" | "ios" | "iap" | "privacy", WeeklyBucket[]>;
+  distributions: Record<"category" | "ios" | "iap" | "privacy" | "attribution", WeeklyBucket[]>;
   total: number;
 };
 
@@ -284,6 +284,7 @@ export function StructureBars({ versionCounts, distributions, total }: Structure
         <VerticalPanel id="iap" title="内购" bars={iapBars(distributions.iap, total)} total={total} />
         <HorizontalPanel id="category" title="品类 Top5" bars={topBars(distributions.category, total, 5)} total={total} />
         <HorizontalPanel id="privacy" title="隐私域名 Top5" bars={topBars(distributions.privacy, total, 5)} total={total} />
+        <HorizontalPanel id="attribution" title="归因 Top5" bars={topBars(distributions.attribution, total, 5)} total={total} wide />
         <HorizontalPanel id="ios" title="iOS" bars={iosBars(distributions.ios, total)} total={total} wide />
       </div>
     </section>

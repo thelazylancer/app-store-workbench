@@ -60,6 +60,7 @@ const reportResponse: WeeklyReportResponse = {
       iap: { yes: 6, no: 24, yesShare: 6 / 30 },
       topIos: bucket("16", "16", 18, 18 / 30),
       topPrivacies: [bucket("own", "自有域名", 20, 20 / 30)],
+      topAttributions: [bucket("appsflyer", "AppsFlyer", 9, 9 / 30)],
     },
     {
       team: "Beta",
@@ -81,6 +82,7 @@ const reportResponse: WeeklyReportResponse = {
       iap: { yes: 1, no: 21, yesShare: 1 / 22 },
       topIos: null,
       topPrivacies: [],
+      topAttributions: [],
     },
   ],
   versionCounts: [
@@ -95,6 +97,10 @@ const reportResponse: WeeklyReportResponse = {
     ios: [bucket("16", "16", 18, 18 / 52), bucket("unknown", "未知", 2, 2 / 52)],
     iap: [bucket("no", "无", 45, 45 / 52), bucket("yes", "有", 7, 7 / 52)],
     privacy: [bucket("own", "自有域名", 30, 30 / 52), bucket("unknown", "未知", 2, 2 / 52)],
+    attribution: [
+      bucket("appsflyer", "AppsFlyer", 8, 8 / 52),
+      bucket("unknown", "未归因", 44, 44 / 52),
+    ],
   },
   trends: {
     weeks: [

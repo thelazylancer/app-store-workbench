@@ -60,12 +60,12 @@ const READ_ONLY = { readOnlyHint: true };
 function registerTools(mcp: McpServer, app: FastifyInstance): void {
   mcp.registerTool("shelf_trend", {
     title: "自有货架趋势",
-    description: "按周统计自有 App 货架：上架数、命中/未命中、iOS 版本、内购、隐私、类目分布。用于了解自家产品线趋势。",
+    description: "按周统计自有 App 货架：上架数、命中/未命中、iOS 版本、内购、隐私、类目、归因分布。用于了解自家产品线趋势。",
     inputSchema: {
       from: z.string().describe(DATE),
       to: z.string().describe(DATE),
       team: z.string().optional().describe("团队名，精确匹配；不传为全部团队"),
-      group_by: z.enum(["category", "ios_version", "iap", "privacy"]).optional().describe("分组维度，默认 category"),
+      group_by: z.enum(["category", "ios_version", "iap", "privacy", "attribution"]).optional().describe("分组维度，默认 category"),
     },
     annotations: READ_ONLY,
   }, async ({ from, to, team, group_by }) => run(() => request(

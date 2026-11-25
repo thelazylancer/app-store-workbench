@@ -2,6 +2,7 @@ import { Button, Dialog, DialogHeader, Layout, LayoutContent, Text } from "@astr
 import { Fragment, useEffect, useState } from "react";
 import type { ShelfPackageRow } from "../../shared/shelfTypes";
 import { privacyHostLabel } from "../../shared/privacyHost";
+import { attributionKey, attributionLabel } from "../../shared/attribution";
 import { teamLabel } from "../lib/teamLabel";
 import { ShelfApiError, getShelfPackages } from "../lib/shelfApi";
 import { categoryLabel, iapLabel, sourceAppName } from "./buckets";
@@ -77,9 +78,11 @@ export function ShelfDetailDialog({ selection, onClose }: {
   // The clicked dimension gets its own column; iOS and IAP already have theirs.
   const dimensionTitle = selection.groupBy === "privacy"
     ? "隐私协议"
-    : selection.groupBy === "category" ? "类目" : null;
+    : selection.groupBy === "category" ? "类目"
+    : selection.groupBy === "attribution" ? "归因" : null;
   const dimensionValue = (row: ShelfPackageRow): string => {
     if (selection.groupBy === "privacy") return privacyHostLabel(row.privacyHost);
+    if (selection.groupBy === "attribution") return attributionLabel(attributionKey(row.attribution));
     return row.resolved ? categoryLabel(row.category) : "Unknown";
   };
   const columnCount = dimensionTitle ? 6 : 5;

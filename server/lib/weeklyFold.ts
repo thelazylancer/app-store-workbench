@@ -1,22 +1,27 @@
 import { privacyHostKind } from "../../shared/privacyHost";
+import { attributionKey } from "../../shared/attribution";
 import { SHELF_UNKNOWN_KEY } from "../../shared/shelfTypes";
 import { increment } from "./weeklyBuckets";
 import { iosBucket } from "./shelfQueries";
 
 export type WeekMainRow = {
   week_start: string; team: string; lookup_status: string; category: string | null;
-  minimum_os_version: string | null; iap_has: boolean; policy_url: string | null; n: number;
+  minimum_os_version: string | null; iap_has: boolean; policy_url: string | null;
+  attribution: string | null; n: number;
 };
 
 type WeekTotals = { ingested: number; resolved: number };
 
 type TeamStats = {
   ingested: number; resolved: number; categories: Map<string, number>; ios: Map<string, number>;
-  iap: Map<string, number>; privacy: Map<string, number>;
+  iap: Map<string, number>; privacy: Map<string, number>; attribution: Map<string, number>;
 };
 
 function emptyTeamStats(): TeamStats {
-  return { ingested: 0, resolved: 0, categories: new Map(), ios: new Map(), iap: new Map(), privacy: new Map() };
+  return {
+    ingested: 0, resolved: 0, categories: new Map(), ios: new Map(), iap: new Map(),
+    privacy: new Map(), attribution: new Map(),
+  };
 }
 
 /** Folds WEEK_MAIN_SQL rows: counts cover every ingested package; mix stats stay resolved-only. */
@@ -30,6 +35,7 @@ export function foldWeekRows(rows: WeekMainRow[], selectedWeek: string) {
   const distributions = {
     category: new Map<string, number>(), ios: new Map<string, number>(),
     iap: new Map<string, number>(), privacy: new Map<string, number>(),
+    attribution: new Map<string, number>(),
   };
 
   for (const row of rows) {
@@ -65,6 +71,8 @@ export function foldWeekRows(rows: WeekMainRow[], selectedWeek: string) {
     increment(privacyMap, privacy, row.n);
     privacyCounts.set(row.week_start, privacyMap);
 
+    const attribution = attributionKey(row.attribution);
+
     if (row.week_start !== selectedWeek) continue;
     const stats = currentTeams.get(row.team)!;
     stats.resolved += row.n;
@@ -73,11 +81,13 @@ export function foldWeekRows(rows: WeekMainRow[], selectedWeek: string) {
     increment(stats.ios, ios, row.n);
     increment(stats.iap, iap, row.n);
     increment(stats.privacy, privacy, row.n);
+    increment(stats.attribution, attribution, row.n);
 
     increment(distributions.category, category, row.n);
     increment(distributions.ios, ios, row.n);
     increment(distributions.iap, iap, row.n);
     increment(distributions.privacy, privacy, row.n);
+    increment(distributions.attribution, attribution, row.n);
   }
 
   return { weekTotals, teamIngested, categoryCounts, iapCounts, privacyCounts, currentTeams, distributions };

@@ -1,5 +1,6 @@
 import type { Pool } from "pg";
 import { privacyHostLabel } from "../../shared/privacyHost";
+import { attributionLabel } from "../../shared/attribution";
 import { SHELF_IOS_BUCKET_ORDER, SHELF_UNKNOWN_KEY } from "../../shared/shelfTypes";
 import type {
   WeeklyDistributionWeek, WeeklyHighlight, WeeklyIapPoint, WeeklyMetricKey,
@@ -52,10 +53,12 @@ const WEEK_MAIN_SQL = `
               ELSE false END AS iap_has,
          CASE WHEN lookup_status = 'hit'
               THEN app_store_json->'privacy'->>'policyUrl' END AS policy_url,
+         CASE WHEN lookup_status = 'hit'
+              THEN NULLIF(lower(btrim(attribution)), '') END AS attribution,
          count(*)::int AS n
     FROM competitor_packages
    WHERE first_ad_date BETWEEN $1::date AND $2::date
-   GROUP BY 1, team, lookup_status, category, minimum_os_version, iap_has, policy_url
+   GROUP BY 1, team, lookup_status, category, minimum_os_version, iap_has, policy_url, attribution
    ORDER BY 1`;
 
 const VERSION_COUNTS_SQL = `
@@ -278,6 +281,7 @@ export function createWeeklyReport(pool: Pool): WeeklyReportRepo {
             iap: { yes: iapYes, no: iapNo, yesShare: share(iapYes, stats.resolved) },
             topIos: topBuckets(stats.ios, stats.resolved, 1, iosLabel, SHELF_IOS_BUCKET_ORDER)[0] ?? null,
             topPrivacies: topBuckets(stats.privacy, stats.resolved, 3, privacyHostLabel),
+            topAttributions: topBuckets(stats.attribution, stats.resolved, 3, attributionLabel),
           };
         });
 
@@ -423,6 +427,9 @@ export function createWeeklyReport(pool: Pool): WeeklyReportRepo {
           ),
           iap: iapBuckets(folded.distributions.iap, resolvedPackages),
           privacy: distributionBuckets(folded.distributions.privacy, resolvedPackages, privacyHostLabel),
+          attribution: distributionBuckets(
+            folded.distributions.attribution, resolvedPackages, attributionLabel,
+          ),
         },
         trends: { weeks: trendWeeks, metrics, iapShare, avgVersions, categoryWeeks, privacyWeeks },
         highlights,

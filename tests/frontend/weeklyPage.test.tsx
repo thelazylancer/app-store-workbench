@@ -241,6 +241,7 @@ describe("weekly page", () => {
       "内购",
       "品类 Top5",
       "隐私域名 Top5",
+      "归因 Top5",
       "iOS",
     ]);
 
@@ -276,6 +277,12 @@ describe("weekly page", () => {
     expect(privacy.textContent).toContain("Github");
     expect(privacy.textContent).not.toContain("Vercel");
 
+    const attribution = chart("attribution");
+    expect(attribution.textContent).toContain("AppsFlyer");
+    expect(attribution.textContent).toContain("8 · 15.4%");
+    expect(attribution.textContent).toContain("Adjust");
+    expect(attribution.textContent).not.toContain("未归因");
+
     const ios = chart("ios");
     expect(ios.textContent).toContain("26+");
     expect(ios.textContent).toContain("未知");
@@ -300,7 +307,7 @@ describe("weekly page", () => {
       `[data-role="weekly-card-chart"][data-chart="${name}"]`,
     )!;
     expect([...alpha.querySelectorAll<HTMLElement>('[data-role="weekly-card-chart"]')]
-      .map((node) => node.dataset.chart)).toEqual(["version", "iap", "category", "privacy"]);
+      .map((node) => node.dataset.chart)).toEqual(["version", "iap", "category", "privacy", "attribution"]);
 
     const version = chart("version");
     expect(version.textContent).toContain("1个");
@@ -313,6 +320,7 @@ describe("weekly page", () => {
     expect(chart("iap").textContent).toContain("80.0%");
     expect(chart("category").textContent).toContain("12 · 40.0%");
     expect(chart("privacy").textContent).toContain("20 · 66.7%");
+    expect(chart("attribution").textContent).toContain("9 · 30.0%");
 
     fireEvent.click(alpha.querySelector<HTMLElement>(
       '[data-role="weekly-card-bar"][data-chart="version"][data-key="3+"]',

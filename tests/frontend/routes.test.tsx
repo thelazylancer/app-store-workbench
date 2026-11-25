@@ -18,7 +18,7 @@ const shelfTrend = {
   teams: ["团队 A"],
   weeks: [],
   totals: { packageCount: 0, groups: [] },
-  distributions: { category: [], ios_version: [], iap: [], privacy: [] },
+  distributions: { category: [], ios_version: [], iap: [], privacy: [], attribution: [] },
   teamWeekStats: [],
 };
 

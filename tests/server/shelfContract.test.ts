@@ -30,6 +30,7 @@ const trendResponse: ShelfTrendResponse = {
         ios_version: [{ key: "16", count: 12 }, { key: "unknown", count: 3 }],
         iap: [{ key: "yes", count: 20 }, { key: "unknown", count: 3 }],
         privacy: [{ key: "generator", count: 6 }, { key: "unknown", count: 3 }],
+        attribution: [{ key: "appsflyer", count: 4 }, { key: "unknown", count: 5 }],
       },
     },
   ],
@@ -39,6 +40,7 @@ const trendResponse: ShelfTrendResponse = {
     ios_version: [{ key: "16", count: 20 }, { key: "unknown", count: 17 }],
     iap: [{ key: "yes", count: 40 }, { key: "unknown", count: 17 }],
     privacy: [{ key: "generator", count: 12 }, { key: "unknown", count: 17 }],
+    attribution: [{ key: "appsflyer", count: 12 }, { key: "unknown", count: 17 }],
   },
   teamWeekStats: [
     {
@@ -72,6 +74,7 @@ const packagesResponse: ShelfPackagesResponse = {
       appVersion: "2.3.1",
       iap: "yes",
       privacyHost: "generator",
+      attribution: "appsflyer",
       listingDate: "2026-11-15",
       offlineDate: null,
       resolved: true,
@@ -91,6 +94,7 @@ const packagesResponse: ShelfPackagesResponse = {
       offlineDate: "2026-11-10",
       resolved: false,
       privacyHost: "unknown",
+      attribution: null,
     },
   ],
 };
@@ -175,6 +179,13 @@ describe("shelf HTTP contract", () => {
       .expect(200);
     expect(repo.getShelfTrend).toHaveBeenLastCalledWith({
       from: "2026-08-22", to: "2026-11-20", team: null, groupBy: "ios_version",
+    });
+
+    await request(app.server)
+      .get("/api/public/shelf/trend?from=2026-08-22&to=2026-11-20&group_by=attribution")
+      .expect(200);
+    expect(repo.getShelfTrend).toHaveBeenLastCalledWith({
+      from: "2026-08-22", to: "2026-11-20", team: null, groupBy: "attribution",
     });
   });
 

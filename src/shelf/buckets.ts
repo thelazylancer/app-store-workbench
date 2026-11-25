@@ -73,7 +73,7 @@ export function foldTopCategories(
   }));
   if (otherCount > 0) segments.push({ key: OTHER_KEY, label: "Other", count: otherCount });
   if (unknownCount > 0) {
-    segments.push({ key: SHELF_UNKNOWN_KEY, label: "Unknown", count: unknownCount });
+    segments.push({ key: SHELF_UNKNOWN_KEY, label: labelOf(SHELF_UNKNOWN_KEY), count: unknownCount });
   }
   return segments;
 }

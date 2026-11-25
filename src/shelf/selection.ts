@@ -1,3 +1,4 @@
+import { attributionKey } from "../../shared/attribution";
 import {
   SHELF_UNKNOWN_KEY,
   type ShelfGroupBy,
@@ -44,6 +45,15 @@ export function matchesSelection(selection: ShelfSelection, row: ShelfPackageRow
       return row.privacyHost !== SHELF_UNKNOWN_KEY && !topKeys.includes(row.privacyHost);
     }
     return row.privacyHost === key;
+  }
+  if (groupBy === "attribution") {
+    // Unresolved rows are outside the attribution dimension entirely.
+    if (!row.resolved) return false;
+    const attribution = attributionKey(row.attribution);
+    if (key === OTHER_KEY) {
+      return attribution !== SHELF_UNKNOWN_KEY && !topKeys.includes(attribution);
+    }
+    return attribution === key;
   }
   return row.iap === key;
 }

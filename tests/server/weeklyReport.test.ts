@@ -233,6 +233,14 @@ describeDb("weekly report against PostgreSQL", () => {
     }
     await hit("g1", week2, teamGamma, { category: "Utilities", appStoreJson: {} });
 
+    // Attribution is analysis-derived: the unresolved u1 must stay out of it.
+    await writes.updateAttribution([
+      { packageCode: code("a1"), attribution: "adjust" },
+      { packageCode: code("a2"), attribution: "appsflyer" },
+      { packageCode: code("b1"), attribution: "appsflyer" },
+      { packageCode: code("u1"), attribution: "branch" },
+    ]);
+
     // Version histories drive the bucket distribution and all three metrics.
     const versions = (name: string, days: string[]) =>
       writes.upsertVersions(code(name), days.map((day, index) => ({
@@ -339,6 +347,10 @@ describeDb("weekly report against PostgreSQL", () => {
     expect(alpha.topIos).toMatchObject({ key: "15", count: 1 });
     expect(alpha.topPrivacies[0]).toMatchObject({ key: "google", count: 1 });
     expect(beta.topPrivacies).toEqual([]);
+    expect(alpha.topAttributions.map((bucket) => [bucket.key, bucket.count])).toEqual([
+      ["adjust", 1], ["appsflyer", 1],
+    ]);
+    expect(beta.topAttributions.map((bucket) => [bucket.key, bucket.count])).toEqual([["appsflyer", 1]]);
 
     expect(report.distributions.category.map((bucket) => [bucket.key, bucket.count])).toEqual([
       ["Games", 4], ["Utilities", 2], ["unknown", 1],
@@ -351,6 +363,9 @@ describeDb("weekly report against PostgreSQL", () => {
     ]);
     expect(report.distributions.privacy.map((bucket) => [bucket.key, bucket.count])).toEqual([
       ["google", 1], ["own", 1], ["unknown", 5],
+    ]);
+    expect(report.distributions.attribution.map((bucket) => [bucket.key, bucket.count])).toEqual([
+      ["appsflyer", 2], ["adjust", 1], ["unknown", 4],
     ]);
   });
 

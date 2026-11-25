@@ -46,6 +46,8 @@ export type WeeklyTeam = {
   topIos: WeeklyBucket | null;
   /** Top 3 known privacy hosts, count desc; "unknown" never chosen. */
   topPrivacies: WeeklyBucket[];
+  /** Top 3 known attribution vendors, count desc; "unknown" (not analyzed) never chosen. */
+  topAttributions: WeeklyBucket[];
 };
 
 export type WeeklyTrendWeek = {
@@ -163,7 +165,7 @@ export type WeeklyReportResponse = {
   teams: WeeklyTeam[];
   /** Fixed order: 1 / 2 / 3 / 4+ / 0. */
   versionCounts: WeeklyBucket[];
-  distributions: Record<"category" | "ios" | "iap" | "privacy", WeeklyBucket[]>;
+  distributions: Record<"category" | "ios" | "iap" | "privacy" | "attribution", WeeklyBucket[]>;
   trends: {
     /** Always four Monday-start weeks ending at the selected week, ascending. */
     weeks: WeeklyTrendWeek[];

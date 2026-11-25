@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { Badge } from "@astryxdesign/core";
 import type { PackageBrief, PackageDetail, SummaryCompetitor, SummaryGroup } from "../../shared/competitorTypes";
+import { attributionLabel } from "../../shared/attribution";
 import { competitorAssetUrl } from "../lib/competitorApi";
 import { teamLabel } from "../lib/teamLabel";
 import type { StatusFilter, ViewMode } from "./format";
@@ -58,6 +59,7 @@ function metaLine(brief: PackageBrief, facts: PackageDetail | undefined, rangeDa
   if (facts?.category) bits.push(facts.category);
   if (facts?.minimumOsVersion) bits.push(`iOS ${facts.minimumOsVersion}`);
   if (facts?.appVersion ?? brief.appVersion) bits.push(`v${facts?.appVersion ?? brief.appVersion}`);
+  if (facts?.attribution) bits.push(attributionLabel(facts.attribution));
   if (rangeDays === 1) {
     bits.push(facts?.screenshotLocalPaths.length ? `${facts.screenshotLocalPaths.length} 张截图` : "");
   }
@@ -176,6 +178,7 @@ function ShotRow({
   const meta = [
     facts?.category,
     version ? `v${version}` : null,
+    facts?.attribution ? attributionLabel(facts.attribution) : null,
     firstPackage?.hasIap ? "内购" : null,
     firstPackage ? `${firstPackage.versionCount}个版本` : null,
   ].filter(Boolean).join(" · ");

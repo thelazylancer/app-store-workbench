@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import { teamLabel } from "../lib/teamLabel";
 import type { ShelfDistributions, ShelfGroupBy, ShelfTrendWeek } from "../../shared/shelfTypes";
 import { privacyHostLabel } from "../../shared/privacyHost";
+import { attributionLabel } from "../../shared/attribution";
 import {
   OTHER_KEY,
   foldTopCategories,
@@ -228,15 +229,21 @@ const DISTRIBUTION_ROWS: { title: string; groupBy: ShelfGroupBy }[] = [
   { title: "最低 iOS", groupBy: "ios_version" },
   { title: "内购", groupBy: "iap" },
   { title: "隐私协议", groupBy: "privacy" },
+  { title: "归因", groupBy: "attribution" },
 ];
+
+const DIMENSION_LABELS: Partial<Record<ShelfGroupBy, (key: string) => string>> = {
+  privacy: privacyHostLabel,
+  attribution: attributionLabel,
+};
 
 /** Dimensions folded to Top 6 + Other, so a long tail cannot crowd the legend. */
 function isFolded(groupBy: ShelfGroupBy): boolean {
-  return groupBy === "category" || groupBy === "privacy";
+  return groupBy === "category" || groupBy === "privacy" || groupBy === "attribution";
 }
 
 /**
- * The four dimensions as weekly grouped charts sharing one scroll region, so
+ * The dimensions as weekly grouped charts sharing one scroll region, so
  * every row stays week-aligned and there is a single scrollbar to drive.
  */
 export function DistributionBoard({ distributions, weeks, from, to, team, onSelect }: DistributionBoardProps) {
@@ -253,13 +260,9 @@ export function DistributionBoard({ distributions, weeks, from, to, team, onSele
               title={title}
               groupBy={groupBy}
               segments={(isFolded(groupBy)
-                ? foldTopCategories(
-                  distributions[groupBy],
-                  6,
-                  groupBy === "privacy" ? privacyHostLabel : undefined,
-                )
+                ? foldTopCategories(distributions[groupBy], 6, DIMENSION_LABELS[groupBy])
                 : segmentGroups(groupBy, distributions[groupBy])
-              ).filter((segment) => !isUnknownKey(segment.key))}
+              ).filter((segment) => !isUnknownKey(segment.key) || groupBy === "attribution")}
               weeks={weeks}
               from={from}
               to={to}

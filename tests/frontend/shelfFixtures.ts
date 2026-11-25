@@ -34,6 +34,11 @@ function groupsFor(groupBy: ShelfGroupBy, week: number): ShelfGroupCount[] {
       ? [{ key: "generator", count: 1 }, { key: "cloudflare", count: 1 }, { key: "unknown", count: 1 }]
       : [{ key: "own", count: 1 }, { key: "unknown", count: 1 }];
   }
+  if (groupBy === "attribution") {
+    return week === 0
+      ? [{ key: "appsflyer", count: 1 }, { key: "unknown", count: 2 }]
+      : [{ key: "adjust", count: 1 }, { key: "unknown", count: 1 }];
+  }
   return week === 0
     ? [{ key: "Games", count: 2 }, { key: "unknown", count: 1 }]
     : [{ key: "Utilities", count: 1 }, { key: "unknown", count: 1 }];
@@ -88,6 +93,7 @@ export function trendFor(team: string | null, groupBy: ShelfGroupBy): ShelfTrend
       ios_version: groupsFor("ios_version", index),
       iap: groupsFor("iap", index),
       privacy: groupsFor("privacy", index),
+      attribution: groupsFor("attribution", index),
     },
   }));
   return {
@@ -106,6 +112,7 @@ export function trendFor(team: string | null, groupBy: ShelfGroupBy): ShelfTrend
       ios_version: sumGroups(weekIndexes, "ios_version"),
       iap: sumGroups(weekIndexes, "iap"),
       privacy: sumGroups(weekIndexes, "privacy"),
+      attribution: sumGroups(weekIndexes, "attribution"),
     },
     teamWeekStats: teamWeekStatsFor(team, weekIndexes),
   };
@@ -124,6 +131,7 @@ const ROWS: ShelfPackageRow[] = [
     appVersion: "2.3.1",
     iap: "yes",
     privacyHost: "generator",
+    attribution: "appsflyer",
     listingDate: "2026-10-01",
     offlineDate: null,
     resolved: true,
@@ -140,6 +148,7 @@ const ROWS: ShelfPackageRow[] = [
     appVersion: "1.0.0",
     iap: "no",
     privacyHost: "cloudflare",
+    attribution: null,
     listingDate: null,
     offlineDate: null,
     resolved: true,
@@ -156,6 +165,7 @@ const ROWS: ShelfPackageRow[] = [
     appVersion: null,
     iap: "unknown",
     privacyHost: "unknown",
+    attribution: null,
     listingDate: null,
     offlineDate: null,
     resolved: false,
@@ -172,6 +182,7 @@ const ROWS: ShelfPackageRow[] = [
     appVersion: "3.0.0",
     iap: "no",
     privacyHost: "own",
+    attribution: "adjust",
     listingDate: "2026-11-01",
     offlineDate: null,
     resolved: true,
@@ -188,6 +199,7 @@ const ROWS: ShelfPackageRow[] = [
     appVersion: null,
     iap: "unknown",
     privacyHost: "unknown",
+    attribution: null,
     listingDate: null,
     offlineDate: null,
     resolved: false,

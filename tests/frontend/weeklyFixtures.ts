@@ -47,6 +47,10 @@ const TEAMS: WeeklyTeam[] = [
       bucket("generator", "模板站", 5, 5 / 30),
       bucket("cloudflare", "Cloudflare", 3, 3 / 30),
     ],
+    topAttributions: [
+      bucket("appsflyer", "AppsFlyer", 9, 9 / 30),
+      bucket("adjust", "Adjust", 6, 6 / 30),
+    ],
   },
   {
     team: "Beta",
@@ -66,6 +70,7 @@ const TEAMS: WeeklyTeam[] = [
       bucket("google", "Google", 4, 4 / 20),
       bucket("own", "自有域名", 2, 2 / 20),
     ],
+    topAttributions: [bucket("branch", "Branch", 4, 4 / 20)],
   },
   {
     team: "Gamma",
@@ -81,6 +86,7 @@ const TEAMS: WeeklyTeam[] = [
     iap: { yes: 0, no: 2, yesShare: 0 },
     topIos: null,
     topPrivacies: [],
+    topAttributions: [],
   },
 ];
 
@@ -341,6 +347,11 @@ export function weeklyReport(overrides: Partial<WeeklyReportResponse> = {}): Wee
         bucket("vercel", "Vercel", 2, 2 / 52),
         bucket("unknown", "未知", 2, 2 / 52),
       ],
+      attribution: [
+        bucket("appsflyer", "AppsFlyer", 8, 8 / 52),
+        bucket("adjust", "Adjust", 6, 6 / 52),
+        bucket("unknown", "未归因", 38, 38 / 52),
+      ],
     },
     trends: trendsFor(WEEK_START),
     highlights: HIGHLIGHTS,
@@ -373,7 +384,7 @@ export function emptyReportForWeek(weekStart: string, latestCompleteWeek = weekS
     },
     teams: [],
     versionCounts: versionBuckets([0, 0, 0, 0, 0], 52),
-    distributions: { category: [], ios: [], iap: [], privacy: [] },
+    distributions: { category: [], ios: [], iap: [], privacy: [], attribution: [] },
     trends: {
       weeks: base.trends.weeks.map((week, index) => (
         index === base.trends.weeks.length - 1

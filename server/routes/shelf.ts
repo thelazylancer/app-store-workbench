@@ -24,7 +24,8 @@ function dateParam(value: unknown): string | null {
 
 function groupByParam(value: unknown): ShelfGroupBy | null {
   if (value === undefined) return "category";
-  if (value === "category" || value === "ios_version" || value === "iap" || value === "privacy") return value;
+  if (value === "category" || value === "ios_version" || value === "iap"
+    || value === "privacy" || value === "attribution") return value;
   return null;
 }
 

@@ -135,10 +135,17 @@ describeDb("shelf queries against PostgreSQL", () => {
       },
     }));
 
+    // Attribution: C is unresolved, so its value must never reach the dimension.
+    await writes.updateAttribution([
+      { packageCode: codeA, attribution: "adjust" },
+      { packageCode: codeB, attribution: "appsflyer" },
+      { packageCode: codeC, attribution: "branch" },
+      { packageCode: codeE, attribution: "adjust" },
+    ]);
+
     // Version history: A has one 3-day gap; B a single release; E two 5-day gaps;
     // F's 40-day gap is an outlier the team-week mean must drop.
-    await writes.upsertVersions(codeA, [
-      { version: "1.0", releasedAt: `${shiftDay(sunday, -4)}T00:00:00.000Z`, notes: null },
+    await writes.upsertVersions(codeA, [      { version: "1.0", releasedAt: `${shiftDay(sunday, -4)}T00:00:00.000Z`, notes: null },
       { version: "1.1", releasedAt: `${shiftDay(sunday, -1)}T00:00:00.000Z`, notes: null },
     ]);
     await writes.upsertVersions(codeB, [
@@ -238,6 +245,11 @@ describeDb("shelf queries against PostgreSQL", () => {
         { key: "google", count: 1 },
         { key: "own", count: 1 },
       ],
+      attribution: [
+        { key: "adjust", count: 2 },
+        { key: "appsflyer", count: 1 },
+        { key: "unknown", count: 1 },
+      ],
     });
     // Every week also carries every dimension, for the per-row weekly trends.
     expect(trend.weeks[0]!.distributions).toEqual({
@@ -245,6 +257,7 @@ describeDb("shelf queries against PostgreSQL", () => {
       ios_version: [{ key: "16", count: 1 }],
       iap: [{ key: "yes", count: 1 }],
       privacy: [{ key: "unknown", count: 1 }],
+      attribution: [{ key: "adjust", count: 1 }],
     });
     expect(trend.weeks[1]!.distributions).toEqual({
       category: [
@@ -265,6 +278,11 @@ describeDb("shelf queries against PostgreSQL", () => {
         { key: "unknown", count: 3 },
         { key: "google", count: 1 },
         { key: "own", count: 1 },
+      ],
+      attribution: [
+        { key: "adjust", count: 1 },
+        { key: "appsflyer", count: 1 },
+        { key: "unknown", count: 1 },
       ],
     });
   });
@@ -300,6 +318,23 @@ describeDb("shelf queries against PostgreSQL", () => {
       { key: "no", count: 3 },
       { key: "unknown", count: 2 },
     ]);
+  });
+
+  it("groups attribution for resolved packages only", async () => {
+    const trend = await repo.getShelfTrend({ from: sunday, to: week2End, team: null, groupBy: "attribution" });
+    expect(trend.weeks[0]!.groups).toEqual([{ key: "adjust", count: 1 }]);
+    expect(trend.weeks[1]!.groups).toEqual([
+      { key: "adjust", count: 1 },
+      { key: "appsflyer", count: 1 },
+      { key: "unknown", count: 1 },
+    ]);
+    expect(trend.totals.groups).toEqual([
+      { key: "adjust", count: 2 },
+      { key: "appsflyer", count: 1 },
+      { key: "unknown", count: 1 },
+    ]);
+    // packageCount still covers every ingested row; groups stay resolved-only.
+    expect(trend.weeks[1]!.packageCount).toBe(5);
   });
 
   it("aggregates version cadence and launch timings per team-week", async () => {
@@ -373,6 +408,7 @@ describeDb("shelf queries against PostgreSQL", () => {
       appVersion: null,
       iap: "unknown",
       privacyHost: "unknown",
+      attribution: null,
       listingDate: shiftDay(monday, -40),
       offlineDate: shiftDay(monday, 1),
       resolved: false,

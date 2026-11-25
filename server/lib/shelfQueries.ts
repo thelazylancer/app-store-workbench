@@ -14,6 +14,7 @@ import type {
 } from "../../shared/shelfTypes";
 import { SHELF_UNKNOWN_KEY } from "../../shared/shelfTypes";
 import { privacyHostKind } from "../../shared/privacyHost";
+import { attributionKey } from "../../shared/attribution";
 
 export type ShelfTrendParams = {
   from: string;
@@ -42,6 +43,7 @@ type TrendAggregateRow = {
   minimum_os_version: string | null;
   iap_has: boolean;
   policy_url: string | null;
+  attribution: string | null;
   n: number;
 };
 
@@ -67,6 +69,7 @@ type PackageDetailRow = {
   app_version: string | null;
   iap: ShelfIap;
   policy_url: string | null;
+  attribution: string | null;
   listing_date: string | null;
   offline_date: string | null;
   resolved: boolean;
@@ -88,11 +91,15 @@ const TREND_SQL = `
            WHEN lookup_status = 'hit'
            THEN app_store_json->'privacy'->>'policyUrl'
          END AS policy_url,
+         CASE
+           WHEN lookup_status = 'hit'
+           THEN NULLIF(lower(btrim(attribution)), '')
+         END AS attribution,
          count(*)::int AS n
     FROM competitor_packages
    WHERE target_date BETWEEN $1::date AND $2::date
      AND ($3::text IS NULL OR team = $3)
-   GROUP BY 1, team, lookup_status, category, minimum_os_version, iap_has, policy_url
+   GROUP BY 1, team, lookup_status, category, minimum_os_version, iap_has, policy_url, attribution
    ORDER BY 1`;
 
 const TEAMS_SQL = `
@@ -180,6 +187,10 @@ const PACKAGES_SQL = `
            WHEN lookup_status = 'hit'
            THEN app_store_json->'privacy'->>'policyUrl'
          END AS policy_url,
+         CASE
+           WHEN lookup_status = 'hit'
+           THEN NULLIF(lower(btrim(attribution)), '')
+         END AS attribution,
          to_char(listing_date, 'YYYY-MM-DD') AS listing_date,
          to_char(offline_date, 'YYYY-MM-DD') AS offline_date,
          lookup_status = 'hit' AS resolved
@@ -200,7 +211,7 @@ export function iosBucket(value: string | null): ShelfIosBucket {
   return String(major) as ShelfIosBucket;
 }
 
-function groupKey(row: TrendAggregateRow, groupBy: ShelfGroupBy): string {
+function groupKey(row: TrendAggregateRow, groupBy: ShelfGroupBy): string | null {
   if (groupBy === "category") {
     if (row.lookup_status !== "hit") return SHELF_UNKNOWN_KEY;
     return row.category?.trim() ? row.category : SHELF_UNKNOWN_KEY;
@@ -209,6 +220,10 @@ function groupKey(row: TrendAggregateRow, groupBy: ShelfGroupBy): string {
     return row.lookup_status === "hit" ? iosBucket(row.minimum_os_version) : SHELF_UNKNOWN_KEY;
   }
   if (groupBy === "privacy") return privacyHostKind(row.policy_url);
+  if (groupBy === "attribution") {
+    // Attribution is analysis-derived, so unresolved rows never enter this dimension.
+    return row.lookup_status === "hit" ? attributionKey(row.attribution) : null;
+  }
   if (row.lookup_status !== "hit") return SHELF_UNKNOWN_KEY;
   return row.iap_has ? "yes" : "no";
 }
@@ -226,7 +241,10 @@ function sortedGroups(groups: Map<string, number>): ShelfGroupCount[] {
 }
 
 function emptyDimensions(): Record<ShelfGroupBy, Map<string, number>> {
-  return { category: new Map(), ios_version: new Map(), iap: new Map(), privacy: new Map() };
+  return {
+    category: new Map(), ios_version: new Map(), iap: new Map(), privacy: new Map(),
+    attribution: new Map(),
+  };
 }
 
 function foldTrend(rows: TrendAggregateRow[], groupBy: ShelfGroupBy): {
@@ -243,7 +261,7 @@ function foldTrend(rows: TrendAggregateRow[], groupBy: ShelfGroupBy): {
   const weeks = new Map<string, WeekFold>();
   const totalGroups = new Map<string, number>();
   const dimensionTotals = emptyDimensions();
-  const DIMENSIONS: ShelfGroupBy[] = ["category", "ios_version", "iap", "privacy"];
+  const DIMENSIONS: ShelfGroupBy[] = ["category", "ios_version", "iap", "privacy", "attribution"];
   let totalCount = 0;
 
   for (const row of rows) {
@@ -254,17 +272,20 @@ function foldTrend(rows: TrendAggregateRow[], groupBy: ShelfGroupBy): {
       weeks.set(row.week_start, week);
     }
     week.packageCount += row.n;
-    week.groups.set(key, (week.groups.get(key) ?? 0) + row.n);
     week.teams.set(row.team, (week.teams.get(row.team) ?? 0) + row.n);
+    if (key !== null) {
+      week.groups.set(key, (week.groups.get(key) ?? 0) + row.n);
+      totalGroups.set(key, (totalGroups.get(key) ?? 0) + row.n);
+    }
     for (const dimension of DIMENSIONS) {
       const dimensionKey = groupKey(row, dimension);
+      if (dimensionKey === null) continue;
       const totals = dimensionTotals[dimension];
       totals.set(dimensionKey, (totals.get(dimensionKey) ?? 0) + row.n);
       const weekTotals = week.dimensions[dimension];
       weekTotals.set(dimensionKey, (weekTotals.get(dimensionKey) ?? 0) + row.n);
     }
     totalCount += row.n;
-    totalGroups.set(key, (totalGroups.get(key) ?? 0) + row.n);
   }
 
   return {
@@ -281,6 +302,7 @@ function foldTrend(rows: TrendAggregateRow[], groupBy: ShelfGroupBy): {
           ios_version: sortedGroups(week.dimensions.ios_version),
           iap: sortedGroups(week.dimensions.iap),
           privacy: sortedGroups(week.dimensions.privacy),
+          attribution: sortedGroups(week.dimensions.attribution),
         },
       })),
     totals: { packageCount: totalCount, groups: sortedGroups(totalGroups) },
@@ -289,6 +311,7 @@ function foldTrend(rows: TrendAggregateRow[], groupBy: ShelfGroupBy): {
       ios_version: sortedGroups(dimensionTotals.ios_version),
       iap: sortedGroups(dimensionTotals.iap),
       privacy: sortedGroups(dimensionTotals.privacy),
+      attribution: sortedGroups(dimensionTotals.attribution),
     },
   };
 }
@@ -341,6 +364,7 @@ export function createShelfQueries(pool: Pool): ShelfQueryRepo {
         appVersion: row.app_version,
         iap: row.iap,
         privacyHost: privacyHostKind(row.policy_url),
+        attribution: row.attribution,
         listingDate: row.listing_date,
         offlineDate: row.offline_date,
         resolved: row.resolved,

@@ -53,7 +53,7 @@ describe("React shelf trend page", () => {
         count: bar.dataset.count,
       })),
     }));
-    expect(dims.map((row) => row.title)).toEqual(["类目", "最低 iOS", "内购", "隐私协议"]);
+    expect(dims.map((row) => row.title)).toEqual(["类目", "最低 iOS", "内购", "隐私协议", "归因"]);
     expect(dims[0]!.legend).toEqual([
       { label: "Games", count: "2" },
       { label: "Utilities", count: "1" },
@@ -90,6 +90,17 @@ describe("React shelf trend page", () => {
       { week: WEEKS[0]!.weekStart, key: "cloudflare", count: "1" },
       { week: WEEKS[0]!.weekStart, key: "generator", count: "1" },
       { week: WEEKS[1]!.weekStart, key: "own", count: "1" },
+    ]);
+    expect(dims[4]!.legend).toEqual([
+      { label: "Adjust", count: "1" },
+      { label: "AppsFlyer", count: "1" },
+      { label: "未归因", count: "3" },
+    ]);
+    expect(dims[4]!.bars).toEqual([
+      { week: WEEKS[0]!.weekStart, key: "appsflyer", count: "1" },
+      { week: WEEKS[0]!.weekStart, key: "unknown", count: "2" },
+      { week: WEEKS[1]!.weekStart, key: "adjust", count: "1" },
+      { week: WEEKS[1]!.weekStart, key: "unknown", count: "1" },
     ]);
 
     expect(screen.getByRole("heading", { level: 2, name: "版本与投放（按团队）" })).toBeTruthy();
@@ -392,7 +403,7 @@ describe("React shelf trend page", () => {
         teams: [],
         weeks: [],
         totals: { packageCount: 0, groups: [] },
-        distributions: { category: [], ios_version: [], iap: [], privacy: [] },
+        distributions: { category: [], ios_version: [], iap: [], privacy: [], attribution: [] },
         teamWeekStats: [],
       })));
     renderPage();

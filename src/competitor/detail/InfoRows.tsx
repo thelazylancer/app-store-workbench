@@ -46,6 +46,9 @@ export function PackageInfoSection({ packageDetail }: { packageDetail: PackageDe
       </a>
     )]);
   }
+  if (packageDetail.attribution) {
+    rows.push(["归因", packageDetail.attribution]);
+  }
   rows.push(["图片状态", assetStatusLabel(packageDetail.assetStatus)]);
 
   return (
