@@ -114,11 +114,15 @@ function trendWeeks(weekStart: string): WeeklyTrendWeek[] {
   const starts = [-21, -14, -7, 0].map((offset) => addDays(weekStart, offset));
   const resolved = [0, 18, 50, 52];
   const ingested = [0, 40, 100, 112];
+  const attributed = [0, 10, 40, 56];
+  const resolvedAttributed = [0, 9, 30, 28];
   return starts.map((start, index) => ({
     weekStart: start,
     weekEnd: addDays(start, 6),
     resolvedPackages: resolved[index]!,
     ingestedPackages: ingested[index]!,
+    attributedPackages: attributed[index]!,
+    resolvedAttributedPackages: resolvedAttributed[index]!,
     dataSufficient: ingested[index]! > 0,
   }));
 }
@@ -388,7 +392,7 @@ export function emptyReportForWeek(weekStart: string, latestCompleteWeek = weekS
     trends: {
       weeks: base.trends.weeks.map((week, index) => (
         index === base.trends.weeks.length - 1
-          ? { ...week, resolvedPackages: 0, dataSufficient: false }
+          ? { ...week, resolvedPackages: 0, attributedPackages: 0, resolvedAttributedPackages: 0, dataSufficient: false }
           : week
       )),
       metrics: [],

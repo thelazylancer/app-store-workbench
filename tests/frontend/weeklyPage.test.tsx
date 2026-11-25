@@ -45,6 +45,11 @@ describe("weekly page", () => {
     expect(groups[1]!.querySelector('[data-role="weekly-team-cards"]')).toBeTruthy();
     expect(groups[2]!.querySelector('[data-role="weekly-metric-overall-row"]')).toBeTruthy();
     expect(groups[2]!.querySelector('[data-role="weekly-trend"]')).toBeTruthy();
+    const coverage = document.querySelector<HTMLElement>('[data-role="weekly-trend-coverage"]');
+    expect(coverage?.textContent).toContain("— / —");
+    expect(coverage?.textContent).toContain("25.0% / 50.0%");
+    expect(coverage?.textContent).toContain("40.0% / 60.0%");
+    expect(coverage?.textContent).toContain("50.0% / 53.8%");
     expect([...groups[2]!.querySelectorAll("h3")].map((heading) => heading.textContent))
       .toEqual(["新增与结构", "版本与投放", "品类与隐私变化"]);
   });

@@ -104,10 +104,10 @@ const reportResponse: WeeklyReportResponse = {
   },
   trends: {
     weeks: [
-      { weekStart: "2026-10-26", weekEnd: "2026-11-01", resolvedPackages: 0, ingestedPackages: 0, dataSufficient: false },
-      { weekStart: "2026-11-02", weekEnd: "2026-11-08", resolvedPackages: 18, ingestedPackages: 30, dataSufficient: true },
-      { weekStart: "2026-11-09", weekEnd: "2026-11-15", resolvedPackages: 50, ingestedPackages: 90, dataSufficient: true },
-      { weekStart: "2026-11-16", weekEnd: "2026-11-22", resolvedPackages: 52, ingestedPackages: 112, dataSufficient: true },
+      { weekStart: "2026-10-26", weekEnd: "2026-11-01", resolvedPackages: 0, ingestedPackages: 0, attributedPackages: 0, resolvedAttributedPackages: 0, dataSufficient: false },
+      { weekStart: "2026-11-02", weekEnd: "2026-11-08", resolvedPackages: 18, ingestedPackages: 30, attributedPackages: 10, resolvedAttributedPackages: 9, dataSufficient: true },
+      { weekStart: "2026-11-09", weekEnd: "2026-11-15", resolvedPackages: 50, ingestedPackages: 90, attributedPackages: 40, resolvedAttributedPackages: 30, dataSufficient: true },
+      { weekStart: "2026-11-16", weekEnd: "2026-11-22", resolvedPackages: 52, ingestedPackages: 112, attributedPackages: 56, resolvedAttributedPackages: 28, dataSufficient: true },
     ],
     metrics: [
       {

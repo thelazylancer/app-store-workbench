@@ -53,8 +53,7 @@ const WEEK_MAIN_SQL = `
               ELSE false END AS iap_has,
          CASE WHEN lookup_status = 'hit'
               THEN app_store_json->'privacy'->>'policyUrl' END AS policy_url,
-         CASE WHEN lookup_status = 'hit'
-              THEN NULLIF(lower(btrim(attribution)), '') END AS attribution,
+         NULLIF(lower(btrim(attribution)), '') AS attribution,
          count(*)::int AS n
     FROM competitor_packages
    WHERE first_ad_date BETWEEN $1::date AND $2::date
@@ -246,8 +245,8 @@ export function createWeeklyReport(pool: Pool): WeeklyReportRepo {
       ]);
 
       const folded = foldWeekRows(mainResult.rows, weekStart);
-      const currentTotals = folded.weekTotals.get(weekStart) ?? { ingested: 0, resolved: 0 };
-      const previousTotals = folded.weekTotals.get(previousWeek) ?? { ingested: 0, resolved: 0 };
+      const currentTotals = folded.weekTotals.get(weekStart) ?? { ingested: 0, resolved: 0, attributed: 0, resolvedAttributed: 0 };
+      const previousTotals = folded.weekTotals.get(previousWeek) ?? { ingested: 0, resolved: 0, attributed: 0, resolvedAttributed: 0 };
       const previousTeams = folded.teamIngested.get(previousWeek) ?? new Map<string, number>();
       const resolvedPackages = currentTotals.resolved;
 
@@ -287,10 +286,13 @@ export function createWeeklyReport(pool: Pool): WeeklyReportRepo {
 
       const trendWeeks: WeeklyTrendWeek[] = [0, 1, 2, 3].map((offset) => {
         const start = addWeeks(from, offset);
-        const totals = folded.weekTotals.get(start) ?? { ingested: 0, resolved: 0 };
+        const totals = folded.weekTotals.get(start)
+          ?? { ingested: 0, resolved: 0, attributed: 0, resolvedAttributed: 0 };
         return {
           weekStart: start, weekEnd: addDays(start, 6),
           resolvedPackages: totals.resolved, ingestedPackages: totals.ingested,
+          attributedPackages: totals.attributed,
+          resolvedAttributedPackages: totals.resolvedAttributed,
           dataSufficient: totals.ingested > 0,
         };
       });

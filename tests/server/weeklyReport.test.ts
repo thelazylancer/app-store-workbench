@@ -408,10 +408,11 @@ describeDb("weekly report against PostgreSQL", () => {
     const report = await repo.getWeeklyReport(week3);
 
     expect(report.trends.weeks).toEqual([
-      { weekStart: week0, weekEnd: shiftDay(week0, 6), resolvedPackages: 0, ingestedPackages: 0, dataSufficient: false },
-      { weekStart: week1, weekEnd: shiftDay(week1, 6), resolvedPackages: 0, ingestedPackages: 0, dataSufficient: false },
-      { weekStart: week2, weekEnd: shiftDay(week2, 6), resolvedPackages: 4, ingestedPackages: 4, dataSufficient: true },
-      { weekStart: week3, weekEnd: shiftDay(week3, 6), resolvedPackages: 7, ingestedPackages: 10, dataSufficient: true },
+      { weekStart: week0, weekEnd: shiftDay(week0, 6), resolvedPackages: 0, ingestedPackages: 0, attributedPackages: 0, resolvedAttributedPackages: 0, dataSufficient: false },
+      { weekStart: week1, weekEnd: shiftDay(week1, 6), resolvedPackages: 0, ingestedPackages: 0, attributedPackages: 0, resolvedAttributedPackages: 0, dataSufficient: false },
+      { weekStart: week2, weekEnd: shiftDay(week2, 6), resolvedPackages: 4, ingestedPackages: 4, attributedPackages: 0, resolvedAttributedPackages: 0, dataSufficient: true },
+      // u1 is unresolved but already has an attribution, so the two ratios differ.
+      { weekStart: week3, weekEnd: shiftDay(week3, 6), resolvedPackages: 7, ingestedPackages: 10, attributedPackages: 4, resolvedAttributedPackages: 3, dataSufficient: true },
     ]);
   });
 

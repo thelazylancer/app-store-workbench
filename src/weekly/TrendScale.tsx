@@ -104,7 +104,10 @@ export function TrendScale({
       </div>
       <div className="wx-weekly-scale-grid">
         <div className="wx-weekly-trend-panel wx-weekly-trend-panel-wide">
-          <h4 className="wx-dist-title">新增包数</h4>
+          <div className="wx-weekly-panel-head">
+            <h4 className="wx-dist-title">新增包数</h4>
+            <span className="wx-weekly-panel-note">有归因 = 全部包 / 已解析包</span>
+          </div>
           <TrendBars weeks={weeks} />
         </div>
         <div className="wx-weekly-trend-panel">

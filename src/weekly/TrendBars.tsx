@@ -1,11 +1,18 @@
 import type { WeeklyTrendWeek } from "../../shared/weeklyReportTypes";
 import { ChartTip } from "../shelf/Charts";
+import { formatPercent } from "./format";
 import { useClickTip } from "./useClickTip";
+
+/** Attribution coverage: all ingested packages / resolved packages; "—" without a denominator. */
+function coverageText(week: WeeklyTrendWeek): string {
+  const ratio = (count: number, total: number) => (total > 0 ? formatPercent(count / total) : "—");
+  return `${ratio(week.attributedPackages, week.ingestedPackages)} / ${ratio(week.resolvedAttributedPackages, week.resolvedPackages)}`;
+}
 
 function trendAriaLabel(weeks: WeeklyTrendWeek[]): string {
   const parts = weeks.map((week) => (
     week.dataSufficient
-      ? `${week.weekStart.slice(5)} ${week.ingestedPackages} 包`
+      ? `${week.weekStart.slice(5)} ${week.ingestedPackages} 包，有归因 ${coverageText(week)}`
       : `${week.weekStart.slice(5)} 数据不足`
   ));
   return `近 4 周新增趋势。${parts.join("；")}。`;
@@ -36,7 +43,7 @@ export function TrendBars({ weeks }: { weeks: WeeklyTrendWeek[] }) {
                   data-value={week.ingestedPackages}
                   {...bind(
                     week.weekStart,
-                    `${week.weekStart.slice(5)} ~ ${week.weekEnd.slice(5)}：${week.ingestedPackages} 包`,
+                    `${week.weekStart.slice(5)} ~ ${week.weekEnd.slice(5)}：${week.ingestedPackages} 包；有归因 ${coverageText(week)}`,
                   )}
                 >
                   <span className="wx-weekly-trend-value" aria-hidden="true">
@@ -72,6 +79,14 @@ export function TrendBars({ weeks }: { weeks: WeeklyTrendWeek[] }) {
             <span className="wx-weekly-date-full">~ {week.weekEnd}</span>
             <span className="wx-weekly-date-short">~ {week.weekEnd.slice(5)}</span>
             {index === lastIndex ? <span className="wx-weekly-current-week">本周</span> : null}
+          </div>
+        ))}
+      </div>
+      <div className="wx-weekly-trend-coverage" data-role="weekly-trend-coverage">
+        {weeks.map((week) => (
+          <div className="wx-weekly-trend-coverage-cell" key={week.weekStart}>
+            <span className="wx-weekly-trend-coverage-label">有归因</span>
+            <span>{coverageText(week)}</span>
           </div>
         ))}
       </div>

@@ -10,7 +10,7 @@ export type WeekMainRow = {
   attribution: string | null; n: number;
 };
 
-type WeekTotals = { ingested: number; resolved: number };
+type WeekTotals = { ingested: number; resolved: number; attributed: number; resolvedAttributed: number };
 
 type TeamStats = {
   ingested: number; resolved: number; categories: Map<string, number>; ios: Map<string, number>;
@@ -39,8 +39,10 @@ export function foldWeekRows(rows: WeekMainRow[], selectedWeek: string) {
   };
 
   for (const row of rows) {
-    const totals = weekTotals.get(row.week_start) ?? { ingested: 0, resolved: 0 };
+    const totals = weekTotals.get(row.week_start)
+      ?? { ingested: 0, resolved: 0, attributed: 0, resolvedAttributed: 0 };
     totals.ingested += row.n;
+    if (row.attribution) totals.attributed += row.n;
     weekTotals.set(row.week_start, totals);
 
     const ingestedMap = teamIngested.get(row.week_start) ?? new Map<string, number>();
@@ -56,6 +58,7 @@ export function foldWeekRows(rows: WeekMainRow[], selectedWeek: string) {
     if (row.lookup_status !== "hit") continue;
 
     totals.resolved += row.n;
+    if (row.attribution) totals.resolvedAttributed += row.n;
     const category = row.category?.trim() || SHELF_UNKNOWN_KEY;
     const categoryMap = categoryCounts.get(row.week_start) ?? new Map<string, number>();
     increment(categoryMap, category, row.n);

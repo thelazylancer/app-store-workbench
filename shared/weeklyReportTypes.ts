@@ -55,6 +55,10 @@ export type WeeklyTrendWeek = {
   weekEnd: string;
   resolvedPackages: number;
   ingestedPackages: number;
+  /** Packages with an attribution value, over all ingested packages (unresolved included). */
+  attributedPackages: number;
+  /** Packages with an attribution value among resolved packages. */
+  resolvedAttributedPackages: number;
   /** ingestedPackages > 0; false weeks render as "data insufficient". */
   dataSufficient: boolean;
 };
