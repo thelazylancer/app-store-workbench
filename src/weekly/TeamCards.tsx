@@ -1,8 +1,15 @@
 import { teamLabel } from "../lib/teamLabel";
-import type { WeeklyBucket, WeeklyTeam } from "../../shared/weeklyReportTypes";
+import type {
+  WeeklyBucket,
+  WeeklyMetricKey,
+  WeeklyMetricPoint,
+  WeeklyMetricSeries,
+  WeeklyTeam,
+  WeeklyTrendWeek,
+} from "../../shared/weeklyReportTypes";
 import { ChartTip } from "../shelf/Charts";
 import type { ChartTipState } from "../shelf/Charts";
-import { formatChange, formatPercent } from "./format";
+import { formatChange, formatMetricPoint, formatPercent } from "./format";
 import { useClickTip } from "./useClickTip";
 
 const BLUE_CLASSES = [
@@ -204,7 +211,141 @@ function MiniRows({
   );
 }
 
-function TeamCard({ team, total }: { team: WeeklyTeam; total: number }) {
+const METRIC_SHORT: Record<WeeklyMetricKey, string> = {
+  avgVersionGapDays: "版本间隔",
+  avgLatestVersionToAdDays: "最新→投放",
+  avgAdToOfflineDays: "投放→下架",
+};
+
+function metricText(key: WeeklyMetricKey, point: WeeklyMetricPoint): string {
+  const value = formatMetricPoint(key, point);
+  return key === "avgAdToOfflineDays" ? value : `${value} 天`;
+}
+
+function MetricTrend({
+  series,
+  team,
+  weeks,
+  tip,
+  bind,
+}: {
+  series: WeeklyMetricSeries;
+  team: string;
+  weeks: WeeklyTrendWeek[];
+  tip: ChartTipState;
+  bind: ClickBind;
+}) {
+  const points = new Map(
+    series.points.filter((point) => point.team === team).map((point) => [point.weekStart, point]),
+  );
+  const values = weeks
+    .map((week) => points.get(week.weekStart))
+    .filter((point): point is WeeklyMetricPoint => point !== undefined);
+  const min = Math.min(0, ...values.map((point) => point.value));
+  const max = Math.max(0, ...values.map((point) => point.value));
+  const span = max - min || 1;
+  const percent = (value: number) => ((value - min) / span) * 100;
+  const zeroPct = percent(0);
+  const current = weeks.length > 0 ? points.get(weeks[weeks.length - 1]!.weekStart) : undefined;
+
+  return (
+    <div className="wx-weekly-card-metric" data-role="weekly-card-metric" data-metric={series.key}>
+      <span className="wx-weekly-card-metric-label">{METRIC_SHORT[series.key]}</span>
+      <span className="wx-weekly-card-metric-value">
+        {current ? metricText(series.key, current) : "—"}
+      </span>
+      <span className="wx-weekly-card-metric-spark">
+        {min < 0 ? (
+          <span
+            className="wx-weekly-card-metric-zero"
+            style={{ bottom: `${zeroPct}%` }}
+            aria-hidden="true"
+          />
+        ) : null}
+        {weeks.map((week, index) => {
+          const point = points.get(week.weekStart);
+          const text = point
+            ? `${week.weekStart}：${metricText(series.key, point)}`
+            : `${week.weekStart}：无数据`;
+          const valuePct = point ? percent(point.value) : 0;
+          const bottom = Math.min(valuePct, zeroPct);
+          return (
+            <button
+              type="button"
+              key={week.weekStart}
+              className="wx-weekly-card-metric-slot"
+              aria-label={`${series.title} · ${text}`}
+              data-role="weekly-card-metric-bar"
+              data-metric={series.key}
+              data-week={week.weekStart}
+              data-value={point?.value ?? ""}
+              {...bind(`trend:${series.key}:${week.weekStart}`, text)}
+            >
+              {point ? (
+                <span
+                  className={`wx-weekly-card-metric-bar${
+                    index === weeks.length - 1 ? " wx-weekly-card-metric-current" : ""
+                  }${point.value < 0 ? " wx-weekly-card-metric-negative" : ""}`}
+                  style={{
+                    bottom: `${bottom}%`,
+                    height: `${Math.max(Math.abs(valuePct - zeroPct), 4)}%`,
+                  }}
+                />
+              ) : null}
+            </button>
+          );
+        })}
+      </span>
+    </div>
+  );
+}
+
+function MetricTrends({
+  team,
+  weeks,
+  metrics,
+  tip,
+  bind,
+}: {
+  team: string;
+  weeks: WeeklyTrendWeek[];
+  metrics: WeeklyMetricSeries[];
+  tip: ChartTipState;
+  bind: ClickBind;
+}) {
+  if (metrics.length === 0) return null;
+
+  return (
+    <div className="wx-weekly-card-metrics" data-role="weekly-card-metrics">
+      <p className="wx-weekly-mini-title">版本与投放（本周）</p>
+      {metrics.map((series) => (
+        <MetricTrend
+          key={series.key}
+          series={series}
+          team={team}
+          weeks={weeks}
+          tip={tip}
+          bind={bind}
+        />
+      ))}
+      <span className="wx-weekly-card-metric-tip">
+        <ChartTip tip={tip?.id.startsWith("trend:") ? tip : null} id={tip?.id ?? ""} />
+      </span>
+    </div>
+  );
+}
+
+function TeamCard({
+  team,
+  total,
+  weeks,
+  metrics,
+}: {
+  team: WeeklyTeam;
+  total: number;
+  weeks: WeeklyTrendWeek[];
+  metrics: WeeklyMetricSeries[];
+}) {
   const sufficient = team.resolvedPackages >= 3;
   const { tip, bind } = useClickTip();
 
@@ -256,6 +397,8 @@ function TeamCard({ team, total }: { team: WeeklyTeam; total: number }) {
             : <span className="wx-weekly-muted">—</span>}
         </p>
       </div>
+
+      <MetricTrends team={team.team} weeks={weeks} metrics={metrics} tip={tip} bind={bind} />
     </article>
   );
 }
@@ -263,15 +406,17 @@ function TeamCard({ team, total }: { team: WeeklyTeam; total: number }) {
 type TeamCardsProps = {
   teams: WeeklyTeam[];
   total: number;
+  weeks: WeeklyTrendWeek[];
+  metrics: WeeklyMetricSeries[];
 };
 
-export function TeamCards({ teams, total }: TeamCardsProps) {
+export function TeamCards({ teams, total, weeks, metrics }: TeamCardsProps) {
   return (
     <div className="wx-weekly-section">
       <ul className="wx-weekly-cards" data-role="weekly-team-cards">
         {teams.map((team) => (
           <li key={team.team}>
-            <TeamCard team={team} total={total} />
+            <TeamCard team={team} total={total} weeks={weeks} metrics={metrics} />
           </li>
         ))}
       </ul>

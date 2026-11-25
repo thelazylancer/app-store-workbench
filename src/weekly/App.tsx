@@ -9,6 +9,7 @@ import { BatchNote, WeekHeader } from "./WeekHeader";
 import { Summary } from "./Summary";
 import { TeamCards } from "./TeamCards";
 import { MetricBars } from "./MetricBars";
+import { MetricFacts } from "./MetricFacts";
 import { StructureBars } from "./StructureBars";
 import { TrendBars } from "./TrendBars";
 import { Highlights } from "./Highlights";
@@ -188,6 +189,7 @@ export function WeeklyPage() {
               distributions={report.distributions}
               total={report.summary.resolvedPackages}
             />
+            <MetricFacts metrics={report.trends.metrics} weekStart={report.weekStart} />
             <Highlights highlights={report.highlights} />
           </Group>
           <Group
@@ -200,7 +202,12 @@ export function WeeklyPage() {
               </>
             }
           >
-            <TeamCards teams={report.teams} total={report.summary.resolvedPackages} />
+            <TeamCards
+              teams={report.teams}
+              total={report.summary.resolvedPackages}
+              weeks={report.trends.weeks}
+              metrics={report.trends.metrics}
+            />
           </Group>
           <Group id="trends" title="过去 4 周趋势">
             <TrendBars weeks={report.trends.weeks} />

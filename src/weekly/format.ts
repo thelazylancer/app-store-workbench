@@ -1,5 +1,8 @@
 import { addDays } from "../lib/reportDate";
 import { formatMetric } from "../lib/metricScale";
+import type { WeeklyMetricKey, WeeklyMetricPoint } from "../../shared/weeklyReportTypes";
+
+export type MetricPointValue = Pick<WeeklyMetricPoint, "value" | "offlineCount" | "packageCount">;
 
 export type BatchStatus = "ok" | "partial" | "failed" | null;
 
@@ -33,6 +36,14 @@ export function formatPp(deltaPp: number): string {
 /** Days keep one decimal below 100 and drop a trailing `.0`, matching shelf charts. */
 export function formatDay(value: number): string {
   return formatMetric(value);
+}
+
+/** Metric value for tooltips/tables; ad→offline always carries its offline context. */
+export function formatMetricPoint(key: WeeklyMetricKey, point: MetricPointValue): string {
+  if (key === "avgAdToOfflineDays") {
+    return `${formatDay(point.value)} 天（已下架 ${point.offlineCount}/${point.packageCount}）`;
+  }
+  return formatDay(point.value);
 }
 
 export function batchStatusLabel(status: BatchStatus): string {

@@ -1,7 +1,6 @@
 import { Button } from "@astryxdesign/core";
 import { useState } from "react";
 import type {
-  WeeklyMetricKey,
   WeeklyMetricPoint,
   WeeklyMetricSeries,
   WeeklyTrendWeek,
@@ -9,7 +8,7 @@ import type {
 import { formatMetric, metricTicks } from "../lib/metricScale";
 import { teamLabel } from "../lib/teamLabel";
 import { ChartTip, WeekLabels, teamClass, useScrollRegion } from "../shelf/Charts";
-import { formatDay } from "./format";
+import { formatDay, formatMetricPoint } from "./format";
 import { useClickTip } from "./useClickTip";
 
 type PointLookup = Map<string, Map<string, WeeklyMetricPoint>>;
@@ -34,15 +33,6 @@ function colorTeamList(teams: string[], metrics: WeeklyMetricSeries[]): string[]
     .filter((team) => !seen.has(team))
     .sort((left, right) => left.localeCompare(right, "zh"));
   return [...teams, ...historical];
-}
-
-type MetricValue = Pick<WeeklyMetricPoint, "value" | "offlineCount" | "packageCount">;
-
-function cellText(series: WeeklyMetricKey, point: MetricValue): string {
-  if (series === "avgAdToOfflineDays") {
-    return `${formatDay(point.value)} 天（已下架 ${point.offlineCount}/${point.packageCount}）`;
-  }
-  return formatDay(point.value);
 }
 
 function OverallRow({
@@ -78,7 +68,7 @@ function OverallRow({
           const valuePct = percent(point.value);
           const bottom = Math.min(valuePct, zeroPct);
           const height = Math.abs(valuePct - zeroPct);
-          const text = `整体：${cellText(series.key, point)}`;
+          const text = `整体：${formatMetricPoint(series.key, point)}`;
           return (
             <span className="wx-weekly-overall-slot" key={week.weekStart}>
               <button
@@ -155,7 +145,7 @@ function ValuesTable({
                 const point = lookup.get(week.weekStart)?.get(team);
                 return (
                   <td key={week.weekStart} className="wx-weekly-mono">
-                    {point ? cellText(series.key, point) : "—"}
+                    {point ? formatMetricPoint(series.key, point) : "—"}
                   </td>
                 );
               })}
@@ -272,7 +262,7 @@ function MetricRow({
                       aria-hidden="true"
                       {...bind(
                         `${series.key}:${week.weekStart}`,
-                        `${teamLabel(team)}：${cellText(series.key, point)}`,
+                        `${teamLabel(team)}：${formatMetricPoint(series.key, point)}`,
                       )}
                     />
                   );

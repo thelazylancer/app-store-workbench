@@ -117,7 +117,10 @@ function metricsFor(weekStart: string): WeeklyMetricSeries[] {
       key: "avgVersionGapDays",
       title: "平均版本间隔（天）",
       points: [
+        { weekStart: week(-14), team: "Alpha", value: 5, packageCount: 18, offlineCount: 0 },
+        { weekStart: week(-7), team: "Alpha", value: 7, packageCount: 28, offlineCount: 0 },
         { weekStart, team: "Alpha", value: 8.5, packageCount: 30, offlineCount: 0 },
+        { weekStart: week(-7), team: "Beta", value: 5.5, packageCount: 22, offlineCount: 0 },
         { weekStart, team: "Beta", value: 6, packageCount: 20, offlineCount: 0 },
       ],
       overall: [
@@ -130,6 +133,8 @@ function metricsFor(weekStart: string): WeeklyMetricSeries[] {
       key: "avgLatestVersionToAdDays",
       title: "最新版本→投放（天）",
       points: [
+        { weekStart: week(-14), team: "Alpha", value: 5.5, packageCount: 18, offlineCount: 0 },
+        { weekStart: week(-7), team: "Alpha", value: 6.5, packageCount: 28, offlineCount: 0 },
         { weekStart, team: "Alpha", value: 7.2, packageCount: 30, offlineCount: 0 },
       ],
       overall: [
@@ -142,7 +147,10 @@ function metricsFor(weekStart: string): WeeklyMetricSeries[] {
       key: "avgAdToOfflineDays",
       title: "投放→下架（天）",
       points: [
+        { weekStart: week(-14), team: "Alpha", value: 0, packageCount: 18, offlineCount: 0 },
+        { weekStart: week(-7), team: "Alpha", value: 1, packageCount: 28, offlineCount: 1 },
         { weekStart, team: "Alpha", value: 0, packageCount: 30, offlineCount: 0 },
+        { weekStart: week(-7), team: "Beta", value: 3, packageCount: 22, offlineCount: 1 },
         { weekStart, team: "Beta", value: 4, packageCount: 20, offlineCount: 2 },
       ],
       overall: [

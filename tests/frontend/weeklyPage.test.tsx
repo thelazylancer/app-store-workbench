@@ -71,7 +71,14 @@ describe("weekly page", () => {
     expect(groups.map((group) => group.querySelector(".wx-weekly-group-title")?.textContent))
       .toEqual(["整体情况", "团队情况", "过去 4 周趋势"]);
     expect(groups[0]!.querySelector('[data-role="weekly-structure-panel"]')).toBeTruthy();
+    expect(groups[0]!.querySelector('[data-role="weekly-metric-facts"]')).toBeTruthy();
     expect(groups[0]!.querySelector('[data-role="weekly-highlights"]')).toBeTruthy();
+    expect([...groups[0]!.querySelectorAll("h3")].map((heading) => heading.textContent))
+      .toEqual(["本周结构", "版本与投放（本周）", "本周值得关注"]);
+    expect(byRole("weekly-metric-facts")?.textContent).toContain("8.5");
+    expect(byRole("weekly-metric-facts")?.textContent).toContain("7.2");
+    expect(byRole("weekly-metric-facts")?.textContent).toContain("2.5");
+    expect(byRole("weekly-metric-facts")?.textContent).toContain("已下架 2/52");
     expect(groups[1]!.querySelector('[data-role="weekly-team-cards"]')).toBeTruthy();
     expect(groups[2]!.querySelector('[data-role="weekly-metric-row"]')).toBeTruthy();
     expect(groups[2]!.querySelector('[data-role="weekly-trend"]')).toBeTruthy();
@@ -365,6 +372,44 @@ describe("weekly page", () => {
       ?.textContent).toContain("2 · —");
   });
 
+  it("shows this-week metrics and a four-week sparkline in every team card", async () => {
+    vi.stubGlobal("fetch", mockWeekly());
+    renderPage();
+    await waitForCards(3);
+
+    const alpha = document.querySelector<HTMLElement>(
+      '[data-role="weekly-team-card"][data-team="Alpha"]',
+    )!;
+    const block = alpha.querySelector<HTMLElement>('[data-role="weekly-card-metrics"]')!;
+    expect(block.textContent).toContain("版本与投放（本周）");
+    expect([...block.querySelectorAll<HTMLElement>('[data-role="weekly-card-metric"]')]
+      .map((node) => node.dataset.metric))
+      .toEqual(["avgVersionGapDays", "avgLatestVersionToAdDays", "avgAdToOfflineDays"]);
+    expect(block.textContent).toContain("8.5 天");
+    expect(block.textContent).toContain("7.2 天");
+    expect(block.textContent).toContain("0 天（已下架 0/30）");
+
+    const gapBars = block.querySelectorAll<HTMLElement>(
+      '[data-role="weekly-card-metric-bar"][data-metric="avgVersionGapDays"]',
+    );
+    expect(gapBars).toHaveLength(4);
+    expect([...gapBars].map((bar) => bar.dataset.value)).toEqual(["", "5", "7", "8.5"]);
+
+    fireEvent.click(gapBars[2]!);
+    expect(block.querySelector(".wx-chart-tip")?.textContent).toBe("2026-11-09：7 天");
+
+    const beta = document.querySelector<HTMLElement>(
+      '[data-role="weekly-team-card"][data-team="Beta"]',
+    )!;
+    const betaBlock = beta.querySelector<HTMLElement>('[data-role="weekly-card-metrics"]')!;
+    expect(betaBlock.textContent).toContain("4 天（已下架 2/20）");
+
+    const gamma = document.querySelector<HTMLElement>(
+      '[data-role="weekly-team-card"][data-team="Gamma"]',
+    )!;
+    expect(gamma.querySelector('[data-role="weekly-card-metrics"]')?.textContent).toContain("—");
+  });
+
   it("renders the three metric rows, missing values and offline context", async () => {
     vi.stubGlobal("fetch", mockWeekly());
     renderPage();
@@ -406,7 +451,7 @@ describe("weekly page", () => {
     ).toBeTruthy();
 
     const gapBar = document.querySelector<HTMLElement>(
-      '[data-role="weekly-metric-bar"][data-metric="avgVersionGapDays"]',
+      `[data-role="weekly-metric-bar"][data-metric="avgVersionGapDays"][data-week="${WEEK_START}"]`,
     )!;
     fireEvent.click(gapBar);
     expect(document.querySelector(".wx-chart-tip")?.textContent).toBe("A：8.5");

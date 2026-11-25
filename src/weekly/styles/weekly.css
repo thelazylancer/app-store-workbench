@@ -54,6 +54,28 @@
 .wx-weekly-facts p { margin: 0; }
 .wx-weekly-fact-label { color: var(--color-text-secondary); font-weight: 600; }
 
+/* Card version/delivery metrics: this-week value plus four-week sparkline. */
+.wx-weekly-card-metrics { position: relative; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--color-border); }
+.wx-weekly-card-metric { display: grid; grid-template-columns: minmax(60px, max-content) minmax(0, 1fr) 56px; align-items: center; gap: 8px; padding: 2px 0; }
+.wx-weekly-card-metric-label { color: var(--color-text-secondary); font-size: 11px; white-space: nowrap; }
+.wx-weekly-card-metric-value { font-family: var(--font-family-code); font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wx-weekly-card-metric-spark { position: relative; display: flex; align-items: stretch; gap: 2px; width: 56px; height: 22px; border-bottom: 1px solid var(--color-border); }
+.wx-weekly-card-metric-slot { position: relative; flex: 1 1 0; height: 100%; margin: 0; padding: 0; border: 0; background: none; cursor: pointer; }
+.wx-weekly-card-metric-bar { position: absolute; right: 10%; left: 10%; min-height: 1px; border-radius: 1px 1px 0 0; background: rgba(46, 111, 163, 0.45); }
+.wx-weekly-card-metric-current { background: var(--color-accent); }
+.wx-weekly-card-metric-negative { border-radius: 0 0 1px 1px; }
+.wx-weekly-card-metric-zero { position: absolute; right: 0; left: 0; border-top: 1px solid var(--color-border-emphasized); pointer-events: none; }
+.wx-weekly-card-metric-tip { position: absolute; inset: 0; pointer-events: none; }
+.wx-weekly-card-metric-tip .wx-chart-tip { top: 0; right: 0; left: auto; transform: none; }
+.wx-weekly-card-metric-slot:focus-visible { outline: var(--focus-outline-width) solid var(--focus-outline-color); outline-offset: 1px; }
+.wx-weekly-card-metric-slot:hover .wx-weekly-card-metric-bar { filter: brightness(0.92); }
+
+/* Overview version/delivery facts. */
+.wx-weekly-facts-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 32px; margin: 0; }
+.wx-weekly-fact-item dt { margin: 0; color: var(--color-text-secondary); font-size: 12px; font-weight: 600; }
+.wx-weekly-fact-item dd { margin: 4px 0 0; font-family: var(--font-family-code); font-size: 20px; font-weight: 600; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.wx-weekly-fact-context { display: block; margin-top: 2px; color: var(--color-text-secondary); font-family: var(--font-family-body); font-size: 11px; font-weight: 400; }
+
 /* Team-card mini charts: two vertical panels above two horizontal top-3 lists. */
 .wx-weekly-mini-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 12px; }
 .wx-weekly-mini { min-width: 0; }
@@ -164,6 +186,7 @@
   .wx-weekly-columns { height: 148px; }
   .wx-weekly-hbar { grid-template-columns: minmax(64px, max-content) minmax(0, 1fr) max-content; gap: 8px; }
   .wx-weekly-highlights { grid-template-columns: 1fr; gap: 16px; }
+  .wx-weekly-facts-grid { grid-template-columns: 1fr; gap: 12px; }
 }
 
 /* Metric chart: flat, with click-to-read values instead of hover-only tooltips. */
