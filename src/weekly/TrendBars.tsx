@@ -1,4 +1,6 @@
 import type { WeeklyTrendWeek } from "../../shared/weeklyReportTypes";
+import { ChartTip } from "../shelf/Charts";
+import { useClickTip } from "./useClickTip";
 
 function trendAriaLabel(weeks: WeeklyTrendWeek[]): string {
   const parts = weeks.map((week) => (
@@ -10,6 +12,7 @@ function trendAriaLabel(weeks: WeeklyTrendWeek[]): string {
 }
 
 export function TrendBars({ weeks }: { weeks: WeeklyTrendWeek[] }) {
+  const { tip, bind } = useClickTip();
   const max = Math.max(1, ...weeks.map((week) => week.resolvedPackages));
   const lastIndex = weeks.length - 1;
 
@@ -17,7 +20,7 @@ export function TrendBars({ weeks }: { weeks: WeeklyTrendWeek[] }) {
     <section className="wx-weekly-section" aria-labelledby="weekly-trend-title">
       <div className="wx-weekly-section-head">
         <h2 id="weekly-trend-title" className="wx-weekly-h2">近 4 周新增趋势</h2>
-        <p className="wx-weekly-section-meta">已解析新增包数 · 最后一根为本周</p>
+        <p className="wx-weekly-section-meta">已解析新增包数 · 最后一根为本周 · 点击查看明细</p>
       </div>
       <figure className="wx-weekly-trend-figure">
         <div
@@ -36,6 +39,10 @@ export function TrendBars({ weeks }: { weeks: WeeklyTrendWeek[] }) {
                     data-role="weekly-trend-bar"
                     data-week={week.weekStart}
                     data-value={week.resolvedPackages}
+                    {...bind(
+                      week.weekStart,
+                      `${week.weekStart.slice(5)} ~ ${week.weekEnd.slice(5)}：${week.resolvedPackages} 包`,
+                    )}
                   >
                     <span className="wx-weekly-trend-value" aria-hidden="true">
                       {week.resolvedPackages}
@@ -43,7 +50,11 @@ export function TrendBars({ weeks }: { weeks: WeeklyTrendWeek[] }) {
                     <span className="wx-weekly-trend-bar" aria-hidden="true" />
                   </div>
                 ) : (
-                  <div className="wx-weekly-trend-gap-wrap" data-role="weekly-trend-gap-wrap">
+                  <div
+                    className="wx-weekly-trend-gap-wrap"
+                    data-role="weekly-trend-gap-wrap"
+                    {...bind(week.weekStart, `${week.weekStart.slice(5)}：数据不足`)}
+                  >
                     <span className="wx-weekly-trend-insufficient" aria-hidden="true">数据不足</span>
                     <span
                       className="wx-weekly-trend-gap"
@@ -54,6 +65,7 @@ export function TrendBars({ weeks }: { weeks: WeeklyTrendWeek[] }) {
                   </div>
                 )}
               </div>
+              <ChartTip tip={tip} id={week.weekStart} />
             </div>
           ))}
         </div>

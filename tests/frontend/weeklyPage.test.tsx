@@ -247,26 +247,58 @@ describe("weekly page", () => {
     expect(byRole("weekly-error")?.textContent).toContain("网络请求失败，请检查服务是否可用");
   });
 
-  it("renders structure rows with a final unknown bucket and one-decimal shares", async () => {
+  it("renders the single-week structure as labeled, clickable charts", async () => {
     vi.stubGlobal("fetch", mockWeekly());
     renderPage();
     await waitForCards(3);
 
-    const rows = [...document.querySelectorAll<HTMLElement>('[data-role="weekly-structure-row"]')];
-    expect(rows.map((row) => row.querySelector("h3")?.textContent)).toEqual([
-      "类目",
+    const panels = [...document.querySelectorAll<HTMLElement>('[data-role="weekly-structure-panel"]')];
+    expect(panels.map((panel) => panel.querySelector("h3")?.textContent)).toEqual([
+      "版本数",
+      "内购",
+      "品类 Top3",
+      "隐私 Top3",
       "iOS",
-      "IAP",
-      "隐私",
-      "版本数分布",
     ]);
 
-    const categoryLegend = [...rows[0]!.querySelectorAll(".wx-weekly-structure-legend li")];
-    expect(categoryLegend[categoryLegend.length - 1]?.textContent).toContain("未知");
-    expect(rows[0]!.textContent).toContain("Utilities 14 · 26.9%");
-    expect(rows[0]!.textContent).toContain("其他 3 · 5.8%");
-    expect(rows[4]!.textContent).toContain("4+ 0 · 0.0%");
-    expect(rows[4]!.textContent).toContain("无记录 0 · 0.0%");
+    const chart = (name: string) => document.querySelector<HTMLElement>(
+      `[data-role="weekly-structure-chart"][data-chart="${name}"]`,
+    )!;
+    const version = chart("version");
+    expect(version.textContent).toContain("19.2%");
+    expect(version.textContent).toContain("69.2%");
+    expect(version.textContent).toContain("11.5%");
+    expect(version.textContent).toContain("3+");
+    expect(version.textContent).not.toContain("4+");
+
+    const iap = chart("iap");
+    expect(iap.textContent).toContain("有");
+    expect(iap.textContent).toContain("13.5%");
+    expect(iap.textContent).toContain("86.5%");
+
+    const category = chart("category");
+    expect(category.textContent).toContain("Utilities");
+    expect(category.textContent).toContain("14 · 26.9%");
+    expect(category.textContent).toContain("Lifestyle");
+    expect(category.textContent).toContain("Games");
+    expect(category.textContent).not.toContain("Finance");
+
+    const privacy = chart("privacy");
+    expect(privacy.textContent).toContain("自有域名");
+    expect(privacy.textContent).toContain("24 · 46.2%");
+    expect(privacy.textContent).toContain("Cloudflare");
+    expect(privacy.textContent).not.toContain("Google");
+
+    const ios = chart("ios");
+    expect(ios.textContent).toContain("26+");
+    expect(ios.textContent).toContain("未知");
+
+    const threePlus = document.querySelector<HTMLElement>(
+      '[data-role="weekly-structure-bar"][data-chart="version"][data-key="3+"]',
+    )!;
+    fireEvent.click(threePlus);
+    expect(document.querySelector(".wx-chart-tip")?.textContent)
+      .toBe("3+ 个版本：6 包 · 11.5%");
   });
 
   it("renders the three metric rows, missing values and offline context", async () => {
@@ -308,6 +340,12 @@ describe("weekly page", () => {
         '[data-role="weekly-metric-table"][data-metric="avgVersionGapDays"]',
       ),
     ).toBeTruthy();
+
+    const gapBar = document.querySelector<HTMLElement>(
+      '[data-role="weekly-metric-bar"][data-metric="avgVersionGapDays"]',
+    )!;
+    fireEvent.click(gapBar);
+    expect(document.querySelector(".wx-chart-tip")?.textContent).toBe("Alpha：8.5");
   });
 
   it("hatches weeks with insufficient data and keeps the current-week marker", async () => {
@@ -322,5 +360,8 @@ describe("weekly page", () => {
     const bars = [...document.querySelectorAll<HTMLElement>('[data-role="weekly-trend-bar"]')];
     expect(bars.map((bar) => bar.dataset.value)).toEqual(["18", "50", "52"]);
     expect(document.querySelector(".wx-weekly-current-week")?.textContent).toBe("本周");
+
+    fireEvent.click(bars[2]!);
+    expect(document.querySelector(".wx-chart-tip")?.textContent).toContain("52 包");
   });
 });

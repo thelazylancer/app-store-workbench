@@ -56,18 +56,33 @@
 .wx-weekly-fact-label { color: var(--color-text-secondary); font-weight: 600; }
 .wx-weekly-fact-sep { margin: 0 6px; color: var(--color-border-emphasized); }
 
-/* Structure rows */
-.wx-weekly-structure-row { margin-bottom: 20px; }
-.wx-weekly-structure-row:last-child { margin-bottom: 0; }
-.wx-weekly-structure-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+/* Structure: version/IAP columns plus category/privacy/iOS horizontal bars. */
+.wx-weekly-structure-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 40px; }
+.wx-weekly-structure-panel { min-width: 0; }
+.wx-weekly-structure-panel-wide { grid-column: 1 / -1; }
+.wx-weekly-structure-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
 .wx-weekly-structure-title { margin: 0; font-size: 12px; font-weight: 600; }
 .wx-weekly-structure-denominator { color: var(--color-text-secondary); font-size: 12px; }
-.wx-weekly-bar { display: flex; height: 20px; border-radius: 2px; overflow: hidden; background: var(--color-track); }
-.wx-weekly-bar > span { display: block; height: 100%; min-width: 0; }
-.wx-weekly-bar > span + span { border-left: 1px solid var(--color-background-body); }
-.wx-weekly-structure-legend { display: flex; flex-wrap: wrap; gap: 2px 16px; margin: 8px 0 0; padding: 0; list-style: none; font-size: 12px; line-height: 1.5; }
-.wx-weekly-structure-legend li { display: flex; align-items: center; gap: 4px; }
-.wx-weekly-swatch { width: 9px; height: 9px; border-radius: 2px; }
+
+.wx-weekly-columns { position: relative; display: flex; align-items: flex-end; gap: 12px; height: 168px; padding: 30px 4px 0; border-bottom: 1px solid var(--color-border); }
+.wx-weekly-column { display: flex; flex: 1 1 0; flex-direction: column; align-items: center; min-width: 0; height: 100%; margin: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
+.wx-weekly-column-plot { display: flex; flex: 1 1 auto; align-items: flex-end; justify-content: center; width: 100%; min-height: 0; }
+.wx-weekly-column-bar-wrap { position: relative; display: flex; align-items: flex-end; width: min(56px, 100%); min-height: 2px; }
+.wx-weekly-column-bar { display: block; width: 100%; height: 100%; border-radius: 3px 3px 0 0; }
+.wx-weekly-column-value { position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); font-family: var(--font-family-code); font-size: 12px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.wx-weekly-column-label { flex: 0 0 auto; padding-top: 6px; color: var(--color-text-secondary); font-size: 12px; line-height: 1.3; white-space: nowrap; }
+
+.wx-weekly-hbars { position: relative; display: flex; flex-direction: column; gap: 6px; }
+.wx-weekly-hbar { display: grid; grid-template-columns: minmax(72px, max-content) minmax(0, 1fr) max-content; align-items: center; gap: 10px; width: 100%; margin: 0; padding: 2px 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.wx-weekly-hbar-label { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.wx-weekly-hbar-track { display: block; height: 14px; border-radius: 2px; background: var(--color-track); overflow: hidden; }
+.wx-weekly-hbar-fill { display: block; height: 100%; min-width: 2px; border-radius: 2px; }
+.wx-weekly-hbar-value { font-family: var(--font-family-code); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.wx-weekly-chart-empty { margin: 0; color: var(--color-text-secondary); font-size: 12px; }
+.wx-weekly-structure-tip { position: absolute; inset: 0; pointer-events: none; }
+.wx-weekly-structure-tip .wx-chart-tip { top: 0; right: 0; left: auto; transform: none; }
+.wx-weekly-column:focus-visible, .wx-weekly-hbar:focus-visible { outline: var(--focus-outline-width) solid var(--focus-outline-color); outline-offset: 2px; }
+.wx-weekly-column:hover .wx-weekly-column-bar, .wx-weekly-hbar:hover .wx-weekly-hbar-fill { filter: brightness(0.92); }
 
 /* Palette: ordered blue steps, ink for IAP-no and Other, track for unknown. */
 .wx-weekly-blue-1 { background: #2e6fa3; }
@@ -76,7 +91,6 @@
 .wx-weekly-blue-4 { background: rgba(46, 111, 163, 0.44); }
 .wx-weekly-blue-5 { background: rgba(46, 111, 163, 0.30); }
 .wx-weekly-blue-6 { background: rgba(46, 111, 163, 0.20); }
-.wx-weekly-other { background: rgba(28, 39, 51, 0.32); }
 .wx-weekly-unknown, .wx-weekly-v0 { background: var(--color-track); }
 .wx-weekly-iap-yes { background: var(--color-accent); }
 .wx-weekly-iap-no { background: rgba(28, 39, 51, 0.55); }
@@ -116,6 +130,8 @@
   .wx-weekly-head-actions { align-items: flex-start; width: 100%; }
   .wx-weekly-week-nav { justify-content: space-between; width: 100%; }
   .wx-weekly-week-nav > button { flex: 1 1 0; }
+  .wx-weekly-structure-grid { grid-template-columns: 1fr; gap: 24px; }
+  .wx-weekly-structure-panel-wide { grid-column: auto; }
 }
 
 @media (max-width: 640px) {
@@ -123,16 +139,16 @@
   .wx-weekly-card { min-height: 0; padding: 16px; }
   .wx-weekly-summary { padding: 16px 0 20px; }
   .wx-weekly-section { padding: 16px 0 20px; }
-  .wx-weekly-structure-row { margin-bottom: 12px; }
-  .wx-weekly-bar { height: 16px; }
+  .wx-weekly-columns { height: 148px; }
+  .wx-weekly-hbar { grid-template-columns: minmax(64px, max-content) minmax(0, 1fr) max-content; gap: 8px; }
   .wx-weekly-highlights { grid-template-columns: 1fr; gap: 16px; }
 }
 
-/* Metric chart: flat and static, unlike the interactive shelf charts. */
+/* Metric chart: flat, with click-to-read values instead of hover-only tooltips. */
 .wx-weekly .wx-chart-plot.wx-weekly-metric-plot { height: 96px; padding-top: 20px; }
 .wx-weekly-metric-canvas { --wx-chart-slot-w: 120px; }
 .wx-weekly-metric-canvas .wx-metric-track { width: 72px; }
-.wx-weekly .wx-metric-bar { background-image: none; cursor: default; transition: none; }
+.wx-weekly .wx-metric-bar { background-image: none; cursor: pointer; transition: none; }
 .wx-weekly .wx-metric-bar:hover { filter: none; }
 .wx-weekly .wx-chart-plot .wx-chart-slot:hover { background: transparent; }
 .wx-weekly-metric-bar { min-height: 1px; }
@@ -149,12 +165,12 @@
 /* Trend geometry (the hatch itself stays in weekly-charts.css). */
 .wx-weekly-trend-figure { max-width: 560px; margin: 0; }
 .wx-weekly-trend-plot { display: flex; align-items: flex-end; height: 140px; border-bottom: 1px solid var(--color-border); }
-.wx-weekly-trend-slot { display: flex; flex: 0 0 120px; justify-content: center; height: 100%; }
+.wx-weekly-trend-slot { position: relative; display: flex; flex: 0 0 120px; justify-content: center; height: 100%; }
 .wx-weekly-trend-track { display: flex; align-items: flex-end; justify-content: center; width: 100%; height: 100%; padding-top: 24px; box-sizing: border-box; }
-.wx-weekly-trend-column { position: relative; display: flex; align-items: flex-end; width: 72px; }
+.wx-weekly-trend-column { position: relative; display: flex; align-items: flex-end; width: 72px; cursor: pointer; }
 .wx-weekly-trend-bar { display: block; width: 100%; height: 100%; border-radius: 3px 3px 0 0; background: rgba(28, 39, 51, 0.55); }
 .wx-weekly-trend-value { position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); font-family: var(--font-family-code); font-size: 12px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.wx-weekly-trend-gap-wrap { display: flex; flex-direction: column; align-items: center; width: 72px; }
+.wx-weekly-trend-gap-wrap { display: flex; flex-direction: column; align-items: center; width: 72px; cursor: pointer; }
 .wx-weekly-trend-insufficient { margin-bottom: 6px; color: var(--color-text-secondary); font-size: 12px; line-height: 1; white-space: nowrap; }
 .wx-weekly-trend-gap { display: block; width: 72px; height: 6px; }
 .wx-weekly-trend-labels { display: flex; margin-top: 4px; }

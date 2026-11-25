@@ -8,8 +8,9 @@ import type {
 } from "../../shared/weeklyReportTypes";
 import { formatMetric, metricTicks } from "../lib/metricScale";
 import { teamLabel } from "../lib/teamLabel";
-import { WeekLabels, teamClass, useScrollRegion } from "../shelf/Charts";
+import { ChartTip, WeekLabels, teamClass, useScrollRegion } from "../shelf/Charts";
 import { formatDay } from "./format";
+import { useClickTip } from "./useClickTip";
 
 type PointLookup = Map<string, Map<string, WeeklyMetricPoint>>;
 
@@ -110,6 +111,7 @@ function MetricRow({
   allTeams: string[];
 }) {
   const [open, setOpen] = useState(false);
+  const { tip, bind } = useClickTip();
   const lookup = indexPoints(series.points);
   const values = series.points.map((point) => point.value);
   const tableId = `weekly-metric-values-${series.key}`;
@@ -202,10 +204,15 @@ function MetricRow({
                       data-team={team}
                       data-value={point.value}
                       aria-hidden="true"
+                      {...bind(
+                        `${series.key}:${week.weekStart}`,
+                        `${team}：${cellText(series.key, point)}`,
+                      )}
                     />
                   );
                 })}
               </div>
+              <ChartTip tip={tip} id={`${series.key}:${week.weekStart}`} />
             </div>
           ))}
         </div>
@@ -247,7 +254,7 @@ export function MetricBars({ weeks, metrics, teams }: MetricBarsProps) {
     <section className="wx-weekly-section" aria-labelledby="weekly-metrics-title">
       <div className="wx-weekly-section-head">
         <h2 id="weekly-metrics-title" className="wx-weekly-h2">版本与投放（近 4 周）</h2>
-        <p className="wx-weekly-section-meta">只读 · — 表示无可用包</p>
+        <p className="wx-weekly-section-meta">只读 · 点击柱查看数值 · — 表示无可用包</p>
       </div>
       <ul className="wx-weekly-team-legend" aria-label="团队图例">
         {allTeams.map((team) => (
