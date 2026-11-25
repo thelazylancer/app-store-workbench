@@ -182,6 +182,22 @@ describeDb("shelf queries against PostgreSQL", () => {
       [{ key: alpha, count: 1 }],
       [{ key: alpha, count: 2 }, { key: beta, count: 2 }, { key: gamma, count: 1 }],
     ]);
+    // Release weeks: A's latest release falls one week back, B's two weeks back,
+    // E and F release this week. C and D have no version history and drop out.
+    expect(trend.releaseWeeks).toEqual([
+      {
+        weekStart: shiftDay(monday, -21), weekEnd: shiftDay(monday, -15), packageCount: 1,
+        teams: [{ key: alpha, count: 1 }],
+      },
+      {
+        weekStart: previousMonday, weekEnd: sunday, packageCount: 1,
+        teams: [{ key: alpha, count: 1 }],
+      },
+      {
+        weekStart: monday, weekEnd: week2End, packageCount: 2,
+        teams: [{ key: alpha, count: 1 }, { key: gamma, count: 1 }],
+      },
+    ]);
     expect(trend.totals.packageCount).toBe(6);
     expect(trend.from).toBe(sunday);
     expect(trend.to).toBe(week2End);
@@ -201,12 +217,18 @@ describeDb("shelf queries against PostgreSQL", () => {
       [monday, 2],
     ]);
     expect(filtered.totals.packageCount).toBe(3);
+    expect(filtered.releaseWeeks.map((week) => [week.weekStart, week.packageCount])).toEqual([
+      [shiftDay(monday, -21), 1],
+      [previousMonday, 1],
+      [monday, 1],
+    ]);
 
     const empty = await repo.getShelfTrend({
       from: sunday, to: week2End, team: `Shelf None ${suffix}`, groupBy: "category",
     });
     expect(empty.teams).toEqual([alpha, beta, gamma]);
     expect(empty.weeks).toEqual([]);
+    expect(empty.releaseWeeks).toEqual([]);
     expect(empty.totals).toEqual({ packageCount: 0, groups: [] });
   });
 

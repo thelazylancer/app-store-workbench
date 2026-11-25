@@ -88,10 +88,20 @@ export type ShelfTrendResponse = {
   teams: string[];
   /** Only weeks with data, ascending by weekStart; the current partial week included. */
   weeks: ShelfTrendWeek[];
+  /** Same packages, but bucketed by the week of their latest version release date. */
+  releaseWeeks: ShelfReleaseWeek[];
   totals: ShelfTrendTotals;
   distributions: ShelfDistributions;
   /** Per-week, per-team version/launch timings; honors the team filter. */
   teamWeekStats: ShelfTeamWeekStats[];
+};
+
+/** Packages with a known latest release, grouped by that release's Monday-start week. */
+export type ShelfReleaseWeek = {
+  weekStart: string; // YYYY-MM-DD
+  weekEnd: string; // YYYY-MM-DD
+  packageCount: number;
+  teams: ShelfGroupCount[]; // count desc, then key asc
 };
 
 /**

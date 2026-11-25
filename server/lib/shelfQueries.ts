@@ -7,6 +7,7 @@ import type {
   ShelfIosBucket,
   ShelfPackageRow,
   ShelfPackagesResponse,
+  ShelfReleaseWeek,
   ShelfTeamWeekStats,
   ShelfTrendResponse,
   ShelfTrendTotals,
@@ -55,6 +56,12 @@ type TeamWeekStatsRow = {
   avg_gap_days: number | null;
   avg_latest_to_ad_days: number | null;
   avg_ad_to_offline_days: number | null;
+};
+
+type ReleaseWeekRow = {
+  week_start: string;
+  team: string;
+  n: number;
 };
 
 type PackageDetailRow = {
@@ -154,6 +161,25 @@ const TEAM_WEEK_STATS_SQL = `
     FROM pkg_stats
    GROUP BY 1, 2
    ORDER BY 1, 2`;
+
+// Same packages as the trend, re-bucketed by the week of their latest version
+// release. A package with no version history (or no release date) is left out.
+const RELEASE_WEEKS_SQL = `
+  WITH pkg_versions AS (
+    SELECT package_code, max(released_at::date) AS last_release
+      FROM competitor_versions
+     WHERE released_at IS NOT NULL
+     GROUP BY package_code
+  )
+  SELECT to_char(date_trunc('week', pv.last_release), 'YYYY-MM-DD') AS week_start,
+         p.team,
+         count(*)::int AS n
+    FROM competitor_packages p
+    JOIN pkg_versions pv ON pv.package_code = p.package_code
+   WHERE p.target_date BETWEEN $1::date AND $2::date
+     AND ($3::text IS NULL OR p.team = $3)
+   GROUP BY 1, 2
+   ORDER BY 1`;
 
 const COUNT_SQL = `
   SELECT count(*)::int AS total
@@ -316,13 +342,31 @@ function foldTrend(rows: TrendAggregateRow[], groupBy: ShelfGroupBy): {
   };
 }
 
+function foldReleaseWeeks(rows: ReleaseWeekRow[]): ShelfReleaseWeek[] {
+  const weeks = new Map<string, Map<string, number>>();
+  for (const row of rows) {
+    const teams = weeks.get(row.week_start) ?? new Map<string, number>();
+    teams.set(row.team, (teams.get(row.team) ?? 0) + row.n);
+    weeks.set(row.week_start, teams);
+  }
+  return [...weeks]
+    .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+    .map(([weekStart, teams]) => ({
+      weekStart,
+      weekEnd: addDays(weekStart, 6),
+      packageCount: [...teams.values()].reduce((sum, count) => sum + count, 0),
+      teams: sortedGroups(teams),
+    }));
+}
+
 export function createShelfQueries(pool: Pool): ShelfQueryRepo {
   return {
     async getShelfTrend({ from, to, team, groupBy }) {
-      const [teamResult, trendResult, statsResult] = await Promise.all([
+      const [teamResult, trendResult, statsResult, releaseResult] = await Promise.all([
         pool.query<{ team: string }>(TEAMS_SQL, [from, to]),
         pool.query<TrendAggregateRow>(TREND_SQL, [from, to, team]),
         pool.query<TeamWeekStatsRow>(TEAM_WEEK_STATS_SQL, [from, to, team]),
+        pool.query<ReleaseWeekRow>(RELEASE_WEEKS_SQL, [from, to, team]),
       ]);
       const folded = foldTrend(trendResult.rows, groupBy);
       const teamWeekStats: ShelfTeamWeekStats[] = statsResult.rows.map((row) => ({
@@ -341,6 +385,7 @@ export function createShelfQueries(pool: Pool): ShelfQueryRepo {
         team,
         groupBy,
         teams: teamResult.rows.map((row) => row.team),
+        releaseWeeks: foldReleaseWeeks(releaseResult.rows),
         teamWeekStats,
         ...folded,
       };

@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { teamLabel } from "../lib/teamLabel";
-import type { ShelfDistributions, ShelfGroupBy, ShelfTrendWeek } from "../../shared/shelfTypes";
+import type { ShelfDistributions, ShelfGroupBy, ShelfReleaseWeek, ShelfTrendWeek } from "../../shared/shelfTypes";
 import { privacyHostLabel } from "../../shared/privacyHost";
 import { attributionLabel } from "../../shared/attribution";
 import {
@@ -34,7 +34,7 @@ export function teamClass(team: string, teams: string[]): string {
   return `wx-team-${index < 0 ? 0 : index % 7}`;
 }
 
-function weekLabel(week: ShelfTrendWeek): string {
+function weekLabel(week: { weekStart: string; weekEnd: string }): string {
   return `${week.weekStart} ~ ${week.weekEnd}`;
 }
 
@@ -194,6 +194,86 @@ export function WeeklyBarChart({ weeks, teams, team, onSelect }: WeeklyProps) {
       </div>
       <table className="visually-hidden">
         <caption>每周入库包数</caption>
+        <thead>
+          <tr>
+            <th scope="col">周</th>
+            <th scope="col">团队</th>
+            <th scope="col">包数</th>
+          </tr>
+        </thead>
+        <tbody>
+          {weeks.flatMap((week) => week.teams.map((entry) => (
+            <tr key={`${week.weekStart}-${entry.key}`}>
+              <th scope="row">{weekLabel(week)}</th>
+              <td>{teamLabel(entry.key)}</td>
+              <td>{entry.count}</td>
+            </tr>
+          )))}
+        </tbody>
+      </table>
+    </figure>
+  );
+}
+
+/**
+ * Same packages as the weekly chart, bucketed by the week of their latest version
+ * release instead of the shelf date. Read-only: a week here is not a shelf week.
+ */
+export function ReleaseBarChart({
+  weeks,
+  teams,
+}: {
+  weeks: ShelfReleaseWeek[];
+  teams: string[];
+}) {
+  const scroll = useScrollRegion(weeks.length);
+  const { tip, bind } = useChartTip();
+  const max = Math.max(1, ...weeks.map((week) => week.packageCount));
+  const aria = weeks.map((week) => `${week.weekStart.slice(5)} ${week.packageCount} 包`);
+
+  return (
+    <figure className="wx-chart-figure" data-role="release-chart">
+      <div className="wx-chart-scroll" ref={scroll.ref} tabIndex={scroll.tabIndex}>
+        <div className="wx-chart-canvas">
+          <div
+            className="wx-chart-plot wx-release-plot"
+            role="img"
+            aria-label={`按最新版本上架时间的每周包数：${aria.join("；")}。`}
+          >
+            {weeks.map((week) => {
+              const id = `release:${week.weekStart}`;
+              return (
+                <div className="wx-chart-slot" key={week.weekStart}>
+                  <div className="wx-chart-track">
+                    <div className="wx-chart-bar-wrap" style={{ height: barHeight(week.packageCount, max) }}>
+                      <span className="wx-chart-value" aria-hidden="true">{week.packageCount}</span>
+                      <div className="wx-chart-group">
+                        {week.teams.map((entry) => (
+                          <span
+                            key={entry.key}
+                            className={`wx-chart-segment ${teamClass(entry.key, teams)}`}
+                            style={{ height: barHeight(entry.count, week.packageCount) }}
+                            aria-hidden="true"
+                            data-role="release-segment"
+                            data-week={week.weekStart}
+                            data-team={entry.key}
+                            data-count={entry.count}
+                            {...bind(id, `${teamLabel(entry.key)} ${entry.count} 包`)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <ChartTip tip={tip} id={id} />
+                </div>
+              );
+            })}
+          </div>
+          <WeekLabels weeks={weeks} />
+        </div>
+      </div>
+      <table className="visually-hidden">
+        <caption>按最新版本上架时间的每周包数</caption>
         <thead>
           <tr>
             <th scope="col">周</th>

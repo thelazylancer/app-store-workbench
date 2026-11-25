@@ -35,6 +35,14 @@ const trendResponse: ShelfTrendResponse = {
     },
   ],
   totals: { packageCount: 93, groups: [{ key: "Games", count: 18 }, { key: "unknown", count: 17 }] },
+  releaseWeeks: [
+    {
+      weekStart: "2026-11-16",
+      weekEnd: "2026-11-22",
+      packageCount: 12,
+      teams: [{ key: "Alpha", count: 12 }],
+    },
+  ],
   distributions: {
     category: [{ key: "Games", count: 18 }, { key: "unknown", count: 17 }],
     ios_version: [{ key: "16", count: 20 }, { key: "unknown", count: 17 }],

@@ -72,6 +72,25 @@
   line-height: 1.5;
 }
 
+/* Release-time chart under the ingest chart, sharing its section and team filter. */
+.wx-release-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 28px 0 12px;
+}
+
+.wx-release-note {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.wx-chart-plot.wx-release-plot {
+  height: 160px;
+}
+
 /* States */
 .wx-shelf-state {
   padding: 24px 0 28px;

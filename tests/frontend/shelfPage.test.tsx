@@ -163,6 +163,14 @@ describe("React shelf trend page", () => {
     expect(labels).toContain("~ 2026-11-15");
 
     expect(document.querySelector('[data-role="weekly-chart"] caption')?.textContent).toBe("每周入库包数");
+    // Release-time chart reuses the same packages, bucketed by latest version release.
+    expect(document.querySelector(".wx-release-note")?.textContent)
+      .toBe("仅含能拿到版本发布时间的 5 个包，按最近一次版本上架的周统计");
+    const releaseSegments = document.querySelectorAll<HTMLElement>('[data-role="release-segment"]');
+    expect([...releaseSegments].map((segment) => [segment.dataset.week, segment.dataset.count])).toEqual([
+      [WEEKS[0]!.weekStart, "3"],
+      [WEEKS[1]!.weekStart, "2"],
+    ]);
     // Launch timing is published only as day averages, never as raw dates.
     expect(document.body.textContent).not.toContain("投放日期");
   });

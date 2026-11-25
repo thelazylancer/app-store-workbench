@@ -5,7 +5,7 @@ import { useDocumentTitle } from "../app/useDocumentTitle";
 import { addDays, todayUtc } from "../lib/reportDate";
 import { ShelfApiError, getShelfTrend } from "../lib/shelfApi";
 import { teamLabel } from "../lib/teamLabel";
-import { DistributionBoard, WeeklyBarChart, teamClass } from "./Charts";
+import { DistributionBoard, ReleaseBarChart, WeeklyBarChart, teamClass } from "./Charts";
 import { MetricsBoard } from "./Metrics";
 import { ShelfDetailDialog } from "./DetailDialog";
 import { useShelfFilters } from "./filters";
@@ -69,6 +69,7 @@ export function ShelfTrendPage() {
   const empty = !pageError && !bodyLoading && !hasData;
 
   const teams = [...(trend?.teams ?? [])].sort((left, right) => left.localeCompare(right, "zh"));
+  const releaseCount = (trend?.releaseWeeks ?? []).reduce((sum, week) => sum + week.packageCount, 0);
   const metricTeams = [...new Set((trend?.teamWeekStats ?? []).map((row) => row.team))]
     .sort((left, right) => left.localeCompare(right, "zh"));
   const metricStats = trend?.teamWeekStats.filter((row) => metricTeam === null || row.team === metricTeam) ?? [];
@@ -149,6 +150,17 @@ export function ShelfTrendPage() {
                 team={filters.team}
                 onSelect={setSelection}
               />
+              <div className="wx-release-head">
+                <h3 className="wx-shelf-h2">按最新版本上架时间</h3>
+                <span className="wx-release-note">
+                  {releaseCount > 0
+                    ? `仅含能拿到版本发布时间的 ${releaseCount} 个包，按最近一次版本上架的周统计`
+                    : "所选范围内还没有可用的版本发布时间"}
+                </span>
+              </div>
+              {releaseCount > 0 ? (
+                <ReleaseBarChart weeks={trend.releaseWeeks} teams={teams} />
+              ) : null}
             </section>
 
             <section className="wx-shelf-section" aria-labelledby="shelf-distribution-title">

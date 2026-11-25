@@ -21,6 +21,7 @@ function fakeRepo() {
     groupBy: params.groupBy,
     teams: ["团队 A", "团队 B"],
     weeks: [],
+    releaseWeeks: [],
     totals: { packageCount: 0, groups: [] },
     distributions: { category: [], ios_version: [], iap: [], privacy: [], attribution: [] },
     teamWeekStats: [],

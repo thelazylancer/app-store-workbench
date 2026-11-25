@@ -103,6 +103,15 @@ export function trendFor(team: string | null, groupBy: ShelfGroupBy): ShelfTrend
     groupBy,
     teams: ["团队 A", "团队 B"],
     weeks,
+    releaseWeeks: weekIndexes
+      .map((index) => ({
+        ...WEEKS[index]!,
+        teams: WEEK_TEAMS[index]!.filter((entry) => team === null || entry.key === team),
+        packageCount: WEEK_TEAMS[index]!
+          .filter((entry) => team === null || entry.key === team)
+          .reduce((sum, entry) => sum + entry.count, 0),
+      }))
+      .filter((week) => week.packageCount > 0),
     totals: {
       packageCount: weeks.reduce((sum, week) => sum + week.packageCount, 0),
       groups: sumGroups(weekIndexes, groupBy),

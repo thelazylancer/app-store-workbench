@@ -69,13 +69,14 @@
 - 两张图必须来自同一份 `trend` 响应、同一组周桶、同一个 `packageCount` 口径；不要把柱状图与堆叠图分别请求后各自取数。
 - 计数按包，不按 `appleId` 去重；未解析包仍计入周总量，并进入「未知」桶。
 - 周分桶由后端 / 共享工具统一完成（周一至周日）；前端不得用本地时区重新切周。明细表的「入库周」必须与图表周标签逐字一致。
+- 「按最新版本上架时间」图与「每周入库包数」同区块、共用团队筛选；它只统计能拿到版本发布时间的包，周桶按每个包最新一次版本的上架时间切分，所以两图的总包数可以不同，并在图旁注明参与统计的包数。
 - 页脚不放说明性文案。
 
 已定稿的共享契约见 `shared/shelfTypes.ts`；本设计以它为准：
 
 - `ShelfPackageRow`：`packageCode`、`name`（仅命中包，App Store 名称）、`team`、`targetDate`、`weekStart`、`category`、`minimumOsVersion`、`appVersion`、`iap`（`yes / no / unknown`）、`listingDate`、`offlineDate`、`resolved`。
 - `ShelfPackagesResponse`：`total`（过滤后总行数）、`limit`（默认 200、上限 500）、`rows`（按 `targetDate` 升序、`packageCode` 升序）。
-- `ShelfTrendResponse`：`weeks`（只含有数据周，`weekStart` 升序）、`totals`、`teams`（全量、不受团队过滤影响）、回显 `from / to / team / groupBy`。
+- `ShelfTrendResponse`：`weeks`（只含有数据周，`weekStart` 升序）、`releaseWeeks`（同一批包按「最新版本上架时间」重新分周，只含能拿到版本发布时间的包）、`totals`、`teams`（全量、不受团队过滤影响）、回显 `from / to / team / groupBy`。
 
 不得返回或展示：`first_ad_date`、源 `display_name`、`lookupStatus / enrichStatus / assetStatus` 原值、原始 `appStoreJson`、batch / sync / stale。`listingDate` / `offlineDate` 是上架 / 下架日期，不是投放日期；未解析包也可能有这两个值（源数据提供），可正常展示用于核对。**任何情况下都不得用投放日期顶替上架 / 下架日期。**
 
