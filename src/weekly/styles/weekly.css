@@ -177,7 +177,7 @@
 .wx-weekly-trend-label { flex: 0 0 120px; padding: 0 4px; color: var(--color-text-secondary); font-family: var(--font-family-code); font-size: 12px; line-height: 1.35; text-align: center; font-variant-numeric: tabular-nums; }
 .wx-weekly-trend-label span { display: block; white-space: nowrap; }
 .wx-weekly-current-week { color: var(--color-text-accent); font-weight: 600; }
-.wx-weekly-date-short { display: none; }
+.wx-weekly-trend-label .wx-weekly-date-short { display: none; }
 
 @media (max-width: 840px) {
   .wx-weekly-metric-canvas { --wx-chart-slot-w: 96px; }
@@ -189,6 +189,6 @@
   .wx-weekly-trend-plot { height: 120px; }
   .wx-weekly-trend-slot, .wx-weekly-trend-label { flex-basis: 80px; }
   .wx-weekly-trend-column, .wx-weekly-trend-gap-wrap, .wx-weekly-trend-gap { width: 56px; }
-  .wx-weekly-date-full { display: none; }
-  .wx-weekly-date-short { display: block; }
+  .wx-weekly-trend-label .wx-weekly-date-full { display: none; }
+  .wx-weekly-trend-label .wx-weekly-date-short { display: block; }
 }
