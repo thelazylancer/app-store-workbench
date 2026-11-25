@@ -1,5 +1,5 @@
 /* 竞品周动态 — page frame, header, cards, structure, trend, highlights and states. */
-.wx-weekly { width: min(1440px, 100%); min-height: calc(100vh - 54px); margin: 0 auto; padding: 22px 32px 0; color: var(--color-text-primary); }
+.wx-weekly { width: min(1440px, 100%); min-height: calc(100vh - 54px); margin: 0 auto; padding: 22px 32px 0; color: var(--color-text-primary); isolation: isolate; }
 .wx-weekly-mono { font-family: var(--font-family-code); font-variant-numeric: tabular-nums; }
 .wx-weekly-muted { color: var(--color-text-secondary); }
 
