@@ -106,7 +106,7 @@ function MiniColumns({
               type="button"
               key={bar.key}
               className="wx-weekly-mini-column"
-              aria-label={`${title}：${text}`}
+              aria-label={`${title} · ${text}`}
               data-role="weekly-card-bar"
               data-chart={chart}
               data-key={bar.key}
@@ -164,7 +164,7 @@ function MiniRows({
                 type="button"
                 key={bar.key}
                 className="wx-weekly-mini-row"
-                aria-label={`${title}：${text}`}
+                aria-label={`${title} · ${text}`}
                 data-role="weekly-card-bar"
                 data-chart={chart}
                 data-key={bar.key}
