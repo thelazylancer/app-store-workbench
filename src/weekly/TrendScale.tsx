@@ -6,7 +6,7 @@ import type {
 import { ChartTip } from "../shelf/Charts";
 import { formatPercent } from "./format";
 import { useClickTip } from "./useClickTip";
-import { TrendBars } from "./TrendBars";
+import { TrendBars, WeekLabels } from "./TrendBars";
 
 type RatioPoint = { weekStart: string; value: number; label: string; tooltip: string };
 
@@ -72,6 +72,101 @@ function RatioBars({
   );
 }
 
+type CoverageSeries = {
+  key: "all" | "resolved";
+  label: string;
+  count: number;
+  total: number;
+};
+
+function coverageSeries(week: WeeklyTrendWeek): CoverageSeries[] {
+  return [
+    { key: "all", label: "全部包", count: week.attributedPackages, total: week.ingestedPackages },
+    {
+      key: "resolved",
+      label: "已解析包",
+      count: week.resolvedAttributedPackages,
+      total: week.resolvedPackages,
+    },
+  ];
+}
+
+function shareText(series: CoverageSeries): string {
+  return series.total > 0 ? formatPercent(series.count / series.total) : "—";
+}
+
+/** The two attribution ratios of one week: `全部包 25.0%（10/40） · 已解析包 50.0%（9/18）`. */
+function coverageTip(week: WeeklyTrendWeek): string {
+  const parts = coverageSeries(week).map((series) => (
+    series.total > 0
+      ? `${series.label} ${shareText(series)}（${series.count}/${series.total}）`
+      : `${series.label} —`
+  ));
+  return `${week.weekStart.slice(5)} ~ ${week.weekEnd.slice(5)}：${parts.join(" · ")}`;
+}
+
+/** Two bars per week: attribution share over all packages, then over resolved packages. */
+function CoverageBars({ weeks }: { weeks: WeeklyTrendWeek[] }) {
+  const { tip, bind } = useClickTip();
+  const aria = weeks.map((week) => (
+    `${week.weekStart.slice(5)} ${coverageSeries(week)
+      .map((series) => `${series.label} ${shareText(series)}`)
+      .join("，")}`
+  ));
+
+  return (
+    <figure className="wx-weekly-coverage">
+      <div
+        className="wx-weekly-coverage-plot"
+        role="img"
+        aria-label={`近 4 周有归因比例。${aria.join("；")}。`}
+        data-role="weekly-coverage-chart"
+      >
+        {weeks.map((week) => {
+          const id = `coverage:${week.weekStart}`;
+          return (
+            <div className="wx-weekly-coverage-slot" key={week.weekStart}>
+              <div className="wx-weekly-coverage-group">
+                {coverageSeries(week).map((series) => {
+                  const share = series.total > 0 ? series.count / series.total : null;
+                  return (
+                    <button
+                      type="button"
+                      className="wx-weekly-coverage-column"
+                      key={series.key}
+                      aria-label={`${week.weekStart} ${series.label}有归因：${share === null ? "无数据" : `${shareText(series)}（${series.count}/${series.total}）`}`}
+                      data-role="weekly-coverage-bar"
+                      data-series={series.key}
+                      data-week={week.weekStart}
+                      data-value={share ?? ""}
+                      {...bind(id, coverageTip(week))}
+                    >
+                      {share === null ? (
+                        <span className="wx-weekly-coverage-missing" aria-hidden="true">—</span>
+                      ) : (
+                        <span
+                          className={`wx-weekly-coverage-bar wx-weekly-coverage-bar-${series.key}`}
+                          style={{ height: `${Math.max(share * 100, 1)}%` }}
+                        >
+                          <span className="wx-weekly-coverage-value" aria-hidden="true">
+                            {formatPercent(share)}
+                          </span>
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              <ChartTip tip={tip} id={id} />
+            </div>
+          );
+        })}
+      </div>
+      <WeekLabels weeks={weeks} />
+    </figure>
+  );
+}
+
 /** Items 1–3: new packages, IAP share, mean versions per package. */
 export function TrendScale({
   weeks,
@@ -104,11 +199,24 @@ export function TrendScale({
       </div>
       <div className="wx-weekly-scale-grid">
         <div className="wx-weekly-trend-panel wx-weekly-trend-panel-wide">
-          <div className="wx-weekly-panel-head">
-            <h4 className="wx-dist-title">新增包数</h4>
-            <span className="wx-weekly-panel-note">有归因 = 全部包 / 已解析包</span>
+          <div className="wx-weekly-wide-grid">
+            <div>
+              <div className="wx-weekly-panel-head">
+                <h4 className="wx-dist-title">新增包数</h4>
+              </div>
+              <TrendBars weeks={weeks} />
+            </div>
+            <div>
+              <div className="wx-weekly-panel-head">
+                <h4 className="wx-dist-title">有归因比例</h4>
+                <span className="wx-weekly-coverage-legend">
+                  <span><i className="wx-weekly-coverage-swatch-all" />全部包为分母</span>
+                  <span><i className="wx-weekly-coverage-swatch-resolved" />已解析包为分母</span>
+                </span>
+              </div>
+              <CoverageBars weeks={weeks} />
+            </div>
           </div>
-          <TrendBars weeks={weeks} />
         </div>
         <div className="wx-weekly-trend-panel">
           <h4 className="wx-dist-title">内购比例</h4>

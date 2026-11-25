@@ -45,11 +45,16 @@ describe("weekly page", () => {
     expect(groups[1]!.querySelector('[data-role="weekly-team-cards"]')).toBeTruthy();
     expect(groups[2]!.querySelector('[data-role="weekly-metric-overall-row"]')).toBeTruthy();
     expect(groups[2]!.querySelector('[data-role="weekly-trend"]')).toBeTruthy();
-    const coverage = document.querySelector<HTMLElement>('[data-role="weekly-trend-coverage"]');
-    expect(coverage?.textContent).toContain("— / —");
-    expect(coverage?.textContent).toContain("25.0% / 50.0%");
-    expect(coverage?.textContent).toContain("40.0% / 60.0%");
-    expect(coverage?.textContent).toContain("50.0% / 53.8%");
+    const coverage = document.querySelector<HTMLElement>('[data-role="weekly-coverage-chart"]');
+    expect(coverage?.textContent).toContain("—");
+    expect(coverage?.textContent).toContain("25.0%");
+    expect(coverage?.textContent).toContain("40.0%");
+    expect(coverage?.textContent).toContain("60.0%");
+    expect(coverage?.textContent).toContain("53.8%");
+    // Two series per week; week 0 has no denominator and renders "—" columns instead.
+    expect(coverage?.querySelectorAll('[data-role="weekly-coverage-bar"]')).toHaveLength(8);
+    expect(coverage?.querySelectorAll('[data-role="weekly-coverage-bar"][data-series="all"]')).toHaveLength(4);
+    expect(screen.getByText("有归因比例")).toBeTruthy();
     expect([...groups[2]!.querySelectorAll("h3")].map((heading) => heading.textContent))
       .toEqual(["新增与结构", "版本与投放", "品类与隐私变化"]);
   });
