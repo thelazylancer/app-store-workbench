@@ -1,4 +1,4 @@
-# 竞品周动态 `/weekly` 设计（DESIGN.md）
+# 竞品周览 `/weekly` 设计（DESIGN.md）
 
 依据：`REQUIREMENTS.md`（需求唯一来源，口径不再重开）。章节号引用之。
 本文是模块边界、API 契约与聚合策略的唯一规范；实现票据按本文拆解。
@@ -165,12 +165,12 @@ src/weekly/styles/weekly-charts.css 仅「数据不足」斜纹（文件名命�
 | `privacyHostLabel` / `privacyHostKind` | `shared/privacyHost.ts` | 直接 import |
 | `teamLabel` / `addDays` | `src/lib/teamLabel.ts` / `reportDate.ts` | 直接 import |
 | 图表几何 CSS | `src/shelf/styles/charts.css` + `metrics.css` | weekly App 顶部 import（`wx-chart-*`/`wx-metric-*` 纯几何类，跨页无害） |
-| `useDocumentTitle` | `src/app/useDocumentTitle` | 「竞品周动态 · App搜索工作台」 |
+| `useDocumentTitle` | `src/app/useDocumentTitle` | 「竞品周览 · App搜索工作台」 |
 | **不复用** | `WeeklyBarChart` / `DistributionBoard` / `MetricsBoard` / `ShelfDetailDialog` / `useShelfFilters` | 硬耦合 `ShelfSelection` 下钻与团队筛选；周报只读 |
 
 ### 5.3 路由与导航
 
-- `src/app/navItems.ts`：NAV_ITEMS 插入 `{ to: "/weekly", label: "竞品周动态" }` 于 `/shelf` 之后；`isNavActive("/")` 增加排除 `/weekly`（现为 `!startsWith("/search") && !startsWith("/shelf")`，L14）。
+- `src/app/navItems.ts`：NAV_ITEMS 插入 `{ to: "/weekly", label: "竞品周览" }` 于 `/shelf` 之后；`isNavActive("/")` 增加排除 `/weekly`（现为 `!startsWith("/search") && !startsWith("/shelf")`，L14）。
 - `src/app/routes.tsx`：`<Route path="/weekly" element={<WeeklyPage />} />`。
 - 切周用 `?week=` 写 URL（`replace`，不污染后退栈，模式同 shelf `filters.ts`）。
 

@@ -16,7 +16,7 @@ describe("weekly page", () => {
 
     await waitForCards(3);
 
-    expect(screen.getByRole("heading", { level: 1, name: "竞品周动态" })).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 1, name: "竞品周览" })).toBeTruthy();
     expect(byRole("weekly-week-range")?.textContent).toBe("2026-11-16 ~ 2026-11-22");
     expect(byRole("weekly-summary")?.textContent).toContain("新增 112 个包");
     expect(byRole("weekly-summary")?.textContent).toContain("环比 +2（+1.8%）");

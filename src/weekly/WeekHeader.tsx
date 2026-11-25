@@ -30,7 +30,7 @@ export function WeekHeader({
   return (
     <header className="wx-weekly-header">
       <div className="wx-weekly-heading">
-        <h1 className="wx-weekly-title">竞品周动态</h1>
+        <h1 className="wx-weekly-title">竞品周览</h1>
         <p className="wx-weekly-week-range" data-role="weekly-week-range">
           {weekStart ? weekRange(weekStart) : "—"}
         </p>

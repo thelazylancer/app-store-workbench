@@ -58,7 +58,7 @@ describe("App shell routes", () => {
     expect(document.title).toBe("竞品日报 · App搜索工作台");
     expect(screen.getByRole("link", { name: "竞品日报" }).getAttribute("aria-current")).toBe("page");
     expect(screen.getByRole("link", { name: "竞品趋势" }).getAttribute("aria-current")).toBeNull();
-    expect(screen.getByRole("link", { name: "竞品周动态" }).getAttribute("aria-current")).toBeNull();
+    expect(screen.getByRole("link", { name: "竞品周览" }).getAttribute("aria-current")).toBeNull();
     expect(screen.getByRole("link", { name: "App Store 搜索" }).getAttribute("aria-current")).toBeNull();
   });
 
@@ -70,7 +70,7 @@ describe("App shell routes", () => {
     expect(navLinks.map((link) => link.textContent?.trim())).toEqual([
       "竞品日报",
       "竞品趋势",
-      "竞品周动态",
+      "竞品周览",
       "App Store 搜索",
     ]);
   });
@@ -83,7 +83,7 @@ describe("App shell routes", () => {
     expect(screen.getByRole("link", { name: "App Store 搜索" }).getAttribute("aria-current")).toBe("page");
     expect(screen.getByRole("link", { name: "竞品日报" }).getAttribute("aria-current")).toBeNull();
     expect(screen.getByRole("link", { name: "竞品趋势" }).getAttribute("aria-current")).toBeNull();
-    expect(screen.getByRole("link", { name: "竞品周动态" }).getAttribute("aria-current")).toBeNull();
+    expect(screen.getByRole("link", { name: "竞品周览" }).getAttribute("aria-current")).toBeNull();
   });
 
   it("renders the package detail at /package/:code", () => {
@@ -100,15 +100,15 @@ describe("App shell routes", () => {
     expect(document.title).toBe("竞品趋势 · App搜索工作台");
     expect(screen.getByRole("link", { name: "竞品趋势" }).getAttribute("aria-current")).toBe("page");
     expect(screen.getByRole("link", { name: "竞品日报" }).getAttribute("aria-current")).toBeNull();
-    expect(screen.getByRole("link", { name: "竞品周动态" }).getAttribute("aria-current")).toBeNull();
+    expect(screen.getByRole("link", { name: "竞品周览" }).getAttribute("aria-current")).toBeNull();
     expect(screen.getByRole("link", { name: "App Store 搜索" }).getAttribute("aria-current")).toBeNull();
   });
 
   it("renders the weekly page at /weekly without highlighting 竞品日报", async () => {
     renderAt("/weekly");
-    expect(screen.getByRole("heading", { level: 1, name: "竞品周动态" })).toBeTruthy();
-    expect(document.title).toBe("竞品周动态 · App搜索工作台");
-    expect(screen.getByRole("link", { name: "竞品周动态" }).getAttribute("aria-current")).toBe("page");
+    expect(screen.getByRole("heading", { level: 1, name: "竞品周览" })).toBeTruthy();
+    expect(document.title).toBe("竞品周览 · App搜索工作台");
+    expect(screen.getByRole("link", { name: "竞品周览" }).getAttribute("aria-current")).toBe("page");
     expect(screen.getByRole("link", { name: "竞品日报" }).getAttribute("aria-current")).toBeNull();
     expect(screen.getByRole("link", { name: "竞品趋势" }).getAttribute("aria-current")).toBeNull();
     expect(screen.getByRole("link", { name: "App Store 搜索" }).getAttribute("aria-current")).toBeNull();

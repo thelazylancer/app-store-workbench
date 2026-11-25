@@ -82,7 +82,7 @@ function Footnote({ summary }: { summary: WeeklyReportResponse["summary"] }) {
 }
 
 export function WeeklyPage() {
-  useDocumentTitle("竞品周动态 · App搜索工作台");
+  useDocumentTitle("竞品周览 · App搜索工作台");
   const { week, setWeek } = useWeeklyWeek();
   const [report, setReport] = useState<WeeklyReportResponse | null>(null);
   const [loading, setLoading] = useState(true);

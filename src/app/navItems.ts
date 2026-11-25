@@ -6,7 +6,7 @@ export type NavItem = {
 export const NAV_ITEMS: readonly NavItem[] = [
   { to: "/", label: "竞品日报" },
   { to: "/shelf", label: "竞品趋势" },
-  { to: "/weekly", label: "竞品周动态" },
+  { to: "/weekly", label: "竞品周览" },
   { to: "/search", label: "App Store 搜索" },
 ];
 
