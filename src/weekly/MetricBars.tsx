@@ -84,7 +84,7 @@ function ValuesTable({
         <tbody>
           {teams.map((team) => (
             <tr key={team}>
-              <th scope="row" title={team}>{teamLabel(team)}</th>
+              <th scope="row">{teamLabel(team)}</th>
               {weeks.map((week) => {
                 const point = lookup.get(week.weekStart)?.get(team);
                 return (
@@ -206,7 +206,7 @@ function MetricRow({
                       aria-hidden="true"
                       {...bind(
                         `${series.key}:${week.weekStart}`,
-                        `${team}：${cellText(series.key, point)}`,
+                        `${teamLabel(team)}：${cellText(series.key, point)}`,
                       )}
                     />
                   );
@@ -258,7 +258,7 @@ export function MetricBars({ weeks, metrics, teams }: MetricBarsProps) {
       </div>
       <ul className="wx-weekly-team-legend" aria-label="团队图例">
         {allTeams.map((team) => (
-            <li key={team} title={team}>
+            <li key={team}>
               <span className={`wx-dist-swatch ${teamClass(team, allTeams)}`} aria-hidden="true" />
               {teamLabel(team)}
             </li>

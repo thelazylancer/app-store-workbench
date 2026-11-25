@@ -393,7 +393,7 @@ describe("weekly page", () => {
       '[data-role="weekly-metric-bar"][data-metric="avgVersionGapDays"]',
     )!;
     fireEvent.click(gapBar);
-    expect(document.querySelector(".wx-chart-tip")?.textContent).toBe("Alpha：8.5");
+    expect(document.querySelector(".wx-chart-tip")?.textContent).toBe("A：8.5");
   });
 
   it("hatches weeks with insufficient data and keeps the current-week marker", async () => {
