@@ -2,9 +2,12 @@ import type { Pool } from "pg";
 import { privacyHostKind, privacyHostLabel } from "../../shared/privacyHost";
 import { SHELF_IOS_BUCKET_ORDER, SHELF_UNKNOWN_KEY } from "../../shared/shelfTypes";
 import type {
-  WeeklyBucket, WeeklyHighlight, WeeklyMetricKey, WeeklyMetricPoint,
+  WeeklyHighlight, WeeklyMetricKey, WeeklyMetricOverallPoint, WeeklyMetricPoint,
   WeeklyMetricSeries, WeeklyReportResponse, WeeklyTeam, WeeklyTrendWeek,
 } from "../../shared/weeklyReportTypes";
+import {
+  CATEGORY_LABEL, distributionBuckets, iapBuckets, increment, iosLabel, share, topBuckets, versionBuckets,
+} from "./weeklyBuckets";
 import { iosBucket } from "./shelfQueries";
 
 /**
@@ -35,7 +38,7 @@ type WeekMainRow = {
 type VersionCountRow = { team: string; bucket: string; n: number };
 
 type MetricRow = {
-  week_start: string; team: string; package_count: number; avg_gap_days: number | null;
+  week_start: string; team: string | null; package_count: number; avg_gap_days: number | null;
   avg_latest_to_ad_days: number | null; avg_ad_to_offline_days: number | null; offline_count: number;
 };
 
@@ -99,7 +102,9 @@ const METRICS_SQL = `
          avg(latest_to_ad_days)::float8 AS avg_latest_to_ad_days,
          avg(ad_to_offline_days)::float8 AS avg_ad_to_offline_days,
          count(ad_to_offline_days)::int AS offline_count
-    FROM pkg_stats GROUP BY 1, 2 ORDER BY 1, 2`;
+    FROM pkg_stats
+   GROUP BY GROUPING SETS ((week_start, team), (week_start))
+   ORDER BY 1, 2`;
 
 const BATCH_SQL = `
   SELECT to_char(target_date, 'YYYY-MM-DD') AS data_through, status
@@ -187,82 +192,6 @@ export function buildHighlights(input: HighlightInput): WeeklyHighlight[] {
   }
 
   return highlights;
-}
-
-function share(count: number, total: number): number {
-  return total > 0 ? count / total : 0;
-}
-
-function increment(map: Map<string, number>, key: string, n: number): void {
-  map.set(key, (map.get(key) ?? 0) + n);
-}
-
-const VERSION_BUCKETS = [
-  { key: "1", label: "1 个版本" },
-  { key: "2", label: "2 个版本" },
-  { key: "3", label: "3 个版本" },
-  { key: "4+", label: "4+ 个版本" },
-  { key: "0", label: "无记录" },
-] as const;
-
-const CATEGORY_LABEL = (key: string) => key === SHELF_UNKNOWN_KEY ? "未知" : key;
-const IOS_LABELS: Record<string, string> = { lte14: "≤14", "26plus": "26+", [SHELF_UNKNOWN_KEY]: "未知" };
-const IAP_LABELS: Record<string, string> = { yes: "有", no: "无" };
-const iosLabel = (key: string) => IOS_LABELS[key] ?? key;
-const iapLabel = (key: string) => IAP_LABELS[key] ?? key;
-
-function compareCounts(tieOrder?: readonly string[]) {
-  return (left: [string, number], right: [string, number]): number => {
-    if (right[1] !== left[1]) return right[1] - left[1];
-    const byOrder = tieOrder ? tieOrder.indexOf(left[0]) - tieOrder.indexOf(right[0]) : 0;
-    return byOrder || left[0].localeCompare(right[0], "zh");
-  };
-}
-
-function knownCounts(counts: Map<string, number>, tieOrder?: readonly string[]): [string, number][] {
-  return [...counts]
-    .filter(([key, count]) => key !== SHELF_UNKNOWN_KEY && count > 0)
-    .sort(compareCounts(tieOrder));
-}
-
-/** Present buckets only, count desc; `unknown` always last. */
-function distributionBuckets(
-  counts: Map<string, number>, total: number, labelOf: (key: string) => string, tieOrder?: readonly string[],
-): WeeklyBucket[] {
-  const buckets = knownCounts(counts, tieOrder).map(([key, count]) => ({
-    key, label: labelOf(key), count, share: share(count, total),
-  }));
-  const unknownCount = counts.get(SHELF_UNKNOWN_KEY) ?? 0;
-  if (unknownCount > 0) {
-    buckets.push({
-      key: SHELF_UNKNOWN_KEY, label: labelOf(SHELF_UNKNOWN_KEY),
-      count: unknownCount, share: share(unknownCount, total),
-    });
-  }
-  return buckets;
-}
-
-function topBuckets(
-  counts: Map<string, number>, total: number, limit: number,
-  labelOf: (key: string) => string, tieOrder?: readonly string[],
-): WeeklyBucket[] {
-  return knownCounts(counts, tieOrder)
-    .slice(0, limit)
-    .map(([key, count]) => ({ key, label: labelOf(key), count, share: share(count, total) }));
-}
-
-function versionBuckets(counts: Map<string, number>, total: number): WeeklyBucket[] {
-  return VERSION_BUCKETS.map(({ key, label }) => {
-    const count = counts.get(key) ?? 0;
-    return { key, label, count, share: share(count, total) };
-  });
-}
-
-function iapBuckets(counts: Map<string, number>, total: number): WeeklyBucket[] {
-  const yes = counts.get("yes") ?? 0;
-  const no = counts.get("no") ?? 0;
-  const entries: [string, number][] = yes >= no ? [["yes", yes], ["no", no]] : [["no", no], ["yes", yes]];
-  return entries.map(([key, count]) => ({ key, label: iapLabel(key), count, share: share(count, total) }));
 }
 
 type WeekTotals = { ingested: number; resolved: number };
@@ -405,7 +334,25 @@ export function createWeeklyReport(pool: Pool): WeeklyReportRepo {
       const metricPoints: Record<WeeklyMetricKey, WeeklyMetricPoint[]> = {
         avgVersionGapDays: [], avgLatestVersionToAdDays: [], avgAdToOfflineDays: [],
       };
+      const overallPoints: Record<WeeklyMetricKey, WeeklyMetricOverallPoint[]> = {
+        avgVersionGapDays: [], avgLatestVersionToAdDays: [], avgAdToOfflineDays: [],
+      };
       for (const row of metricResult.rows) {
+        if (row.team === null) {
+          const overall = {
+            weekStart: row.week_start,
+            packageCount: row.package_count,
+            offlineCount: row.offline_count,
+          };
+          if (row.avg_gap_days !== null) {
+            overallPoints.avgVersionGapDays.push({ ...overall, value: row.avg_gap_days });
+          }
+          if (row.avg_latest_to_ad_days !== null) {
+            overallPoints.avgLatestVersionToAdDays.push({ ...overall, value: row.avg_latest_to_ad_days });
+          }
+          overallPoints.avgAdToOfflineDays.push({ ...overall, value: row.avg_ad_to_offline_days ?? 0 });
+          continue;
+        }
         const base = {
           weekStart: row.week_start, team: row.team,
           packageCount: row.package_count, offlineCount: row.offline_count,
@@ -420,14 +367,20 @@ export function createWeeklyReport(pool: Pool): WeeklyReportRepo {
         metricPoints.avgAdToOfflineDays.push({ ...base, value: row.avg_ad_to_offline_days ?? 0 });
       }
       const metrics: WeeklyMetricSeries[] = [
-        { key: "avgVersionGapDays", title: "平均版本间隔（天）", points: sortPoints(metricPoints.avgVersionGapDays) },
+        {
+          key: "avgVersionGapDays", title: "平均版本间隔（天）",
+          points: sortPoints(metricPoints.avgVersionGapDays),
+          overall: overallPoints.avgVersionGapDays,
+        },
         {
           key: "avgLatestVersionToAdDays", title: "最新版本→投放（天）",
           points: sortPoints(metricPoints.avgLatestVersionToAdDays),
+          overall: overallPoints.avgLatestVersionToAdDays,
         },
         {
           key: "avgAdToOfflineDays", title: "投放→下架（天）",
           points: sortPoints(metricPoints.avgAdToOfflineDays),
+          overall: overallPoints.avgAdToOfflineDays,
         },
       ];
 

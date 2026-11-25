@@ -259,7 +259,7 @@ describe("weekly page", () => {
     expect(byRole("weekly-error")?.textContent).toContain("网络请求失败，请检查服务是否可用");
   });
 
-  it("renders the single-week structure as labeled, clickable charts", async () => {
+  it("renders the weekly structure as labeled, clickable charts", async () => {
     vi.stubGlobal("fetch", mockWeekly());
     renderPage();
     await waitForCards(3);
@@ -268,8 +268,8 @@ describe("weekly page", () => {
     expect(panels.map((panel) => panel.querySelector("h4")?.textContent)).toEqual([
       "版本数",
       "内购",
-      "品类 Top3",
-      "隐私 Top3",
+      "品类 Top5",
+      "隐私 Top5",
       "iOS",
     ]);
 
@@ -293,13 +293,17 @@ describe("weekly page", () => {
     expect(category.textContent).toContain("14 · 26.9%");
     expect(category.textContent).toContain("Lifestyle");
     expect(category.textContent).toContain("Games");
-    expect(category.textContent).not.toContain("Finance");
+    expect(category.textContent).toContain("Finance");
+    expect(category.textContent).toContain("Productivity");
+    expect(category.textContent).not.toContain("Photo");
 
     const privacy = chart("privacy");
     expect(privacy.textContent).toContain("自有域名");
     expect(privacy.textContent).toContain("24 · 46.2%");
     expect(privacy.textContent).toContain("Cloudflare");
-    expect(privacy.textContent).not.toContain("Google");
+    expect(privacy.textContent).toContain("Google");
+    expect(privacy.textContent).toContain("Github");
+    expect(privacy.textContent).not.toContain("Vercel");
 
     const ios = chart("ios");
     expect(ios.textContent).toContain("26+");
@@ -406,6 +410,21 @@ describe("weekly page", () => {
     )!;
     fireEvent.click(gapBar);
     expect(document.querySelector(".wx-chart-tip")?.textContent).toBe("A：8.5");
+
+    const overallRows = [...document.querySelectorAll<HTMLElement>(
+      '[data-role="weekly-metric-overall-row"]',
+    )];
+    expect(overallRows.map((row) => row.dataset.metric)).toEqual([
+      "avgVersionGapDays",
+      "avgLatestVersionToAdDays",
+      "avgAdToOfflineDays",
+    ]);
+    expect(overallRows[0]!.textContent).toContain("6.5");
+    expect(overallRows[0]!.textContent).toContain("8.5");
+    fireEvent.click(document.querySelector<HTMLElement>(
+      `[data-role="weekly-metric-overall-bar"][data-metric="avgVersionGapDays"][data-week="${WEEK_START}"]`,
+    )!);
+    expect(overallRows[0]!.querySelector(".wx-chart-tip")?.textContent).toBe("整体：8.5");
   });
 
   it("hatches weeks with insufficient data and keeps the current-week marker", async () => {

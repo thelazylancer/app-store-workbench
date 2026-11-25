@@ -274,7 +274,7 @@ export function StructureBars({ versionCounts, distributions, total }: Structure
   return (
     <section className="wx-weekly-section" aria-labelledby="weekly-structure-title">
       <div className="wx-weekly-section-head">
-        <h3 id="weekly-structure-title" className="wx-weekly-h3">单周结构</h3>
+        <h3 id="weekly-structure-title" className="wx-weekly-h3">本周结构</h3>
         <p className="wx-weekly-section-meta">
           分母 <span className="wx-weekly-mono">{total}</span> 个已解析包 · 点击图表查看明细
         </p>
@@ -282,8 +282,8 @@ export function StructureBars({ versionCounts, distributions, total }: Structure
       <div className="wx-weekly-structure-grid">
         <VerticalPanel id="version" title="版本数" bars={versionBars(versionCounts, total)} total={total} />
         <VerticalPanel id="iap" title="内购" bars={iapBars(distributions.iap, total)} total={total} />
-        <HorizontalPanel id="category" title="品类 Top3" bars={topBars(distributions.category, total, 3)} total={total} />
-        <HorizontalPanel id="privacy" title="隐私 Top3" bars={topBars(distributions.privacy, total, 3)} total={total} />
+        <HorizontalPanel id="category" title="品类 Top5" bars={topBars(distributions.category, total, 5)} total={total} />
+        <HorizontalPanel id="privacy" title="隐私 Top5" bars={topBars(distributions.privacy, total, 5)} total={total} />
         <HorizontalPanel id="ios" title="iOS" bars={iosBars(distributions.ios, total)} total={total} wide />
       </div>
     </section>

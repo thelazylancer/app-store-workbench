@@ -65,11 +65,21 @@ export type WeeklyMetricPoint = {
 
 export type WeeklyMetricKey = "avgVersionGapDays" | "avgLatestVersionToAdDays" | "avgAdToOfflineDays";
 
+/** All-team aggregate for a metric-week, weighted by each package's own sample. */
+export type WeeklyMetricOverallPoint = {
+  weekStart: string;
+  value: number;
+  packageCount: number;
+  offlineCount: number;
+};
+
 export type WeeklyMetricSeries = {
   key: WeeklyMetricKey;
   title: string;
   /** weekStart asc, then team asc. Missing data produces no point. */
   points: WeeklyMetricPoint[];
+  /** weekStart asc; all teams combined. */
+  overall: WeeklyMetricOverallPoint[];
 };
 
 export type WeeklyHighlight =

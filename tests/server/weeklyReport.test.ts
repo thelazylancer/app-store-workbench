@@ -342,6 +342,15 @@ describeDb("weekly report against PostgreSQL", () => {
       [week3, teamBeta, 6],
     ]);
 
+    expect(gap!.overall.map((point) => [point.weekStart, point.value])).toEqual([[week3, 26 / 3]]);
+    expect(latest!.overall.map((point) => [point.weekStart, point.value])).toEqual([[week3, 10]]);
+    expect(offline!.overall.map((point) => [
+      point.weekStart, point.value, point.offlineCount, point.packageCount,
+    ])).toEqual([
+      [week2, 0, 0, 4],
+      [week3, 2.5, 2, 7],
+    ]);
+
     expect(offline!.points.map((point) => [
       point.weekStart, point.team, point.value, point.offlineCount, point.packageCount,
     ])).toEqual([

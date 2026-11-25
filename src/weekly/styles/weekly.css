@@ -172,6 +172,26 @@
 .wx-weekly-metric-canvas .wx-metric-track { width: 72px; }
 .wx-weekly .wx-metric-bar { background-image: none; cursor: pointer; transition: none; }
 .wx-weekly .wx-metric-bar:hover { filter: none; }
+
+/* Version/delivery metrics split into all-team aggregate and per-team charts. */
+.wx-weekly-metric-scope { margin: 0 0 10px; color: var(--color-text-secondary); font-size: 12px; font-weight: 600; }
+.wx-weekly-metric-scope-team { margin-top: 24px; }
+.wx-weekly-overall { max-width: 560px; }
+.wx-weekly-overall-row + .wx-weekly-overall-row { margin-top: 16px; }
+.wx-weekly-overall-plot { position: relative; display: flex; align-items: flex-end; height: 76px; padding-top: 20px; border-bottom: 1px solid var(--color-border); }
+.wx-weekly-overall-slot { position: relative; display: flex; flex: 1 1 0; align-items: flex-end; justify-content: center; height: 100%; }
+.wx-weekly-overall-column { position: relative; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
+.wx-weekly-overall-bar { position: absolute; left: 50%; display: block; width: min(56px, 54%); min-height: 1px; transform: translateX(-50%); border-radius: 3px 3px 0 0; background: var(--color-accent); }
+.wx-weekly-overall-negative { border-radius: 0 0 3px 3px; }
+.wx-weekly-overall-value { position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); font-family: var(--font-family-code); font-size: 11px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.wx-weekly-overall-negative .wx-weekly-overall-value { top: calc(100% + 4px); bottom: auto; }
+.wx-weekly-overall-zero { position: absolute; right: 0; left: 0; border-top: 1px solid var(--color-border-emphasized); pointer-events: none; }
+.wx-weekly-overall-labels { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 4px; color: var(--color-text-secondary); font-family: var(--font-family-code); font-size: 11px; line-height: 1.35; text-align: center; font-variant-numeric: tabular-nums; }
+.wx-weekly-overall-labels span { display: block; white-space: nowrap; }
+.wx-weekly-overall-tip { position: absolute; inset: 0; pointer-events: none; }
+.wx-weekly-overall-tip .wx-chart-tip { top: 0; right: 0; left: auto; transform: none; }
+.wx-weekly-overall-column:focus-visible { outline: var(--focus-outline-width) solid var(--focus-outline-color); outline-offset: 2px; }
+.wx-weekly-overall-column:hover .wx-weekly-overall-bar { filter: brightness(0.92); }
 .wx-weekly .wx-chart-plot .wx-chart-slot:hover { background: transparent; }
 .wx-weekly-metric-bar { min-height: 1px; }
 

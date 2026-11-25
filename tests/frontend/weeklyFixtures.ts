@@ -111,6 +111,7 @@ function trendWeeks(weekStart: string): WeeklyTrendWeek[] {
 }
 
 function metricsFor(weekStart: string): WeeklyMetricSeries[] {
+  const week = (offset: number) => addDays(weekStart, offset);
   return [
     {
       key: "avgVersionGapDays",
@@ -119,12 +120,22 @@ function metricsFor(weekStart: string): WeeklyMetricSeries[] {
         { weekStart, team: "Alpha", value: 8.5, packageCount: 30, offlineCount: 0 },
         { weekStart, team: "Beta", value: 6, packageCount: 20, offlineCount: 0 },
       ],
+      overall: [
+        { weekStart: week(-14), value: 6.5, packageCount: 18, offlineCount: 0 },
+        { weekStart: week(-7), value: 7, packageCount: 50, offlineCount: 0 },
+        { weekStart, value: 8.5, packageCount: 52, offlineCount: 0 },
+      ],
     },
     {
       key: "avgLatestVersionToAdDays",
       title: "最新版本→投放（天）",
       points: [
         { weekStart, team: "Alpha", value: 7.2, packageCount: 30, offlineCount: 0 },
+      ],
+      overall: [
+        { weekStart: week(-14), value: 5, packageCount: 18, offlineCount: 0 },
+        { weekStart: week(-7), value: 6.2, packageCount: 50, offlineCount: 0 },
+        { weekStart, value: 7.2, packageCount: 52, offlineCount: 0 },
       ],
     },
     {
@@ -133,6 +144,11 @@ function metricsFor(weekStart: string): WeeklyMetricSeries[] {
       points: [
         { weekStart, team: "Alpha", value: 0, packageCount: 30, offlineCount: 0 },
         { weekStart, team: "Beta", value: 4, packageCount: 20, offlineCount: 2 },
+      ],
+      overall: [
+        { weekStart: week(-14), value: 0, packageCount: 18, offlineCount: 0 },
+        { weekStart: week(-7), value: 1, packageCount: 50, offlineCount: 1 },
+        { weekStart, value: 2.5, packageCount: 52, offlineCount: 2 },
       ],
     },
   ];
