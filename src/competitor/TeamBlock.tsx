@@ -54,16 +54,15 @@ function RowIcon({
   );
 }
 
-function metaLine(brief: PackageBrief, facts: PackageDetail | undefined, rangeDays: number): string {
-  const bits: string[] = [];
-  if (facts?.category) bits.push(facts.category);
-  if (facts?.minimumOsVersion) bits.push(`iOS ${facts.minimumOsVersion}`);
-  if (facts?.appVersion ?? brief.appVersion) bits.push(`v${facts?.appVersion ?? brief.appVersion}`);
-  if (facts?.attribution) bits.push(attributionLabel(facts.attribution));
-  if (rangeDays === 1) {
-    bits.push(facts?.screenshotLocalPaths.length ? `${facts.screenshotLocalPaths.length} 张截图` : "");
-  }
-  return bits.filter(Boolean).join(" · ");
+/** Four fixed meta columns: category · iOS · version · attribution (empty ones keep the column). */
+function metaFields(facts: PackageDetail | undefined, brief: PackageBrief): string[] {
+  const version = facts?.appVersion ?? brief.appVersion;
+  return [
+    facts?.category ?? "",
+    facts?.minimumOsVersion ? `iOS ${facts.minimumOsVersion}` : "",
+    version ? `v${version}` : "",
+    facts?.attribution ? attributionLabel(facts.attribution) : "",
+  ];
 }
 
 function HitRow({
@@ -88,6 +87,8 @@ function HitRow({
     latestReleasedAt: null,
   };
   const code = firstPackage?.packageCode ?? "";
+  const meta = metaFields(facts, brief);
+  const shotCount = rangeDays === 1 ? facts?.screenshotLocalPaths.length ?? 0 : 0;
   const dates = [
     brief.earliestReleasedAt && `最早 ${brief.earliestReleasedAt}`,
     brief.latestReleasedAt && `最新 ${brief.latestReleasedAt}`,
@@ -120,7 +121,14 @@ function HitRow({
         </span>
         {dates.length > 0 ? <span className="wx-row-dates">{dates.join(" · ")}</span> : null}
       </span>
-      <span className="wx-row-meta">{metaLine(brief, facts, rangeDays)}</span>
+      <span className="wx-row-meta">
+        {meta.map((value, index) => (
+          <span className="wx-row-meta-cell" key={index}>{value}</span>
+        ))}
+        {shotCount > 0 ? (
+          <span className="wx-row-meta-cell">{shotCount} 张截图</span>
+        ) : null}
+      </span>
       <span className="wx-row-side">
         {brief.hasIap ? <span className="wx-iap-pill">内购</span> : null}
         <span className="wx-row-versions">{brief.versionCount}个版本</span>
