@@ -114,6 +114,7 @@
 .wx-attribution-tag {
   display: inline-block;
   max-width: 100%;
+  min-width: 0;
   overflow: hidden;
   padding: 0 5px;
   border: 1px solid var(--color-border);
@@ -136,7 +137,7 @@
 .wx-row-meta {
   display: grid;
   grid-template-columns: minmax(96px, 150px) 66px 62px minmax(90px, 150px) minmax(0, 1fr);
-  align-items: baseline;
+  align-items: center;
   column-gap: 8px;
   overflow: hidden;
 }
@@ -145,6 +146,12 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Center the tag box itself; baseline alignment with the 12px tag text sits high. */
+.wx-attribution-cell {
+  display: flex;
+  align-items: center;
 }
 
 .wx-row-code {
@@ -205,6 +212,7 @@
   .wx-row-meta {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: 2px 10px;
   }
 

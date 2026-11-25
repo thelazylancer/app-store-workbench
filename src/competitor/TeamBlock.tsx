@@ -124,7 +124,7 @@ function HitRow({
         {meta.map((value, index) => (
           <span className="wx-row-meta-cell" key={index}>{value}</span>
         ))}
-        <span className="wx-row-meta-cell">
+        <span className="wx-row-meta-cell wx-attribution-cell">
           <span className="wx-attribution-tag">
             {attributionLabel(attributionKey(facts?.attribution))}
           </span>
