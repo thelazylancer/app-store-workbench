@@ -59,7 +59,9 @@ function TopPanel({
             return (
               <div className="wx-weekly-top-row" key={bucket.key} data-role="weekly-top-row" data-key={bucket.key}>
                 <span className="wx-weekly-top-label" title={bucket.label}>{bucket.label}</span>
-                <span className="wx-weekly-top-share">{formatPercent(bucket.share)}</span>
+                <span className="wx-weekly-top-share">
+                  {bucket.count} 包 · {formatPercent(bucket.share)}
+                </span>
                 <span className="wx-weekly-top-spark">
                   {weeks.map((week) => {
                     const point = byWeek.get(week.weekStart)?.get(bucket.key);
@@ -81,8 +83,10 @@ function TopPanel({
                       >
                         <span
                           className={`wx-weekly-top-bar${week === currentWeek ? " wx-weekly-top-bar-current" : ""}`}
-                          style={{ height: `${Math.max((point.share / max) * 100, 4)}%` }}
-                        />
+                          style={{ height: `${Math.max((point.share / max) * 100, 6)}%` }}
+                        >
+                          <span className="wx-weekly-top-bar-value">{formatPercent(point.share)}</span>
+                        </span>
                       </button>
                     );
                   })}
@@ -116,7 +120,7 @@ export function TopChanges({
     <section className="wx-weekly-section" aria-labelledby="weekly-top-title">
       <div className="wx-weekly-section-head">
         <h3 id="weekly-top-title" className="wx-weekly-h3">品类与隐私变化</h3>
-        <p className="wx-weekly-section-meta">按本周占比 Top10 · Δpp 对比最早有数据的一周</p>
+        <p className="wx-weekly-section-meta">按本周占比 Top10 · 柱顶为各周占比 · Δpp 对比最早有数据的一周</p>
       </div>
       <div className="wx-weekly-top-grid">
         <TopPanel id="category" title="品类 Top10 变化" weeks={weeks} data={categoryWeeks} />

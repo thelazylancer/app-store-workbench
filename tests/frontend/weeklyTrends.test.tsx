@@ -83,7 +83,9 @@ describe("weekly trends", () => {
     expect(rows.map((row) => row.dataset.key)).toEqual([
       "Utilities", "Lifestyle", "Games", "Finance", "Productivity", "Photo", "Music",
     ]);
-    expect(rows[0]!.textContent).toContain("26.9%");
+    expect(rows[0]!.textContent).toContain("14 包 · 26.9%");
+    expect([...rows[0]!.querySelectorAll<HTMLElement>(".wx-weekly-top-bar-value")]
+      .map((node) => node.textContent)).toEqual(["33.3%", "28.0%", "26.9%"]);
     expect(rows[0]!.querySelector('[data-role="weekly-top-delta"]')?.textContent).toBe("-6.4pp");
     expect(rows[0]!.querySelectorAll('[data-role="weekly-top-bar"]')).toHaveLength(3);
 

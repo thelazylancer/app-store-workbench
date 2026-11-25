@@ -234,20 +234,21 @@
 .wx-weekly-current-week { color: var(--color-text-accent); font-weight: 600; }
 .wx-weekly-trend-label .wx-weekly-date-short { display: none; }
 
-/* Item 7: Top10 rows with a four-week sparkline and Δpp vs the base week. */
-.wx-weekly-top-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 40px; }
+/* Item 7: one full-width panel per row; each Top10 row carries a four-week sparkline with values. */
+.wx-weekly-top-grid { display: grid; grid-template-columns: 1fr; gap: 32px; }
 .wx-weekly-top-panel { min-width: 0; }
-.wx-weekly-top-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.wx-weekly-top-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; max-width: 900px; margin-bottom: 10px; }
 .wx-weekly-top-base { color: var(--color-text-secondary); font-family: var(--font-family-code); font-size: 11px; white-space: nowrap; }
-.wx-weekly-top-rows { position: relative; display: flex; flex-direction: column; gap: 4px; }
-.wx-weekly-top-row { display: grid; grid-template-columns: minmax(0, 1fr) 46px 64px 56px; align-items: center; gap: 10px; padding: 1px 0; }
+.wx-weekly-top-rows { position: relative; display: flex; flex-direction: column; gap: 2px; max-width: 900px; }
+.wx-weekly-top-row { display: grid; grid-template-columns: minmax(0, 1fr) 118px 320px 64px; align-items: center; gap: 12px; padding: 2px 0; }
 .wx-weekly-top-label { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-.wx-weekly-top-share { color: var(--color-text-secondary); font-family: var(--font-family-code); font-size: 11px; text-align: right; font-variant-numeric: tabular-nums; }
-.wx-weekly-top-spark { display: flex; align-items: stretch; gap: 2px; height: 20px; border-bottom: 1px solid var(--color-border); }
+.wx-weekly-top-share { color: var(--color-text-secondary); font-family: var(--font-family-code); font-size: 11px; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.wx-weekly-top-spark { display: flex; align-items: stretch; gap: 4px; height: 52px; padding-top: 14px; box-sizing: border-box; border-bottom: 1px solid var(--color-border); }
 .wx-weekly-top-slot { position: relative; display: block; flex: 1 1 0; height: 100%; margin: 0; padding: 0; border: 0; background: none; }
 button.wx-weekly-top-slot { cursor: pointer; }
-.wx-weekly-top-bar { position: absolute; right: 20%; bottom: 0; left: 20%; min-height: 1px; border-radius: 2px 2px 0 0; background: rgba(46, 111, 163, 0.45); }
+.wx-weekly-top-bar { position: absolute; right: 12%; bottom: 0; left: 12%; min-height: 2px; border-radius: 2px 2px 0 0; background: rgba(46, 111, 163, 0.45); }
 .wx-weekly-top-bar-current { background: var(--color-accent); }
+.wx-weekly-top-bar-value { position: absolute; bottom: calc(100% + 3px); left: 50%; transform: translateX(-50%); font-family: var(--font-family-code); font-size: 10px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .wx-weekly-top-delta { font-family: var(--font-family-code); font-size: 11px; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
 .wx-weekly-top-tip { position: absolute; inset: 0; pointer-events: none; }
 .wx-weekly-top-tip .wx-chart-tip { top: 0; right: 0; left: auto; transform: none; }
@@ -255,7 +256,7 @@ button.wx-weekly-top-slot { cursor: pointer; }
 .wx-weekly-top-slot:hover .wx-weekly-top-bar { filter: brightness(0.92); }
 
 @media (max-width: 840px) {
-  .wx-weekly-scale-grid, .wx-weekly-top-grid { grid-template-columns: 1fr; gap: 24px; }
+  .wx-weekly-scale-grid { grid-template-columns: 1fr; gap: 24px; }
   .wx-weekly-trend-panel-wide { grid-column: auto; }
 }
 
@@ -266,5 +267,14 @@ button.wx-weekly-top-slot { cursor: pointer; }
   .wx-weekly-trend-column, .wx-weekly-trend-gap-wrap, .wx-weekly-trend-gap { width: 56px; }
   .wx-weekly-trend-label .wx-weekly-date-full { display: none; }
   .wx-weekly-trend-label .wx-weekly-date-short { display: block; }
-  .wx-weekly-top-row { grid-template-columns: minmax(0, 1fr) 40px 52px 48px; gap: 8px; }
+  .wx-weekly-top-row {
+    grid-template-columns: minmax(0, 1fr) 106px 56px;
+    grid-template-areas: "label share delta" "spark spark spark";
+    gap: 2px 8px;
+    padding: 4px 0;
+  }
+  .wx-weekly-top-label { grid-area: label; }
+  .wx-weekly-top-share { grid-area: share; }
+  .wx-weekly-top-spark { grid-area: spark; height: 44px; margin-top: 2px; }
+  .wx-weekly-top-delta { grid-area: delta; }
 }
