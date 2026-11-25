@@ -185,6 +185,19 @@
   background: var(--color-warning);
 }
 
+/* Below this width the four meta columns cannot fit; wrap them instead of clipping. */
+@media (max-width: 1280px) {
+  .wx-row-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 10px;
+  }
+
+  .wx-row-meta-cell:empty {
+    display: none;
+  }
+}
+
 @media (max-width: 1180px) {
   .wx-row {
     grid-template-columns: 44px minmax(150px, 1.3fr) minmax(170px, 1.3fr) 1fr auto;
@@ -200,16 +213,6 @@
   .wx-row-code,
   .wx-row-meta {
     grid-column: 2;
-  }
-
-  .wx-row-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2px 10px;
-  }
-
-  .wx-row-meta-cell:empty {
-    display: none;
   }
 
   .wx-row-side {
