@@ -5,22 +5,22 @@ import { useClickTip } from "./useClickTip";
 function trendAriaLabel(weeks: WeeklyTrendWeek[]): string {
   const parts = weeks.map((week) => (
     week.dataSufficient
-      ? `${week.weekStart.slice(5)} ${week.resolvedPackages} 包`
+      ? `${week.weekStart.slice(5)} ${week.ingestedPackages} 包`
       : `${week.weekStart.slice(5)} 数据不足`
   ));
-  return `近 4 周已解析新增趋势。${parts.join("；")}。`;
+  return `近 4 周新增趋势。${parts.join("；")}。`;
 }
 
 export function TrendBars({ weeks }: { weeks: WeeklyTrendWeek[] }) {
   const { tip, bind } = useClickTip();
-  const max = Math.max(1, ...weeks.map((week) => week.resolvedPackages));
+  const max = Math.max(1, ...weeks.map((week) => week.ingestedPackages));
   const lastIndex = weeks.length - 1;
 
   return (
     <section className="wx-weekly-section" aria-labelledby="weekly-trend-title">
       <div className="wx-weekly-section-head">
         <h3 id="weekly-trend-title" className="wx-weekly-h3">新增包数</h3>
-        <p className="wx-weekly-section-meta">已解析新增 · 最后一根为本周 · 点击查看明细</p>
+        <p className="wx-weekly-section-meta">全部新增包 · 最后一根为本周 · 点击查看明细</p>
       </div>
       <figure className="wx-weekly-trend-figure">
         <div
@@ -35,17 +35,17 @@ export function TrendBars({ weeks }: { weeks: WeeklyTrendWeek[] }) {
                 {week.dataSufficient ? (
                   <div
                     className="wx-weekly-trend-column"
-                    style={{ height: `${(week.resolvedPackages / max) * 100}%` }}
+                    style={{ height: `${(week.ingestedPackages / max) * 100}%` }}
                     data-role="weekly-trend-bar"
                     data-week={week.weekStart}
-                    data-value={week.resolvedPackages}
+                    data-value={week.ingestedPackages}
                     {...bind(
                       week.weekStart,
-                      `${week.weekStart.slice(5)} ~ ${week.weekEnd.slice(5)}：${week.resolvedPackages} 包`,
+                      `${week.weekStart.slice(5)} ~ ${week.weekEnd.slice(5)}：${week.ingestedPackages} 包`,
                     )}
                   >
                     <span className="wx-weekly-trend-value" aria-hidden="true">
-                      {week.resolvedPackages}
+                      {week.ingestedPackages}
                     </span>
                     <span className="wx-weekly-trend-bar" aria-hidden="true" />
                   </div>

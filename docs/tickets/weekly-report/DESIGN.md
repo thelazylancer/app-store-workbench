@@ -119,7 +119,7 @@ export function addWeeks(weekStart: string, n: number): string; // ±7n 天
 | 最新版本→投放 | `avg(first_ad_date - last_release)`，仅 `last_release IS NOT NULL` 的包 | 无版本记录包 → 不生成 point |
 | 投放→下架 | `avg(offline_date - first_ad_date)` + `offline_count` | `offline_count = 0` → 生成 `value = 0` 的 point（§3.4 要求显示 0 + 上下文） |
 
-`dataSufficient = resolvedPackages > 0`；`resolvedRate = resolved / ingested`；`changePct = previous > 0 ? change / previous : null`。
+`dataSufficient = ingestedPackages > 0`（新增包趋势含未解析）；`resolvedRate = resolved / ingested`；已解析环比 `changePct = previousResolved > 0 ? change / previousResolved : null`；摘要用新增包环比 `ingestedChangePct = previousIngested > 0 ? ingestedChange / previousIngested : null`。
 
 ### 4.5 关注项（纯函数 `buildHighlights`，server 导出直测）
 

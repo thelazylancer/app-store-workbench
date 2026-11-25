@@ -327,7 +327,7 @@ export function createWeeklyReport(pool: Pool): WeeklyReportRepo {
         return {
           weekStart: start, weekEnd: addDays(start, 6),
           resolvedPackages: totals.resolved, ingestedPackages: totals.ingested,
-          dataSufficient: totals.resolved > 0,
+          dataSufficient: totals.ingested > 0,
         };
       });
 
@@ -396,6 +396,7 @@ export function createWeeklyReport(pool: Pool): WeeklyReportRepo {
       });
 
       const change = resolvedPackages - previousTotals.resolved;
+      const ingestedChange = currentTotals.ingested - previousTotals.ingested;
       return {
         weekStart,
         weekEnd,
@@ -407,8 +408,13 @@ export function createWeeklyReport(pool: Pool): WeeklyReportRepo {
           unresolvedPackages: currentTotals.ingested - resolvedPackages,
           teamCount: folded.currentTeams.size,
           previousResolvedPackages: previousTotals.resolved,
+          previousIngestedPackages: previousTotals.ingested,
           change,
           changePct: previousTotals.resolved > 0 ? change / previousTotals.resolved : null,
+          ingestedChange,
+          ingestedChangePct: previousTotals.ingested > 0
+            ? ingestedChange / previousTotals.ingested
+            : null,
           resolvedRate: share(resolvedPackages, currentTotals.ingested),
           batchStatus,
           dataThrough: batch?.data_through ?? null,

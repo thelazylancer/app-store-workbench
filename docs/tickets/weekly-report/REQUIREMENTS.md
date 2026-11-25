@@ -14,7 +14,7 @@
 - 不接 agent/LLM；摘要和「值得关注」都由固定规则生成。
 - 不做不可变周报快照、不新增表、不新增 cron。
 - 不改现有 `/api/competitor/*`、`/api/public/shelf/*` 的响应。
-- 本期不解决未解析率，只把未解析数量作为脚注说明。
+- 本期不解决未解析率；未解析包计入「新增包数」与 4 周趋势柱，但不参与结构、占比和三项指标，脚注说明数量。
 
 ## 2. 导航与路由
 
@@ -36,7 +36,8 @@
 ### 3.2 入库与竞品
 
 - 「本周入库」按 `competitor_packages.first_ad_date` 落在本周计算，与「竞品日报」一致；不使用同步日 `target_date`。
-- 只统计 `lookup_status = 'hit'` 的**已解析包**；`bundle_not_found`、`offline`、`pending` 均不计入任何指标，只在脚注给总数。
+- 「新增包数」统计本周全部入库包，含未解析。
+- 结构、占比、团队卡与三项指标只统计 `lookup_status = 'hit'` 的**已解析包**；`bundle_not_found`、`offline`、`pending` 不进入这些计算，但计入新增包数与趋势。
 - 「竞品」按 `team` 理解；本周有已解析包的团队才出现在页面。
 - 不排除灵蜂，不排除任何团队。
 - 历史周按当前 `competitor_packages` 计算；包状态后续变化会影响历史周数字。首版接受这一点，不做快照回溯。
@@ -100,12 +101,14 @@
 固定模板，不接 LLM：
 
 ```text
-2026-11-16 至 11-22：已解析新增 52 个包，来自 6 个团队；环比 +2（+4.0%）。
+2026-11-16 至 11-22：新增 112 个包，来自 6 个团队；环比 -7（-5.9%）。
 ```
 
-- 上周为 0：`环比新增 52 个包`。
+- 「新增包」= 本周全部入库包，**包含未解析**；环比也按同口径（本周入库 − 上周入库）。
+- 上周入库为 0：`环比新增 112 个包`。
 - 数字四舍五入到整数；百分比 1 位小数。
-- 摘要不包含未解析数字；未解析只放脚注。
+- 「来自 N 个团队」仍指本周有已解析包的团队数。
+- 结构、占比、团队卡与三项指标仍只按已解析包计算；未解析只出现在新增包数与脚注。
 
 ### 4.3 团队卡片（主角）
 
@@ -157,9 +160,9 @@
 
 ### 4.6 近 4 周新增趋势
 
-- 4 根柱：每周「已解析新增包数」。
+- 4 根柱：每周「新增入库包数」，**包含未解析**。
 - 当前所选周为最后一根。
-- 某周已解析包为 0 时，画「数据不足」斜纹柱，不画 0 柱。
+- 某周入库包为 0 时，画「数据不足」斜纹柱，不画 0 柱；有未解析但无已解析的周照常画柱。
 - 柱上标数值；hover / 聚焦 / 点击显示同样数值，不跳转。
 
 ### 4.7 本周值得关注
@@ -224,7 +227,7 @@ type WeeklyTrendWeek = {
   weekEnd: string;
   resolvedPackages: number;
   ingestedPackages: number;
-  dataSufficient: boolean;
+  dataSufficient: boolean; // ingestedPackages > 0
 };
 
 type WeeklyMetricPoint = {
@@ -279,8 +282,11 @@ type WeeklyReportResponse = {
     unresolvedPackages: number;
     teamCount: number;
     previousResolvedPackages: number;
-    change: number;
+    previousIngestedPackages: number;
+    change: number; // 已解析口径，供已解析分析使用
     changePct: number | null;
+    ingestedChange: number; // 新增包口径，摘要句使用
+    ingestedChangePct: number | null;
     resolvedRate: number;
     batchStatus: "ok" | "partial" | "failed" | null;
     dataThrough: string | null;
@@ -320,13 +326,14 @@ type WeeklyReportResponse = {
 
 - `summary.resolvedPackages = 52`。
 - `summary.ingestedPackages = 112`，`summary.unresolvedPackages = 60`。
+- `summary.previousIngestedPackages = 119`，`ingestedChange = -7`，`ingestedChangePct ≈ -0.059`；摘要句为 `新增 112 个包 … 环比 -7（-5.9%）`。
 - `summary.teamCount = 6`。
 - 团队顺序：LivChat 14、巨风 13、大容 8、灵蜂 8、蓝麟 6、驰猿 3。
 - 版本数整体分布：1 个 = 10，2 个 = 36，3 个 = 6，4+ = 0。
 - IAP：有 7，无 45。
 - 品类 Top2：Utilities 14、Lifestyle 10。
 - `投放→下架` 本周：0，且 `offlineCount = 0`。
-- 4 周趋势：10-26 = 0（数据不足）、11-02 = 18、11-09 = 50、11-16 = 52。
+- 4 周趋势（新增入库，含未解析）：10-26 = 2、11-02 = 108、11-09 = 119、11-16 = 112；首周不再是「数据不足」。
 - 关注项：团队变化 = 巨风 18 → 13（-5，-27.8%）；品类变化 = Productivity 20.0% → 9.6%（-10.4pp）。
 - 脚注包含 112、60、数据截至日期和批次状态。
 

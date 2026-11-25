@@ -269,8 +269,11 @@ describeDb("weekly report against PostgreSQL", () => {
       unresolvedPackages: 3,
       teamCount: 2,
       previousResolvedPackages: 4,
+      previousIngestedPackages: 4,
       change: 3,
       changePct: 0.75,
+      ingestedChange: 6,
+      ingestedChangePct: 1.5,
       resolvedRate: 0.7,
     });
     expect(report.teams.map((team) => [

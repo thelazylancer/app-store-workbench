@@ -101,12 +101,13 @@ const HIGHLIGHTS: WeeklyHighlight[] = [
 function trendWeeks(weekStart: string): WeeklyTrendWeek[] {
   const starts = [-21, -14, -7, 0].map((offset) => addDays(weekStart, offset));
   const resolved = [0, 18, 50, 52];
+  const ingested = [0, 40, 100, 112];
   return starts.map((start, index) => ({
     weekStart: start,
     weekEnd: addDays(start, 6),
     resolvedPackages: resolved[index]!,
-    ingestedPackages: resolved[index]! + 20,
-    dataSufficient: resolved[index]! > 0,
+    ingestedPackages: ingested[index]!,
+    dataSufficient: ingested[index]! > 0,
   }));
 }
 
@@ -174,8 +175,11 @@ export function weeklyReport(overrides: Partial<WeeklyReportResponse> = {}): Wee
       unresolvedPackages: 60,
       teamCount: 3,
       previousResolvedPackages: 50,
+      previousIngestedPackages: 110,
       change: 2,
       changePct: 0.04,
+      ingestedChange: 2,
+      ingestedChangePct: 0.018,
       resolvedRate: 52 / 112,
       batchStatus: "ok",
       dataThrough: "2026-11-23",

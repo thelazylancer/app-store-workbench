@@ -49,7 +49,7 @@ export type WeeklyTrendWeek = {
   weekEnd: string;
   resolvedPackages: number;
   ingestedPackages: number;
-  /** resolvedPackages > 0; false weeks render as "data insufficient". */
+  /** ingestedPackages > 0; false weeks render as "data insufficient". */
   dataSufficient: boolean;
 };
 
@@ -116,9 +116,15 @@ export type WeeklyReportResponse = {
     unresolvedPackages: number;
     teamCount: number;
     previousResolvedPackages: number;
+    previousIngestedPackages: number;
+    /** Resolved change; used by resolved-only analyses, not the summary sentence. */
     change: number;
     /** null when last week had zero resolved packages. */
     changePct: number | null;
+    /** Ingested change; the summary sentence counts every new package. */
+    ingestedChange: number;
+    /** null when last week had zero ingested packages. */
+    ingestedChangePct: number | null;
     /** resolved / ingested, 0..1; 0 when the week has no packages. */
     resolvedRate: number;
     batchStatus: "ok" | "partial" | "failed" | null;

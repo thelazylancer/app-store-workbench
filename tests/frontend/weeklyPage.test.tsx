@@ -50,7 +50,8 @@ describe("weekly page", () => {
 
     expect(screen.getByRole("heading", { level: 1, name: "竞品周动态" })).toBeTruthy();
     expect(byRole("weekly-week-range")?.textContent).toBe("2026-11-16 ~ 2026-11-22");
-    expect(byRole("weekly-summary")?.textContent).toContain("环比 +2（+4.0%）");
+    expect(byRole("weekly-summary")?.textContent).toContain("新增 112 个包");
+    expect(byRole("weekly-summary")?.textContent).toContain("环比 +2（+1.8%）");
     expect(byRole("weekly-summary")?.textContent).toContain("来自 3 个团队");
     expect(byRole("weekly-footnote")?.textContent).toContain("112");
     expect(byRole("weekly-footnote")?.textContent).toContain("60");
@@ -109,15 +110,20 @@ describe("weekly page", () => {
   it("uses all three summary branches", async () => {
     const base = weeklyReport();
     vi.stubGlobal("fetch", vi.fn(async () => json(weeklyReport({
-      summary: { ...base.summary, previousResolvedPackages: 0, change: 52, changePct: null },
+      summary: {
+        ...base.summary,
+        previousIngestedPackages: 0,
+        ingestedChange: 112,
+        ingestedChangePct: null,
+      },
     }))));
     const first = renderPage();
     await screen.findByText(/环比新增/);
-    expect(byRole("weekly-summary")?.textContent).toContain("环比新增 52 个包");
+    expect(byRole("weekly-summary")?.textContent).toContain("环比新增 112 个包");
     first.unmount();
 
     vi.stubGlobal("fetch", vi.fn(async () => json(weeklyReport({
-      summary: { ...base.summary, change: 0, changePct: 0 },
+      summary: { ...base.summary, ingestedChange: 0, ingestedChangePct: 0 },
     }))));
     renderPage();
     await waitFor(() => expect(byRole("weekly-summary")?.textContent).toContain("环比 0（0.0%）"));
@@ -482,10 +488,10 @@ describe("weekly page", () => {
     expect(byRole("weekly-trend-gap-wrap")?.textContent).toContain("数据不足");
 
     const bars = [...document.querySelectorAll<HTMLElement>('[data-role="weekly-trend-bar"]')];
-    expect(bars.map((bar) => bar.dataset.value)).toEqual(["18", "50", "52"]);
+    expect(bars.map((bar) => bar.dataset.value)).toEqual(["40", "100", "112"]);
     expect(document.querySelector(".wx-weekly-current-week")?.textContent).toBe("本周");
 
     fireEvent.click(bars[2]!);
-    expect(document.querySelector(".wx-chart-tip")?.textContent).toContain("52 包");
+    expect(document.querySelector(".wx-chart-tip")?.textContent).toContain("112 包");
   });
 });
