@@ -164,8 +164,7 @@ describe("React shelf trend page", () => {
 
     expect(document.querySelector('[data-role="weekly-chart"] caption')?.textContent).toBe("每周入库包数");
     // Release-time chart reuses the same packages, bucketed by latest version release.
-    expect(document.querySelector(".wx-release-note")?.textContent)
-      .toBe("限已上架包，共 5 个，按最近一次版本上架的周统计");
+    expect(document.querySelector(".wx-release-note")?.textContent).toBe("限抓取到的上架包");
     const releaseSegments = document.querySelectorAll<HTMLElement>('[data-role="release-segment"]');
     expect([...releaseSegments].map((segment) => [segment.dataset.week, segment.dataset.count])).toEqual([
       [WEEKS[0]!.weekStart, "3"],

@@ -153,9 +153,7 @@ export function ShelfTrendPage() {
               <div className="wx-release-head">
                 <h3 className="wx-shelf-h2">按最新版本上架时间</h3>
                 <span className="wx-release-note">
-                  {releaseCount > 0
-                    ? `限已上架包，共 ${releaseCount} 个，按最近一次版本上架的周统计`
-                    : "所选范围内没有已上架的包"}
+                  {releaseCount > 0 ? "限抓取到的上架包" : "所选范围内没有已上架的包"}
                 </span>
               </div>
               {releaseCount > 0 ? (
