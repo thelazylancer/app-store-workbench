@@ -1,6 +1,7 @@
 import { teamLabel } from "../lib/teamLabel";
 import type { WeeklyBucket, WeeklyTeam } from "../../shared/weeklyReportTypes";
 import { ChartTip } from "../shelf/Charts";
+import type { ChartTipState } from "../shelf/Charts";
 import { formatChange, formatPercent } from "./format";
 import { useClickTip } from "./useClickTip";
 
@@ -9,6 +10,8 @@ const BLUE_CLASSES = [
   "wx-weekly-blue-2",
   "wx-weekly-blue-3",
 ];
+
+type ClickBind = ReturnType<typeof useClickTip>["bind"];
 
 type MiniBar = {
   key: string;
@@ -83,14 +86,18 @@ function MiniColumns({
   title,
   bars,
   sufficient,
+  tip,
+  bind,
 }: {
   chart: "version" | "iap";
   title: string;
   bars: MiniBar[];
   sufficient: boolean;
+  tip: ChartTipState;
+  bind: ClickBind;
 }) {
-  const { tip, bind } = useClickTip();
   const maxCount = Math.max(1, ...bars.map((bar) => bar.count));
+  const ownTip = tip?.id.startsWith(`${chart}:`) ? tip : null;
 
   return (
     <div className="wx-weekly-mini" data-role="weekly-card-chart" data-chart={chart}>
@@ -111,7 +118,7 @@ function MiniColumns({
               data-chart={chart}
               data-key={bar.key}
               data-count={bar.count}
-              {...bind(bar.key, text)}
+              {...bind(`${chart}:${bar.key}`, text)}
             >
               <span className="wx-weekly-mini-column-plot" aria-hidden="true">
                 <span
@@ -129,7 +136,7 @@ function MiniColumns({
           );
         })}
         <span className="wx-weekly-mini-tip">
-          <ChartTip tip={tip} id={tip?.id ?? ""} />
+          <ChartTip tip={ownTip} id={tip?.id ?? ""} />
         </span>
       </div>
     </div>
@@ -141,14 +148,18 @@ function MiniRows({
   title,
   bars,
   sufficient,
+  tip,
+  bind,
 }: {
   chart: "category" | "privacy";
   title: string;
   bars: MiniBar[];
   sufficient: boolean;
+  tip: ChartTipState;
+  bind: ClickBind;
 }) {
-  const { tip, bind } = useClickTip();
   const maxCount = Math.max(1, ...bars.map((bar) => bar.count));
+  const ownTip = tip?.id.startsWith(`${chart}:`) ? tip : null;
 
   return (
     <div className="wx-weekly-mini wx-weekly-mini-block" data-role="weekly-card-chart" data-chart={chart}>
@@ -169,7 +180,7 @@ function MiniRows({
                 data-chart={chart}
                 data-key={bar.key}
                 data-count={bar.count}
-                {...bind(bar.key, text)}
+                {...bind(`${chart}:${bar.key}`, text)}
               >
                 <span className="wx-weekly-mini-row-label">{bar.label}</span>
                 <span className="wx-weekly-mini-row-track" aria-hidden="true">
@@ -185,7 +196,7 @@ function MiniRows({
             );
           })}
           <span className="wx-weekly-mini-tip">
-            <ChartTip tip={tip} id={tip?.id ?? ""} />
+            <ChartTip tip={ownTip} id={tip?.id ?? ""} />
           </span>
         </div>
       )}
@@ -195,6 +206,7 @@ function MiniRows({
 
 function TeamCard({ team, total }: { team: WeeklyTeam; total: number }) {
   const sufficient = team.resolvedPackages >= 3;
+  const { tip, bind } = useClickTip();
 
   return (
     <article className="wx-weekly-card" data-role="weekly-team-card" data-team={team.team}>
@@ -228,11 +240,11 @@ function TeamCard({ team, total }: { team: WeeklyTeam; total: number }) {
       <div className="wx-weekly-card-divider" />
 
       <div className="wx-weekly-mini-grid">
-        <MiniColumns chart="version" title="版本数" bars={versionBars(team, sufficient)} sufficient={sufficient} />
-        <MiniColumns chart="iap" title="内购" bars={iapBars(team, sufficient)} sufficient={sufficient} />
+        <MiniColumns chart="version" title="版本数" bars={versionBars(team, sufficient)} sufficient={sufficient} tip={tip} bind={bind} />
+        <MiniColumns chart="iap" title="内购" bars={iapBars(team, sufficient)} sufficient={sufficient} tip={tip} bind={bind} />
       </div>
-      <MiniRows chart="category" title="品类 Top3" bars={topBars(team.topCategories, sufficient, 3)} sufficient={sufficient} />
-      <MiniRows chart="privacy" title="隐私 Top3" bars={topBars(team.topPrivacies, sufficient, 3)} sufficient={sufficient} />
+      <MiniRows chart="category" title="品类 Top3" bars={topBars(team.topCategories, sufficient, 3)} sufficient={sufficient} tip={tip} bind={bind} />
+      <MiniRows chart="privacy" title="隐私 Top3" bars={topBars(team.topPrivacies, sufficient, 3)} sufficient={sufficient} tip={tip} bind={bind} />
 
       {!sufficient ? <p className="wx-weekly-sample-note">样本不足（&lt;3 包），占比不计算。</p> : null}
 

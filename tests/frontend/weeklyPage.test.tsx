@@ -333,6 +333,13 @@ describe("weekly page", () => {
     expect(alpha.querySelector(".wx-chart-tip")?.textContent)
       .toBe("3+ 个版本：5 包 · 16.7%");
 
+    fireEvent.click(alpha.querySelector<HTMLElement>(
+      '[data-role="weekly-card-bar"][data-chart="privacy"][data-key="own"]',
+    )!);
+    expect(alpha.querySelectorAll(".wx-chart-tip")).toHaveLength(1);
+    expect(alpha.querySelector(".wx-chart-tip")?.textContent)
+      .toBe("自有域名：20 包 · 66.7%");
+
     const gamma = document.querySelector<HTMLElement>(
       '[data-role="weekly-team-card"][data-team="Gamma"]',
     )!;
