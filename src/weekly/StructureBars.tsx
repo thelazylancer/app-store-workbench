@@ -110,6 +110,23 @@ function topBars(buckets: WeeklyBucket[], total: number, limit: number): Bar[] {
     }));
 }
 
+/** Known vendors (Top N) plus the 未归因 remainder, so analysis coverage stays visible. */
+function attributionBars(buckets: WeeklyBucket[], total: number, limit: number): Bar[] {
+  const bars = topBars(buckets, total, limit);
+  const unknown = buckets.find((bucket) => bucket.key === SHELF_UNKNOWN_KEY);
+  if (unknown && unknown.count > 0) {
+    bars.push({
+      key: unknown.key,
+      label: unknown.label,
+      tipLabel: unknown.label,
+      count: unknown.count,
+      share: shareOf(unknown.count, total),
+      className: "wx-weekly-unknown",
+    });
+  }
+  return bars;
+}
+
 /** Fixed-order iOS buckets with data; no zero buckets. */
 function iosBars(buckets: WeeklyBucket[], total: number): Bar[] {
   return buckets
@@ -284,7 +301,7 @@ export function StructureBars({ versionCounts, distributions, total }: Structure
         <VerticalPanel id="iap" title="内购" bars={iapBars(distributions.iap, total)} total={total} />
         <HorizontalPanel id="category" title="品类 Top5" bars={topBars(distributions.category, total, 5)} total={total} />
         <HorizontalPanel id="privacy" title="隐私域名 Top5" bars={topBars(distributions.privacy, total, 5)} total={total} />
-        <HorizontalPanel id="attribution" title="归因 Top5" bars={topBars(distributions.attribution, total, 5)} total={total} wide />
+        <HorizontalPanel id="attribution" title="归因 Top5" bars={attributionBars(distributions.attribution, total, 5)} total={total} wide />
         <HorizontalPanel id="ios" title="iOS" bars={iosBars(distributions.ios, total)} total={total} wide />
       </div>
     </section>

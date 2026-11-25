@@ -281,7 +281,8 @@ describe("weekly page", () => {
     expect(attribution.textContent).toContain("AppsFlyer");
     expect(attribution.textContent).toContain("8 · 15.4%");
     expect(attribution.textContent).toContain("Adjust");
-    expect(attribution.textContent).not.toContain("未归因");
+    expect(attribution.textContent).toContain("未归因");
+    expect(attribution.textContent).toContain("38 · 73.1%");
 
     const ios = chart("ios");
     expect(ios.textContent).toContain("26+");
