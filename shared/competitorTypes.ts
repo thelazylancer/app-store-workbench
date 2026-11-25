@@ -74,6 +74,8 @@ export type PackageDetail = {
   enrichStatus: EnrichStatus;
   assetStatus: AssetStatus;
   appleId: number | null;
+  /** Analysis-derived attribution vendor; null when not analyzed. Latest package only, not per-snapshot. */
+  attribution: string | null;
   appStoreJson: Record<string, unknown>;
   iconLocalPath: string | null;
   screenshotLocalPaths: string[];

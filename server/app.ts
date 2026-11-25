@@ -9,7 +9,7 @@ import { registerIpaDownloadRoutes } from "./routes/ipaDownload";
 import { registerSearchRoutes } from "./routes/search";
 import { registerShelfRoutes } from "./routes/shelf";
 import { registerMcpRoute } from "./lib/mcp";
-import type { CompetitorQueryRepo } from "./lib/competitorRepo";
+import type { CompetitorQueryRepo, CompetitorWriteRepo } from "./lib/competitorRepo";
 import type { ShelfQueryRepo } from "./lib/shelfQueries";
 import type { WeeklyReportRepo } from "./lib/weeklyReport";
 import type { IpaDownloadManager } from "./lib/ipaDownload";
@@ -24,6 +24,8 @@ export type AppDependencies = {
   buildIapHints: (items: ProductPageDetails["iapItems"] | null) => Promise<IapHints>;
   ipaDownload?: IpaDownloadManager;
   competitorRepo?: CompetitorQueryRepo;
+  /** Analysis-derived writes exposed over HTTP/MCP; absent in read-only deployments. */
+  competitorWriter?: Pick<CompetitorWriteRepo, "updateAttribution">;
   shelfQueries?: ShelfQueryRepo;
   weeklyReport?: WeeklyReportRepo;
   competitorAssetsDir?: string;

@@ -12,6 +12,8 @@ export type CountryHitRow = {
 
 export type OfflineDateUpdate = { packageCode: string; offlineDate: string };
 
+export type AttributionUpdate = { packageCode: string; attribution: string | null };
+
 export type CompetitorWriteRepo = {
   upsertBatch(batch: BatchRow): Promise<void>;
   /** Writes the latest package row and its per-day snapshot in one transaction. */
@@ -21,6 +23,8 @@ export type CompetitorWriteRepo = {
   upsertVersions(packageCode: string, versions: VersionRow[]): Promise<void>;
   /** Overwrites offline_date for existing packages; returns the matched codes. */
   updateOfflineDates(entries: OfflineDateUpdate[]): Promise<string[]>;
+  /** Overwrites attribution (null clears) for existing packages; returns the matched codes. */
+  updateAttribution(entries: AttributionUpdate[]): Promise<string[]>;
 };
 
 export function createCompetitorWrites(pool: Pool): CompetitorWriteRepo {
@@ -202,6 +206,21 @@ export function createCompetitorWrites(pool: Pool): CompetitorWriteRepo {
         `UPDATE competitor_packages AS cp
             SET offline_date = u.offline_date
            FROM UNNEST($1::text[], $2::date[]) AS u(package_code, offline_date)
+          WHERE cp.package_code = u.package_code
+          RETURNING cp.package_code`,
+        [[...byCode.keys()], [...byCode.values()]],
+      );
+      return rows.map((row) => row.package_code);
+    },
+
+    async updateAttribution(entries) {
+      if (entries.length === 0) return [];
+      // Last write per code wins, matching updateOfflineDates.
+      const byCode = new Map(entries.map((entry) => [entry.packageCode, entry.attribution]));
+      const { rows } = await pool.query<{ package_code: string }>(
+        `UPDATE competitor_packages AS cp
+            SET attribution = u.attribution
+           FROM UNNEST($1::text[], $2::text[]) AS u(package_code, attribution)
           WHERE cp.package_code = u.package_code
           RETURNING cp.package_code`,
         [[...byCode.keys()], [...byCode.values()]],

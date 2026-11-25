@@ -73,6 +73,7 @@ function packageDetail(overrides: Partial<PackageDetail> = {}): PackageDetail {
     lookupStatus: "hit",
     enrichStatus: "ok",
     assetStatus: "ok",
+    attribution: null,
     appleId: 123456,
     appStoreJson: storeJson(),
     iconLocalPath: "com.example.funce/icon.png",

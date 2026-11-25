@@ -40,6 +40,7 @@ function packageDetail(packageCode = "com.example.app"): PackageDetail {
     lookupStatus: "hit",
     enrichStatus: "ok",
     assetStatus: "ok",
+    attribution: null,
     appleId: 123,
     appStoreJson: { appleId: 123, name: "Real App" },
     iconLocalPath: "2026-11-18/com.example.app/icon.png",

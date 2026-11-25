@@ -159,6 +159,7 @@ function packageDetail(index: number, iapCount = 0): PackageDetail {
     lookupStatus: "hit",
     enrichStatus: "ok",
     assetStatus: "ok",
+    attribution: null,
     appleId: 900_000 + index,
     appStoreJson: storeJson(index, iapCount),
     iconLocalPath: `2026-11-23/com.example.qa${index}/icon.png`,
@@ -318,7 +319,7 @@ describe("MCP hardening QA", () => {
       versionsTruncated: boolean;
     };
     expect(Object.keys(compactPackage).sort()).toEqual([
-      "appleId", "appVersion", "assetStatus", "category", "displayName", "enrichStatus",
+      "appleId", "appVersion", "assetStatus", "attribution", "category", "displayName", "enrichStatus",
       "firstAdDate", "hasIcon", "latestVersions", "listingDate", "lookupStatus", "minimumOsVersion",
       "offlineDate", "packageCode", "screenshotCount", "store", "targetDate", "team", "versionCount",
       "versionsTruncated",

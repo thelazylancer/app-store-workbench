@@ -420,4 +420,33 @@ describeDb("competitor repository writes", () => {
     expect(returned).toEqual([code]);
     expect((await repo.getPackage(code))?.offlineDate).toBe("2026-11-20");
   });
+
+  it("updates attribution without the daily sync overwriting it", async () => {
+    const repo = createCompetitorRepo(pool!);
+    const code = `test.competitor.${suffix}.attribution`;
+    const missing = `test.competitor.${suffix}.attribution-missing`;
+    await repo.upsertPackage({ ...pkg, packageCode: code });
+    expect((await repo.getPackage(code))?.attribution).toBeNull();
+
+    const returned = await repo.updateAttribution([
+      { packageCode: code, attribution: "adjust" },
+      { packageCode: missing, attribution: "appsflyer" },
+    ]);
+    expect(returned).toEqual([code]);
+    expect((await repo.getPackage(code))?.attribution).toBe("adjust");
+
+    await repo.upsertPackage({ ...pkg, packageCode: code, appVersion: "2.0.0" });
+    expect((await repo.getPackage(code))).toMatchObject({ appVersion: "2.0.0", attribution: "adjust" });
+
+    await repo.updateAttribution([{ packageCode: code, attribution: null }]);
+    expect((await repo.getPackage(code))?.attribution).toBeNull();
+  });
+
+  it("returns an empty attribution result without querying when no entries are given", async () => {
+    const repo = createCompetitorRepo(pool!);
+    const query = vi.spyOn(pool!, "query");
+
+    await expect(repo.updateAttribution([])).resolves.toEqual([]);
+    expect(query).not.toHaveBeenCalled();
+  });
 });

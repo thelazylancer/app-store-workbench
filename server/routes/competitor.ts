@@ -6,7 +6,9 @@ import type { AppDependencies } from "../app";
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const PACKAGE_CODE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,254}$/;
+const ATTRIBUTION_PATTERN = /^[\x20-\x7E]{1,64}$/;
 const MAX_SUMMARY_RANGE_DAYS = 31;
+const MAX_ATTRIBUTION_UPDATES = 500;
 
 function inclusiveDays(from: string, to: string): number {
   return (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000 + 1;
@@ -182,6 +184,54 @@ export function registerCompetitorRoutes(app: FastifyInstance, deps: AppDependen
       return reply.send({ packageCode, hits: await repo.getCountryHits(packageCode) });
     } catch {
       return reply.code(500).send({ message: "Competitor query failed" });
+    }
+  });
+
+  app.post("/api/competitor/attribution", async (request, reply) => {
+    const writer = deps.competitorWriter;
+    if (!writer) return reply.code(503).send({ message: "Competitor data is unavailable" });
+
+    const body = request.body;
+    const rawUpdates = typeof body === "object" && body !== null && !Array.isArray(body)
+      ? (body as { updates?: unknown }).updates
+      : undefined;
+    if (!Array.isArray(rawUpdates) || rawUpdates.length === 0 || rawUpdates.length > MAX_ATTRIBUTION_UPDATES) {
+      return reply.code(400).send({
+        message: `updates must be an array of 1..${MAX_ATTRIBUTION_UPDATES} entries`,
+      });
+    }
+
+    // Last write per code wins, matching the repo's update semantics.
+    const updates = new Map<string, string | null>();
+    for (const entry of rawUpdates) {
+      if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
+        return reply.code(400).send({ message: "Every update needs packageCode and attribution" });
+      }
+      const { packageCode, attribution } = entry as { packageCode?: unknown; attribution?: unknown };
+      if (typeof packageCode !== "string" || !PACKAGE_CODE_PATTERN.test(packageCode)) {
+        return reply.code(400).send({ message: "A valid package code is required" });
+      }
+      if (attribution !== null && typeof attribution !== "string") {
+        return reply.code(400).send({ message: "attribution must be a string or null" });
+      }
+      const normalized = typeof attribution === "string" ? attribution.trim().toLowerCase() : null;
+      if (normalized !== null && !ATTRIBUTION_PATTERN.test(normalized)) {
+        return reply.code(400).send({ message: "attribution must be 1..64 printable characters" });
+      }
+      updates.set(packageCode, normalized);
+    }
+
+    try {
+      const matched = await writer.updateAttribution(
+        [...updates].map(([packageCode, attribution]) => ({ packageCode, attribution })),
+      );
+      const matchedSet = new Set(matched);
+      return reply.send({
+        updated: matched,
+        missing: [...updates.keys()].filter((packageCode) => !matchedSet.has(packageCode)),
+      });
+    } catch {
+      return reply.code(500).send({ message: "Competitor update failed" });
     }
   });
 

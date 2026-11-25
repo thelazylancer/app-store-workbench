@@ -93,6 +93,7 @@ async function main() {
     buildIapHints,
     ipaDownload,
     ...(competitorRepo ? { competitorRepo } : {}),
+    ...(competitorRepo ? { competitorWriter: competitorRepo } : {}),
     ...(shelfQueries ? { shelfQueries } : {}),
     ...(weeklyReport ? { weeklyReport } : {}),
     competitorAssetsDir: process.env.COMPETITOR_DATA_DIR ?? path.resolve("data/competitor"),

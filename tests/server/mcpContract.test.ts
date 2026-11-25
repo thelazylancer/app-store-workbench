@@ -95,6 +95,7 @@ const PACKAGE: PackageDetail = {
   lookupStatus: "hit",
   enrichStatus: "ok",
   assetStatus: "ok",
+  attribution: null,
   appleId: 123456,
   appStoreJson: APP_STORE_JSON,
   iconLocalPath: "com.example.funce/icon.png",
@@ -162,6 +163,7 @@ describe("MCP over streamable HTTP", () => {
       "shelf_trend", "shelf_packages",
       "competitor_days", "competitor_day", "competitor_batch", "competitor_summary",
       "competitor_package", "competitor_package_history", "competitor_country_hits",
+      "competitor_set_attribution",
       "search_apps", "app_details",
       "ipa_download_start", "ipa_download_status", "ipa_download_submit_code", "ipa_download_cancel",
     ]));
@@ -199,6 +201,25 @@ describe("MCP over streamable HTTP", () => {
     expect(shelfQueries.getShelfTrend).toHaveBeenCalledWith({
       from: "2026-11-01", to: "2026-11-20", team: "Alpha", groupBy: "iap",
     });
+  });
+
+  it("forwards attribution updates through the shared route", async () => {
+    const updateAttribution = vi.fn(async (entries: Array<{ packageCode: string }>) =>
+      entries.map((entry) => entry.packageCode));
+    const app = await createTestApp({
+      ...baseDeps,
+      competitorRepo: emptyRepo(),
+      competitorWriter: { updateAttribution },
+    });
+
+    const result = await callTool(app, "competitor_set_attribution", {
+      updates: [{ packageCode: "com.example.funce", attribution: " AppsFlyer " }],
+    });
+    expect(result.isError).toBe(false);
+    expect(updateAttribution).toHaveBeenCalledWith([
+      { packageCode: "com.example.funce", attribution: "appsflyer" },
+    ]);
+    expect(result.data).toEqual({ updated: ["com.example.funce"], missing: [] });
   });
 
   it("reports route validation failures as tool errors", async () => {

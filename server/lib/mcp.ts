@@ -209,6 +209,18 @@ function registerTools(mcp: McpServer, app: FastifyInstance): void {
     app, "GET", `/api/app-details/${appleId}${query({ country: country ?? "us" })}`,
   )));
 
+  mcp.registerTool("competitor_set_attribution", {
+    title: "更新竞品归因",
+    description: "按 Bundle ID 写入归因分类（如 adjust、appsflyer、branch、kochava），传 null 清除；值会转小写。批量最多 500 条，返回 updated 与 missing。用于下载 IPA 分析后回填。",
+    inputSchema: {
+      updates: z.array(z.object({
+        packageCode: z.string().describe("Bundle ID，也是系统内的 package_code"),
+        attribution: z.string().nullable().describe("归因分类；null 表示清除"),
+      })).min(1).max(500).describe("批量更新，最多 500 条"),
+    },
+    annotations: { destructiveHint: false, idempotentHint: true },
+  }, async ({ updates }) => run(() => request(app, "POST", "/api/competitor/attribution", { updates })));
+
   mcp.registerTool("ipa_download_start", {
     title: "开始下载 IPA",
     description: "在服务器上用 ipatool 下载指定 Bundle ID 的 IPA。返回 job id，随后用 ipa_download_status 查询进度；若需 Apple 验证码，用 ipa_download_submit_code 提交。",

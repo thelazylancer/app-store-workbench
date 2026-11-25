@@ -74,6 +74,7 @@ function packageDetail(overrides: Partial<PackageDetail> & { packageCode: string
     lookupStatus: "hit",
     enrichStatus: "ok",
     assetStatus: "ok",
+    attribution: null,
     appleId: 111,
     appStoreJson: {
       appleId: 111,

@@ -47,6 +47,7 @@ export type CompactPackage = {
   lookupStatus: PackageDetail["lookupStatus"];
   enrichStatus: PackageDetail["enrichStatus"];
   assetStatus: PackageDetail["assetStatus"];
+  attribution: string | null;
   appleId: number | null;
   hasIcon: boolean;
   screenshotCount: number;
@@ -120,6 +121,7 @@ function compactPackage(pkg: PackageDetail, opts: { withVersions: boolean }): Co
     lookupStatus: pkg.lookupStatus,
     enrichStatus: pkg.enrichStatus,
     assetStatus: pkg.assetStatus,
+    attribution: pkg.attribution,
     appleId: pkg.appleId,
     hasIcon: pkg.iconLocalPath !== null,
     screenshotCount: pkg.screenshotLocalPaths.length,
