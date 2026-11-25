@@ -10,7 +10,6 @@
 .wx-weekly-week-range { margin: 8px 0 0; font-family: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", sans-serif; font-size: 28px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
 .wx-weekly-head-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
 .wx-weekly-week-nav { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
-.wx-weekly-latest { color: var(--color-text-secondary); font-size: 12px; }
 .wx-weekly-data-through { margin: 0; color: var(--color-text-secondary); font-family: var(--font-family-code); font-size: 12px; font-variant-numeric: tabular-nums; }
 .wx-weekly-batch-note { margin: 0; padding: 10px 0 10px 12px; border-left: 1px solid var(--color-border); font-size: 12px; line-height: 1.5; }
 .wx-weekly-batch-warning { border-left-color: var(--color-border-warning); color: var(--color-text-warning); }

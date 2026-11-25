@@ -28,7 +28,7 @@ describe("weekly page", () => {
 
     const next = byRole<HTMLButtonElement>("weekly-next");
     expect(next?.getAttribute("aria-disabled")).toBe("true");
-    expect(screen.getByText("已是最新完整周")).toBeTruthy();
+    expect(screen.queryByText(/最新完整周/)).toBeNull();
 
     const groups = [...document.querySelectorAll<HTMLElement>('[data-role="weekly-group"]')];
     expect(groups.map((group) => group.dataset.group)).toEqual(["overview", "teams", "trends"]);
@@ -102,7 +102,7 @@ describe("weekly page", () => {
       expect(byRole("weekly-week-range")?.textContent).toBe("2026-11-23 ~ 2026-11-29");
     });
     await waitFor(() => expect(isNextDisabled()).toBe(true));
-    expect(screen.getByText("已是最新完整周")).toBeTruthy();
+    expect(screen.queryByText(/最新完整周/)).toBeNull();
     expect(window.location.search).toBe("?week=2026-11-23");
 
     fireEvent.click(previous());
@@ -172,8 +172,7 @@ describe("weekly page", () => {
     await screen.findByRole("heading", { level: 2, name: "该周没有已解析入库包" });
     expect(teamCards()).toHaveLength(0);
     expect(byRole<HTMLButtonElement>("weekly-next")?.getAttribute("aria-disabled")).toBe("true");
-    expect(screen.getByText("已超过最新完整周")).toBeTruthy();
-    expect(screen.queryByText("已是最新完整周")).toBeNull();
+    expect(screen.queryByText(/最新完整周/)).toBeNull();
     expect(byRole<HTMLButtonElement>("weekly-previous")?.getAttribute("aria-disabled")).not.toBe("true");
   });
 

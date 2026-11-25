@@ -57,11 +57,6 @@ export function WeekHeader({
           >
             下一周 →
           </Button>
-          {atLatest || isFuture ? (
-            <span className="wx-weekly-latest">
-              {isFuture ? "已超过最新完整周" : "已是最新完整周"}
-            </span>
-          ) : null}
         </div>
         <p className="wx-weekly-data-through" data-role="weekly-data-through">
           数据截至 <span className="wx-weekly-mono">{dataThrough ?? "—"}</span>
