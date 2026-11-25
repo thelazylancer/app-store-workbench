@@ -110,7 +110,7 @@ function topBars(buckets: WeeklyBucket[], total: number, limit: number): Bar[] {
     }));
 }
 
-/** Known vendors (Top N) plus the 未归因 remainder, so analysis coverage stays visible. */
+/** Known vendors (Top N) plus the 未知 remainder, so analysis coverage stays visible. */
 function attributionBars(buckets: WeeklyBucket[], total: number, limit: number): Bar[] {
   const bars = topBars(buckets, total, limit);
   const unknown = buckets.find((bucket) => bucket.key === SHELF_UNKNOWN_KEY);

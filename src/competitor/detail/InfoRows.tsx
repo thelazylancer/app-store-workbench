@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { PackageDetail } from "../../../shared/competitorTypes";
+import { attributionKey, attributionLabel } from "../../../shared/attribution";
 import { teamLabel } from "../../lib/teamLabel";
 import { CopyValue } from "./CopyValue";
 import { assetStatusLabel, dateOnly, formatSize, jsonString } from "./format";
@@ -46,9 +47,7 @@ export function PackageInfoSection({ packageDetail }: { packageDetail: PackageDe
       </a>
     )]);
   }
-  if (packageDetail.attribution) {
-    rows.push(["归因", packageDetail.attribution]);
-  }
+  rows.push(["归因", attributionLabel(attributionKey(packageDetail.attribution))]);
   rows.push(["图片状态", assetStatusLabel(packageDetail.assetStatus)]);
 
   return (

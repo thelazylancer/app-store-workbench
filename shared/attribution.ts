@@ -7,6 +7,7 @@
 import { SHELF_UNKNOWN_KEY } from "./shelfTypes";
 
 const ATTRIBUTION_LABELS: Record<string, string> = {
+  none: "无归因",
   adjust: "Adjust",
   appsflyer: "AppsFlyer",
   branch: "Branch",
@@ -22,8 +23,8 @@ export function attributionKey(value: string | null | undefined): string {
   return key || SHELF_UNKNOWN_KEY;
 }
 
-/** Known vendors get their brand spelling; anything else shows as stored. */
+/** Known vendors get their brand spelling; unanalyzed packages are 未知, anything else shows as stored. */
 export function attributionLabel(key: string): string {
-  if (key === SHELF_UNKNOWN_KEY) return "未归因";
+  if (key === SHELF_UNKNOWN_KEY) return "未知";
   return ATTRIBUTION_LABELS[key] ?? key;
 }

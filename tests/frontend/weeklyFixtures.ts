@@ -350,7 +350,7 @@ export function weeklyReport(overrides: Partial<WeeklyReportResponse> = {}): Wee
       attribution: [
         bucket("appsflyer", "AppsFlyer", 8, 8 / 52),
         bucket("adjust", "Adjust", 6, 6 / 52),
-        bucket("unknown", "未归因", 38, 38 / 52),
+        bucket("unknown", "未知", 38, 38 / 52),
       ],
     },
     trends: trendsFor(WEEK_START),

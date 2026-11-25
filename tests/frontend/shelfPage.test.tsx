@@ -94,7 +94,7 @@ describe("React shelf trend page", () => {
     expect(dims[4]!.legend).toEqual([
       { label: "Adjust", count: "1" },
       { label: "AppsFlyer", count: "1" },
-      { label: "未归因", count: "3" },
+      { label: "未知", count: "3" },
     ]);
     expect(dims[4]!.bars).toEqual([
       { week: WEEKS[0]!.weekStart, key: "appsflyer", count: "1" },

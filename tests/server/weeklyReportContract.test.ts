@@ -99,7 +99,7 @@ const reportResponse: WeeklyReportResponse = {
     privacy: [bucket("own", "自有域名", 30, 30 / 52), bucket("unknown", "未知", 2, 2 / 52)],
     attribution: [
       bucket("appsflyer", "AppsFlyer", 8, 8 / 52),
-      bucket("unknown", "未归因", 44, 44 / 52),
+      bucket("unknown", "未知", 44, 44 / 52),
     ],
   },
   trends: {

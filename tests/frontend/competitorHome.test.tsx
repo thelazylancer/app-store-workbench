@@ -92,6 +92,7 @@ const gamma = pkg({
   team: "团队 B",
   category: "工具",
   appleId: 222,
+  attribution: "none",
   appStoreJson: {},
   versions: [{ version: "1.0.0", releasedAt: "2026-11-05", notes: null, capturedAt: `${DATE}T02:00:00.000Z` }],
 });
@@ -235,7 +236,7 @@ describe("React competitor home", () => {
     expect(gammaRow.textContent).toContain("Gamma Source");
     expect(gammaRow.textContent).toContain("1个版本");
     expect(gammaRow.querySelector(".wx-iap-pill")).toBeNull();
-    expect(gammaRow.querySelector(".wx-attribution-tag")).toBeNull();
+    expect(gammaRow.querySelector(".wx-attribution-tag")?.textContent).toBe("无归因");
 
     const missedRow = document.querySelector<HTMLAnchorElement>('[data-role="exception-row"][data-reason="miss"]')!;
     expect(missedRow.textContent).toContain("Beta Source");
@@ -419,6 +420,7 @@ describe("React competitor home", () => {
     expect(row.textContent).toContain("v2.0.0");
     expect(row.textContent).toContain("内购");
     expect(row.textContent).toContain("0个版本");
+    expect(row.textContent).toContain("未知");
     // The list-mode details are kept in the left column.
     expect(row.textContent).toContain("333");
     expect(row.textContent).toContain("com.shot.ios");

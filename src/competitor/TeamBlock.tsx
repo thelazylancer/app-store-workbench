@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { Badge } from "@astryxdesign/core";
 import type { PackageBrief, PackageDetail, SummaryCompetitor, SummaryGroup } from "../../shared/competitorTypes";
-import { attributionLabel } from "../../shared/attribution";
+import { attributionKey, attributionLabel } from "../../shared/attribution";
 import { competitorAssetUrl } from "../lib/competitorApi";
 import { teamLabel } from "../lib/teamLabel";
 import type { StatusFilter, ViewMode } from "./format";
@@ -125,9 +125,9 @@ function HitRow({
           <span className="wx-row-meta-cell" key={index}>{value}</span>
         ))}
         <span className="wx-row-meta-cell">
-          {facts?.attribution ? (
-            <span className="wx-attribution-tag">{attributionLabel(facts.attribution)}</span>
-          ) : null}
+          <span className="wx-attribution-tag">
+            {attributionLabel(attributionKey(facts?.attribution))}
+          </span>
         </span>
         {shotCount > 0 ? (
           <span className="wx-row-meta-cell">{shotCount} 张截图</span>
@@ -190,7 +190,7 @@ function ShotRow({
   const meta = [
     facts?.category,
     version ? `v${version}` : null,
-    facts?.attribution ? attributionLabel(facts.attribution) : null,
+    attributionLabel(attributionKey(facts?.attribution)),
     firstPackage?.hasIap ? "内购" : null,
     firstPackage ? `${firstPackage.versionCount}个版本` : null,
   ].filter(Boolean).join(" · ");
