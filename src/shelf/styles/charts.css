@@ -16,8 +16,8 @@
 .wx-chart-canvas {
   width: max-content;
   min-width: 100%;
-  /* Shared by the slot widths and the line overlay, so both scale together. */
-  --wx-chart-slot-w: 120px;
+  /* One week grid for every chart on the page, so labels line up top to bottom. */
+  --wx-chart-slot-w: 92px;
 }
 
 .wx-chart-plot {
@@ -363,13 +363,9 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Shorter and narrower than the main chart; all three rows share the scroll region. */
+/* Shorter than the main chart; all three rows share the scroll region. */
 .wx-chart-plot.wx-dist-plot {
   height: 150px;
-}
-
-.wx-dist-canvas {
-  --wx-chart-slot-w: 92px;
 }
 
 .wx-dist-canvas .wx-chart-bar-wrap {
@@ -417,10 +413,6 @@
 
   .wx-chart-plot.wx-dist-plot {
     height: 132px;
-  }
-
-  .wx-dist-canvas {
-    --wx-chart-slot-w: 76px;
   }
 
   .wx-dist-canvas .wx-chart-bar-wrap {
