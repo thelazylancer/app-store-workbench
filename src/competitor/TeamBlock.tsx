@@ -54,14 +54,13 @@ function RowIcon({
   );
 }
 
-/** Four fixed meta columns: category · iOS · version · attribution (empty ones keep the column). */
+/** Three fixed text columns: category · iOS · version (empty ones keep the column). */
 function metaFields(facts: PackageDetail | undefined, brief: PackageBrief): string[] {
   const version = facts?.appVersion ?? brief.appVersion;
   return [
     facts?.category ?? "",
     facts?.minimumOsVersion ? `iOS ${facts.minimumOsVersion}` : "",
     version ? `v${version}` : "",
-    facts?.attribution ? attributionLabel(facts.attribution) : "",
   ];
 }
 
@@ -125,6 +124,11 @@ function HitRow({
         {meta.map((value, index) => (
           <span className="wx-row-meta-cell" key={index}>{value}</span>
         ))}
+        <span className="wx-row-meta-cell">
+          {facts?.attribution ? (
+            <span className="wx-attribution-tag">{attributionLabel(facts.attribution)}</span>
+          ) : null}
+        </span>
         {shotCount > 0 ? (
           <span className="wx-row-meta-cell">{shotCount} 张截图</span>
         ) : null}

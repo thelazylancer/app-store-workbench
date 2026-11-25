@@ -110,6 +110,21 @@
   white-space: nowrap;
 }
 
+/* Attribution is a tag, so it does not read as another bare fact next to iOS/version. */
+.wx-attribution-tag {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 0 5px;
+  border: 1px solid var(--color-border);
+  border-radius: 2px;
+  font-size: 12px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  vertical-align: baseline;
+  white-space: nowrap;
+}
+
 .wx-row-code,
 .wx-row-meta {
   color: var(--color-text-secondary);

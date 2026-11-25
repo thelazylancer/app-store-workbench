@@ -70,6 +70,7 @@ const alpha = pkg({
   packageCode: "com.alpha.ios",
   displayName: "Alpha Source",
   appleId: 111,
+  attribution: "appsflyer",
   appStoreJson: {
     name: "Alpha Official",
     trackName: "Alpha App",
@@ -225,6 +226,7 @@ describe("React competitor home", () => {
     expect(alphaRow.textContent).toContain("2个版本");
     expect(alphaRow.textContent).toContain("游戏");
     expect(alphaRow.textContent).toContain("v1.2.0");
+    expect(alphaRow.querySelector(".wx-attribution-tag")?.textContent).toBe("AppsFlyer");
     const side = alphaRow.querySelector(".wx-row-side")!;
     expect(side.children[0]?.classList.contains("wx-iap-pill")).toBe(true);
     expect(side.children[1]?.classList.contains("wx-row-versions")).toBe(true);
@@ -233,6 +235,7 @@ describe("React competitor home", () => {
     expect(gammaRow.textContent).toContain("Gamma Source");
     expect(gammaRow.textContent).toContain("1个版本");
     expect(gammaRow.querySelector(".wx-iap-pill")).toBeNull();
+    expect(gammaRow.querySelector(".wx-attribution-tag")).toBeNull();
 
     const missedRow = document.querySelector<HTMLAnchorElement>('[data-role="exception-row"][data-reason="miss"]')!;
     expect(missedRow.textContent).toContain("Beta Source");
