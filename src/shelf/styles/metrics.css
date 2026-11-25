@@ -13,26 +13,18 @@
   padding-top: 20px;
 }
 
-/* Sticky so the scale stays visible while the weeks scroll sideways. */
-.wx-metric-axis {
-  position: sticky;
-  left: 0;
-  z-index: 3;
-  flex: 0 0 44px;
-  height: 100%;
-  background: var(--color-background-body);
-  color: var(--color-text-secondary);
-  font-family: var(--font-family-code);
-  font-size: 10px;
-  font-variant-numeric: tabular-nums;
+/* Scale lives in the head so the week columns line up with every other chart. */
+.wx-metric-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
 }
 
-.wx-metric-tick {
-  position: absolute;
-  right: 6px;
-  line-height: 1;
-  white-space: nowrap;
-  transform: translateY(50%);
+.wx-metric-range {
+  color: var(--color-text-secondary);
+  font-family: var(--font-family-code);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
 }
 
 .wx-metric-area {
@@ -98,11 +90,6 @@
   .wx-metric-track {
     width: 64px;
   }
-}
-
-/* Week labels line up with the plot area, past the sticky y-axis. */
-.wx-metric-row .wx-chart-labels {
-  padding-left: 44px;
 }
 
 .wx-metric-value {

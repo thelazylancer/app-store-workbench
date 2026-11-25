@@ -96,22 +96,14 @@ function MetricRow({ metric, weeks, series, allTeams, byWeek, tip, bind, onSelec
   return (
     <div className="wx-metric-row" data-role="metric-row" data-metric={metric.key}>
       <div className="wx-dist-head">
-        <h3 className="wx-dist-title">{metric.title}</h3>
+        <div className="wx-metric-head">
+          <h3 className="wx-dist-title">{metric.title}</h3>
+          <span className="wx-metric-range" data-role="metric-range">
+            {formatMetric(min)}–{formatMetric(max)}
+          </span>
+        </div>
       </div>
       <div className="wx-chart-plot wx-metric-plot">
-        <div className="wx-metric-axis" aria-hidden="true">
-          {ticks.map((tick) => (
-            <span
-              key={tick}
-              className="wx-metric-tick"
-              data-role="metric-tick"
-              data-tick={tick}
-              style={{ bottom: `${percent(tick)}%` }}
-            >
-              {formatMetric(tick)}
-            </span>
-          ))}
-        </div>
         <div className="wx-metric-area">
         {ticks.map((tick) => (
           <span
