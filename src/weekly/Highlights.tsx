@@ -1,4 +1,5 @@
 import type { WeeklyHighlight } from "../../shared/weeklyReportTypes";
+import { teamLabel } from "../lib/teamLabel";
 import { formatChange, formatPercent, formatPp, formatSigned } from "./format";
 
 function teamHighlight(highlight: Extract<WeeklyHighlight, { kind: "team_change" }>) {
@@ -9,7 +10,7 @@ function teamHighlight(highlight: Extract<WeeklyHighlight, { kind: "team_change"
     <div className="wx-weekly-highlight" data-role="weekly-highlight" data-kind="team_change">
       <p className="wx-weekly-highlight-label">团队变化</p>
       <p className="wx-weekly-highlight-line">
-        {direction} · {highlight.team}{" "}
+        {direction} · <span title={highlight.team}>{teamLabel(highlight.team)}</span>{" "}
         <span className="wx-weekly-mono">{highlight.previous}</span>
         {" → "}
         <span className="wx-weekly-mono">{highlight.current}</span>

@@ -30,6 +30,7 @@
 - 「下一周」上限只读 API 顶层 `latestCompleteWeek`，前端不按 UTC/本地时区推算。
 - 不补应用图标、截图、占位图。
 - 本文线框与示例中的团队/数字为设计期数据；运行时验收以 `REQUIREMENTS.md` §7.1 的真库基线为准（2026-11-24 回填后团队变化示例为「巨风 18 → 13，-5（-27.8%）」，不再是「大容 +4」）。
+- **2026-11-25 起，本页所有团队显示统一走 `teamLabel` 缩写**（LivChat → LC、巨风 → JF、大容 → DR、灵蜂 → LF、蓝麟 → LL、驰猿 → CY），卡片、关注项、指标图例与数值表一致；`title` 保留完整团队名。API 值、`data-team`、URL 参数仍是完整名。线框中的完整团队名仅作设计期排版示意。
 
 ---
 
@@ -613,7 +614,7 @@ IAP
 ```
 
 - **三行**：平均版本间隔（天）、最新版本→投放（天）、投放→下架（天）；顺序固定。
-- **团队图例**：区块标题下、第一行指标上，6 个色块 + 全团队名，12px；不交互，不换行成两列。图例顺序 = 卡片排名顺序 = 每组柱从左到右的顺序。
+- **团队图例**：区块标题下、第一行指标上，6 个色块 + 团队缩写（`title` 为完整名），12px；不交互，不换行成两列。图例顺序 = 卡片排名顺序 = 每组柱从左到右的顺序。
 - **几何**：
   - 4 个周槽，桌面 120px / 槽；手机 96px / 槽；无横向滚动在桌面。
   - 绘图区高 96px（比 `/shelf` 的 120px 轻一档）；轴宽 44px。
@@ -724,7 +725,7 @@ IAP
 - **布局**：≥641px 两列，列间距 32px；≤640 单列。每列顶部 1px `--color-border`，上内边距 12px；不是卡片、无外框、无填空。
 - **每条结构**：
   - 标签 `团队变化` / `品类变化`，12px / 600 secondary。
-  - 主句 15px / 600：`增幅 · 大容 4 → 8` / `降幅 · Productivity 20.0% → 9.6%`；团队名 / 品类名 sans，数字等宽。
+  - 主句 15px / 600：`增幅 · DR 4 → 8` / `降幅 · Productivity 20.0% → 9.6%`；团队缩写 / 品类名 sans，数字等宽。
   - 变化行 13px / 600 等宽：`+4（+100.0%）` / `-10.4pp`。
   - `增幅 / 降幅 / 新增` 是方向文字，也是颜色之外的唯一方向线索；不使用红 / 绿 / 蓝。
   - 上周为 0：`新增 · 大容 0 → 8` + `+8`（不显示无穷大 / 百分比）。
@@ -944,7 +945,7 @@ IAP
 | `summary.dataThrough` | 周头 meta、脚注 | `YYYY-MM-DD`；空 → `—` |
 | `teams[]` | 卡片顺序 | 直接使用 API 顺序（已按包数降序、团队名升序） |
 | `teams[].rank` | 卡片排名 | 两位格式 `01`；辅助文本「第 N 名」 |
-| `teams[].team` | 卡片标题、指标图例 | **使用完整团队名**，不用 `teamLabel` 缩写；本页只有 6 个团队 |
+| `teams[].team` | 卡片标题、指标图例、关注项 | 显示 `teamLabel(team)` 缩写（如 `LC`、`JF`），`title` 保留完整名；`data-team` 与 API 值仍用完整名 |
 | `teams[].resolvedPackages` | 卡片主数字 | 整数 |
 | `teams[].previousResolvedPackages` | 环比上下文 / 关注项 | 整数 |
 | `teams[].change` / `changePct` | 卡片环比 | 正负都用墨色；`change=0` 显示 `0`；上周 0 显示「新增」 |
@@ -987,7 +988,7 @@ IAP
 | `teamClass` + `wx-team-0..6` | 指标图团队身份色 | 用团队名稳定排序分配颜色；卡片顺序仍按排名 |
 | `buckets.ts` 的 `foldTopCategories` / `segmentGroups` / `iosBucketLabel` / `iapLabel` / `categoryLabel` | 结构条折叠、标签 | 如果周报 API 已给好桶，只在需要折叠时使用 |
 | `privacyHostLabel` | 隐私标签 | 直接复用 |
-| `teamLabel` | 不在卡片使用 | 本页用完整团队名；以后如需紧凑图例再用 |
+| `teamLabel` | 卡片标题、关注项、指标图例与数值表 | 团队缩写；`title` 给完整团队名 |
 | `Skeleton` / `Button` / `EmptyState` / `Text` | 加载、动作、空态、文本 | 直接复用 |
 | `useDocumentTitle` | 页面标题 | 直接复用 |
 | `wx-shelf-state` / `wx-shelf-error*` / `wx-shelf-loading` 的视觉模式 | 状态块 | 复制视觉模式到 `weekly.css`，不要跨 feature 引 `states.tsx` |

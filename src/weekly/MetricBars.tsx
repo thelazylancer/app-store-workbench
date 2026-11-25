@@ -7,6 +7,7 @@ import type {
   WeeklyTrendWeek,
 } from "../../shared/weeklyReportTypes";
 import { formatMetric, metricTicks } from "../lib/metricScale";
+import { teamLabel } from "../lib/teamLabel";
 import { WeekLabels, teamClass, useScrollRegion } from "../shelf/Charts";
 import { formatDay } from "./format";
 
@@ -82,7 +83,7 @@ function ValuesTable({
         <tbody>
           {teams.map((team) => (
             <tr key={team}>
-              <th scope="row">{team}</th>
+              <th scope="row" title={team}>{teamLabel(team)}</th>
               {weeks.map((week) => {
                 const point = lookup.get(week.weekStart)?.get(team);
                 return (
@@ -250,10 +251,10 @@ export function MetricBars({ weeks, metrics, teams }: MetricBarsProps) {
       </div>
       <ul className="wx-weekly-team-legend" aria-label="团队图例">
         {allTeams.map((team) => (
-          <li key={team}>
-            <span className={`wx-dist-swatch ${teamClass(team, allTeams)}`} aria-hidden="true" />
-            {team}
-          </li>
+            <li key={team} title={team}>
+              <span className={`wx-dist-swatch ${teamClass(team, allTeams)}`} aria-hidden="true" />
+              {teamLabel(team)}
+            </li>
         ))}
       </ul>
       <div

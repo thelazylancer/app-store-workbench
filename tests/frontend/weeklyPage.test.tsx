@@ -62,8 +62,8 @@ describe("weekly page", () => {
     expect(screen.getByText("已是最新完整周")).toBeTruthy();
 
     const highlight = byRole("weekly-highlights");
-    expect(highlight?.textContent).toContain("增幅 · Alpha");
-    expect(highlight?.textContent).toContain("降幅 · Productivity");
+    expect(highlight?.textContent).toContain("增幅 · A");
+    expect(highlight?.textContent).toContain("降幅 · P");
     expect(highlight?.textContent).toContain("-10.4pp");
   });
 
@@ -75,6 +75,8 @@ describe("weekly page", () => {
     const gamma = document.querySelector<HTMLElement>(
       '[data-role="weekly-team-card"][data-team="Gamma"]',
     );
+    expect(gamma?.querySelector(".wx-weekly-team-label")?.textContent).toBe("G");
+    expect(gamma?.querySelector<HTMLElement>(".wx-weekly-team-label")?.title).toBe("Gamma");
     expect(gamma?.textContent).toContain("样本不足（<3 包），占比不计算。");
     expect(gamma?.textContent).toContain("新增 2");
     expect(gamma?.textContent).toContain("2 / 52");

@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import type { WeeklyBucket, WeeklyTeam } from "../../shared/weeklyReportTypes";
+import { teamLabel } from "../lib/teamLabel";
 import { formatChange, formatPercent, versionClassName, versionLabel } from "./format";
 
 const VERSION_KEYS = ["1", "2", "3", "4+"] as const;
@@ -40,7 +41,7 @@ function TeamCard({ team, total }: { team: WeeklyTeam; total: number }) {
         <p className="wx-weekly-team-name">
           <span className="wx-weekly-rank" aria-hidden="true">{String(team.rank).padStart(2, "0")}</span>
           <span className="visually-hidden">第 {team.rank} 名</span>
-          <span className="wx-weekly-team-label">{team.team}</span>
+          <span className="wx-weekly-team-label" title={team.team}>{teamLabel(team.team)}</span>
         </p>
         <span
           className={`wx-weekly-change${team.change === 0 ? " wx-weekly-change-zero" : ""}`}
