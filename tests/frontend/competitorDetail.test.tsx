@@ -292,6 +292,11 @@ describe("React competitor detail", () => {
     expect(document.querySelector('[data-role="screenshots"]')?.textContent).toContain("截图（2）");
     const images = document.querySelectorAll<HTMLImageElement>(".wx-detail-screenshot");
     expect(images).toHaveLength(2);
+    // A landscape shot switches the grid to two wider columns.
+    Object.defineProperty(images[0]!, "naturalWidth", { value: 2556 });
+    Object.defineProperty(images[0]!, "naturalHeight", { value: 1179 });
+    fireEvent.load(images[0]!);
+    expect(document.querySelector(".wx-screenshot-grid")?.classList.contains("is-landscape")).toBe(true);
     expect(images[0]?.getAttribute("src")).toBe("/competitor-assets/2026-11-20/com.alpha.ios/1.png");
     fireEvent.error(images[1]!);
     expect(document.querySelector(".wx-screenshot-error")?.textContent).toBe("截图加载失败");

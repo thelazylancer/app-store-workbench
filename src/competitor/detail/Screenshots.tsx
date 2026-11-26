@@ -6,6 +6,8 @@ export function Screenshots({ name, paths }: { name: string; paths: string[] }) 
   const urls = paths.map((path) => competitorAssetUrl(path)).filter((url): url is string => Boolean(url));
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [failed, setFailed] = useState<Set<number>>(new Set());
+  // Landscape shots at 3–4 per row shrink to thin strips, so they get 2 wider columns.
+  const [landscape, setLandscape] = useState(false);
 
   if (urls.length === 0) return null;
 
@@ -22,7 +24,7 @@ export function Screenshots({ name, paths }: { name: string; paths: string[] }) 
   return (
     <section className="wx-detail-section" data-role="screenshots">
       <h3 className="wx-detail-section-title">截图（{urls.length}）</h3>
-      <div className="wx-screenshot-grid">
+      <div className={`wx-screenshot-grid${landscape ? " is-landscape" : ""}`}>
         {urls.map((url, index) => (
           <button
             key={url}
@@ -40,6 +42,10 @@ export function Screenshots({ name, paths }: { name: string; paths: string[] }) 
                 alt={`${name} 商店截图 ${index + 1}`}
                 loading={index < 3 ? "eager" : "lazy"}
                 decoding="async"
+                onLoad={(event) => {
+                  const image = event.currentTarget;
+                  setLandscape(image.naturalWidth > image.naturalHeight);
+                }}
                 onError={() => markFailed(index)}
               />
             )}

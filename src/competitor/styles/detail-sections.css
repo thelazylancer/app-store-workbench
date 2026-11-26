@@ -232,6 +232,17 @@
   padding-top: 4px;
 }
 
+/* ~2.2:1 shots: two columns keep them readable instead of thin strips. */
+.wx-screenshot-grid.is-landscape {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 640px) {
+  .wx-screenshot-grid.is-landscape {
+    grid-template-columns: 1fr;
+  }
+}
+
 .wx-screenshot-trigger {
   display: block;
   min-height: 0;
