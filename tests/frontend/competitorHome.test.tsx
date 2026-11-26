@@ -268,11 +268,13 @@ describe("React competitor home", () => {
     expect(urls.some((url) => url.includes("/api/competitor/summary"))).toBe(false);
   });
 
-  it("restores the saved list scroll after coming back", async () => {
+  it("keeps the saved scroll through the browser's clamped scroll, then restores it", async () => {
     const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
     sessionStorage.setItem("competitor-home-scroll:", "480");
     vi.stubGlobal("fetch", mockApi({ [DATE]: current }, [summary(DATE, 4)]));
     renderPage("");
+    window.dispatchEvent(new Event("scroll"));
+    expect(sessionStorage.getItem("competitor-home-scroll:")).toBe("480");
     await waitForRows();
 
     await waitFor(() => expect(scrollTo).toHaveBeenCalledWith({ top: 480, left: 0 }));

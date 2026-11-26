@@ -120,6 +120,9 @@ export function CompetitorHomePage() {
   useEffect(() => {
     const key = `${SCROLL_KEY}:${search}`;
     const save = () => {
+      // The browser's own POP restoration clamps to the loading page's tiny height;
+      // that scroll event must not overwrite the position the list is about to restore.
+      if (navigationType === "POP" && !restoredRef.current) return;
       try {
         sessionStorage.setItem(key, String(window.scrollY));
       } catch {
@@ -128,7 +131,7 @@ export function CompetitorHomePage() {
     };
     window.addEventListener("scroll", save, { passive: true });
     return () => window.removeEventListener("scroll", save);
-  }, [search]);
+  }, [search, navigationType]);
 
   const scoped = scopeDays(days, filters);
   const rawCount = scoped.reduce((sum, day) => sum + day.packages.length, 0);
