@@ -6,6 +6,7 @@ import { attributionKey, attributionLabel } from "../../shared/attribution";
 import { competitorAssetUrl } from "../lib/competitorApi";
 import { teamLabel } from "../lib/teamLabel";
 import type { StatusFilter, ViewMode } from "./format";
+import { sourceAppName } from "./format";
 import { ShotGallery } from "./ShotGallery";
 import { groupShown } from "./selectors";
 
@@ -162,6 +163,7 @@ function missLabel(entry: ExceptionEntry): string {
 
 function ExceptionRow({ entry }: { entry: ExceptionEntry }) {
   const offline = entry.reason === "miss" && Boolean(entry.offlineDate);
+  const name = sourceAppName(entry.displayName);
   return (
     <Link
       className="wx-row wx-exception-row"
@@ -170,17 +172,17 @@ function ExceptionRow({ entry }: { entry: ExceptionEntry }) {
       data-package={entry.packageCode}
       data-competitor={`pkg:${entry.packageCode}`}
       to={packageLink(entry.packageCode)}
-      aria-label={`查看 ${entry.displayName}，${missLabel(entry)}`}
+      aria-label={`查看 ${name}，${missLabel(entry)}`}
     >
       <RowIcon
-        name={entry.displayName}
+        name={name}
         localPath={entry.iconLocalPath}
         missed={entry.reason === "miss"}
         offline={offline}
       />
       <span className="wx-row-name">
         <span className="wx-row-title">
-          <strong>{entry.displayName}</strong>
+          <strong>{name}</strong>
           {offline ? <span className="wx-row-offline">{entry.offlineDate} 已下架</span> : null}
         </span>
       </span>
@@ -297,7 +299,7 @@ function ShotExceptionRow({ entry }: { entry: ExceptionEntry }) {
       <div className="wx-shot-head">
         <span className="wx-shot-title">
           <Link className="wx-shot-name" to={packageLink(entry.packageCode)}>
-            {entry.displayName}
+            {sourceAppName(entry.displayName)}
           </Link>
           <Badge
             variant={entry.reason === "miss" ? "wx-miss" : "wx-pending"}

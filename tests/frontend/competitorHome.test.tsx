@@ -4,7 +4,7 @@ import { BrowserRouter } from "react-router";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { DayDetail, DaySummary, PackageDetail } from "../../shared/competitorTypes";
 import { CompetitorHomePage } from "../../src/competitor/App";
-import { addDays, yesterdayUtc } from "../../src/competitor/format";
+import { addDays, sourceAppName, yesterdayUtc } from "../../src/competitor/format";
 import { storeName } from "../../src/competitor/selectors";
 import { wxTheme } from "../../src/theme/wxTheme";
 
@@ -351,7 +351,7 @@ describe("React competitor home", () => {
   it("labels a missed package by its offline date instead of the lookup", async () => {
     const delisted = pkg({
       packageCode: "com.offline.s",
-      displayName: "Offline Source",
+      displayName: "iOS-GasketCycleiOSjufeng",
       lookupStatus: "bundle_not_found",
       enrichStatus: "failed",
       appleId: null,
@@ -362,6 +362,8 @@ describe("React competitor home", () => {
     renderPage("?status=miss");
     await waitFor(() => expect(document.querySelector('[data-role="exception-row"]')).not.toBeNull());
     const row = document.querySelector('[data-role="exception-row"]')!;
+    // Only the app name survives the source markers.
+    expect(row.querySelector(".wx-row-title strong")?.textContent).toBe("GasketCycle");
     // Same convention as hit rows: stamp on the icon, date next to the name.
     expect(row.querySelector(".wx-row-offline")?.textContent).toBe("2026-11-20 已下架");
     expect(row.querySelector(".wx-row-icon-stamp")?.textContent).toBe("已下架");
@@ -462,10 +464,23 @@ describe("React competitor home", () => {
     expect(document.querySelector('[data-role="competitor-row"]')?.tagName).toBe("A");
   });
 
-  it("resolves App Store names as name → trackName → displayName", () => {
+  it("resolves App Store names as name → trackName → cleaned displayName", () => {
     expect(storeName(alpha)).toBe("Alpha Official");
     expect(storeName(alphaHd)).toBe("Alpha HD");
     expect(storeName(gamma)).toBe("Gamma Source");
     expect(storeName({ ...gamma, appStoreJson: { name: "   ", trackName: "Tracked" } })).toBe("Tracked");
+    expect(storeName({ ...gamma, appStoreJson: {}, displayName: "iOS-GasketCycleiOSjufeng" })).toBe("GasketCycle");
+  });
+
+  it("strips source platform and team markers from display names", () => {
+    expect(sourceAppName("iOS-GasketCycleiOSjufeng")).toBe("GasketCycle");
+    expect(sourceAppName("iOS-Boundary LoopiOS")).toBe("Boundary Loop");
+    expect(sourceAppName("iOS-LoafneiosL")).toBe("Loafne");
+    expect(sourceAppName("iOS-BlynniOS-S")).toBe("Blynn");
+    expect(sourceAppName("iOS-EmberyardiOS-2")).toBe("Emberyard");
+    expect(sourceAppName("iOS-BeluniiOS-LC")).toBe("Beluni");
+    expect(sourceAppName("iOS-*AevniiOS")).toBe("Aevni");
+    expect(sourceAppName("Plain Source")).toBe("Plain Source");
+    expect(sourceAppName("iOS-")).toBe("iOS-");
   });
 });

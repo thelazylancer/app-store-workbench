@@ -7,6 +7,7 @@ import type {
 } from "../../shared/competitorTypes";
 import type { QueryFilters } from "../app/useQueryFilters";
 import type { StatusFilter } from "./format";
+import { sourceAppName } from "./format";
 
 type VersionEntry = { releasedAt?: unknown };
 
@@ -53,7 +54,7 @@ export function storeName(pkg: PackageDetail): string {
     const value = pkg.appStoreJson[key];
     if (typeof value === "string" && value.trim()) return value;
   }
-  return pkg.displayName;
+  return sourceAppName(pkg.displayName);
 }
 
 export function categoryOf(pkg: PackageDetail): string {

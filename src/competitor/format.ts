@@ -18,6 +18,16 @@ export const GROUP_BY_LABEL: Record<GroupBy, string> = {
   ios_version: "iOS 版本",
 };
 
+/** Source display names carry platform/team markers: `iOS-<App>iOSjufeng` → `<App>`. */
+export function sourceAppName(displayName: string): string {
+  const name = displayName
+    .replace(/^ios-/i, "")
+    .replace(/ios(?:jufeng|[-_]?(?:s|lc|l|2))?\*?$/i, "")
+    .replace(/^\*+/, "")
+    .trim();
+  return name || displayName;
+}
+
 const WEEKDAY_LABEL = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
 
 export function formatMonthDay(value: string): string {
