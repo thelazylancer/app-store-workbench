@@ -247,7 +247,8 @@
   border-color: var(--color-border-emphasized);
 }
 
-.wx-screenshot {
+/* Own class on purpose: the search inspector forces a portrait ratio. */
+.wx-detail-screenshot {
   display: block;
   width: 100%;
   height: auto;

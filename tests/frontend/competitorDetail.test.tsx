@@ -290,7 +290,7 @@ describe("React competitor detail", () => {
     await waitForDetail();
 
     expect(document.querySelector('[data-role="screenshots"]')?.textContent).toContain("截图（2）");
-    const images = document.querySelectorAll<HTMLImageElement>(".wx-screenshot");
+    const images = document.querySelectorAll<HTMLImageElement>(".wx-detail-screenshot");
     expect(images).toHaveLength(2);
     expect(images[0]?.getAttribute("src")).toBe("/competitor-assets/2026-11-20/com.alpha.ios/1.png");
     fireEvent.error(images[1]!);

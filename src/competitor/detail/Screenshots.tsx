@@ -35,7 +35,7 @@ export function Screenshots({ name, paths }: { name: string; paths: string[] }) 
               <span className="wx-screenshot-error">截图加载失败</span>
             ) : (
               <img
-                className="wx-screenshot"
+                className="wx-detail-screenshot"
                 src={url}
                 alt={`${name} 商店截图 ${index + 1}`}
                 loading={index < 3 ? "eager" : "lazy"}
