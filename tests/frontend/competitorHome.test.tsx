@@ -184,6 +184,7 @@ async function waitForRows(count = 2) {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  sessionStorage.clear();
   window.history.replaceState({}, "", "/");
 });
 
@@ -265,6 +266,17 @@ describe("React competitor home", () => {
     expect(urls.some((url) => url.includes(`/api/competitor/day/${DATE}?date_kind=first_ad`))).toBe(true);
     expect(urls.every((url) => !url.includes("date_kind=listing"))).toBe(true);
     expect(urls.some((url) => url.includes("/api/competitor/summary"))).toBe(false);
+  });
+
+  it("restores the saved list scroll after coming back", async () => {
+    const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+    sessionStorage.setItem("competitor-home-scroll:", "480");
+    vi.stubGlobal("fetch", mockApi({ [DATE]: current }, [summary(DATE, 4)]));
+    renderPage("");
+    await waitForRows();
+
+    await waitFor(() => expect(scrollTo).toHaveBeenCalledWith({ top: 480, left: 0 }));
+    scrollTo.mockRestore();
   });
 
   it("orders dates newest first and skips days without packages", async () => {

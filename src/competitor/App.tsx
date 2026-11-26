@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router";
+import { useLocation, useNavigationType, useSearchParams } from "react-router";
 import type { DayDetail } from "../../shared/competitorTypes";
 import { useQueryFilters, type QueryFilters } from "../app/useQueryFilters";
 import { useDocumentTitle } from "../app/useDocumentTitle";
@@ -14,6 +14,8 @@ import "./styles/timeline.css";
 import "./styles/team.css";
 
 const HISTORY_START = "2020-01-01";
+/** The browser cannot restore scroll before the async list renders; we save and replay it. */
+const SCROLL_KEY = "competitor-home-scroll";
 
 function errorMessage(error: unknown): string {
   return error instanceof CompetitorApiError ? error.message : "请求失败";
@@ -45,6 +47,9 @@ export function CompetitorHomePage() {
   useDocumentTitle("竞品日报 · App搜索工作台");
   const { filters, update, clear } = useQueryFilters();
   const [params, setParams] = useSearchParams();
+  const { search } = useLocation();
+  const navigationType = useNavigationType();
+  const restoredRef = useRef(false);
   const view: ViewMode = params.get("view") === "shots" ? "shots" : "list";
   const [days, setDays] = useState<DayDetail[]>([]);
   const [loading, setLoading] = useState(true);
@@ -110,11 +115,40 @@ export function CompetitorHomePage() {
     // Filters only change the fetch when the date is outside the loaded window.
   }, [filters.date, reload]);
 
+  // Keyed by the current query so each filter/view combination keeps its own position.
+  useEffect(() => {
+    const key = `${SCROLL_KEY}:${search}`;
+    const save = () => {
+      try {
+        sessionStorage.setItem(key, String(window.scrollY));
+      } catch {
+        // Storage can be blocked; scrolling still works, only restoration is lost.
+      }
+    };
+    window.addEventListener("scroll", save, { passive: true });
+    return () => {
+      save();
+      window.removeEventListener("scroll", save);
+    };
+  }, [search]);
+
   const scoped = scopeDays(days, filters);
   const rawCount = scoped.reduce((sum, day) => sum + day.packages.length, 0);
   const shownRows = visibleCount(days, filters);
   const abnormal = abnormalDays(scoped);
   const hasDays = !loading && !loadError && scoped.length > 0 && rawCount > 0;
+
+  useEffect(() => {
+    if (restoredRef.current || !hasDays || navigationType !== "POP") return;
+    restoredRef.current = true;
+    let target = 0;
+    try {
+      target = Number(sessionStorage.getItem(`${SCROLL_KEY}:${search}`) ?? 0);
+    } catch {
+      target = 0;
+    }
+    if (target > 0) window.scrollTo({ top: target, left: 0 });
+  }, [hasDays, navigationType, search]);
 
   let batchText = "";
   if (loading) batchText = "正在加载…";
