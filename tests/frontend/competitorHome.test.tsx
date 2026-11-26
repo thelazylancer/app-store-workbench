@@ -362,7 +362,9 @@ describe("React competitor home", () => {
     renderPage("?status=miss");
     await waitFor(() => expect(document.querySelector('[data-role="exception-row"]')).not.toBeNull());
     const row = document.querySelector('[data-role="exception-row"]')!;
-    expect(row.textContent).toContain("2026-11-20 下架");
+    // Same convention as hit rows: stamp on the icon, date next to the name.
+    expect(row.querySelector(".wx-row-offline")?.textContent).toBe("2026-11-20 已下架");
+    expect(row.querySelector(".wx-row-icon-stamp")?.textContent).toBe("已下架");
     expect(row.textContent).not.toContain("App Store 未命中");
   });
 

@@ -161,6 +161,7 @@ function missLabel(entry: ExceptionEntry): string {
 }
 
 function ExceptionRow({ entry }: { entry: ExceptionEntry }) {
+  const offline = entry.reason === "miss" && Boolean(entry.offlineDate);
   return (
     <Link
       className="wx-row wx-exception-row"
@@ -171,16 +172,28 @@ function ExceptionRow({ entry }: { entry: ExceptionEntry }) {
       to={packageLink(entry.packageCode)}
       aria-label={`查看 ${entry.displayName}，${missLabel(entry)}`}
     >
-      <RowIcon name={entry.displayName} localPath={entry.iconLocalPath} missed={entry.reason === "miss"} />
-      <span className="wx-row-name">{entry.displayName}</span>
+      <RowIcon
+        name={entry.displayName}
+        localPath={entry.iconLocalPath}
+        missed={entry.reason === "miss"}
+        offline={offline}
+      />
+      <span className="wx-row-name">
+        <span className="wx-row-title">
+          <strong>{entry.displayName}</strong>
+          {offline ? <span className="wx-row-offline">{entry.offlineDate} 已下架</span> : null}
+        </span>
+      </span>
       <span className="wx-row-code">{entry.packageCode}</span>
       <span className="wx-row-meta">{entry.appVersion ? `v${entry.appVersion}` : "—"}</span>
       <span className="wx-row-side">
         {entry.reason === "pending" ? <span className="wx-exception-strip" aria-hidden="true" /> : null}
-        <Badge
-          variant={entry.reason === "miss" ? "wx-miss" : "wx-pending"}
-          label={missLabel(entry)}
-        />
+        {offline ? null : (
+          <Badge
+            variant={entry.reason === "miss" ? "wx-miss" : "wx-pending"}
+            label={missLabel(entry)}
+          />
+        )}
       </span>
     </Link>
   );
