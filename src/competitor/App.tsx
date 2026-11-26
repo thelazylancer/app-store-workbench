@@ -116,6 +116,7 @@ export function CompetitorHomePage() {
   }, [filters.date, reload]);
 
   // Keyed by the current query so each filter/view combination keeps its own position.
+  // Saved on scroll only: the unmount cleanup runs after the next page clamps scroll to 0.
   useEffect(() => {
     const key = `${SCROLL_KEY}:${search}`;
     const save = () => {
@@ -126,10 +127,7 @@ export function CompetitorHomePage() {
       }
     };
     window.addEventListener("scroll", save, { passive: true });
-    return () => {
-      save();
-      window.removeEventListener("scroll", save);
-    };
+    return () => window.removeEventListener("scroll", save);
   }, [search]);
 
   const scoped = scopeDays(days, filters);
