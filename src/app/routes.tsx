@@ -48,7 +48,11 @@ function Shell({ children }: { children: ReactNode }) {
               href={item.to}
               label={item.label}
               isSelected={isNavActive(item.to, pathname)}
-            />
+            >
+              <span className="wx-nav-label" data-label={item.label}>
+                <span>{item.label}</span>
+              </span>
+            </TopNavItem>
           ))}
         />
       }

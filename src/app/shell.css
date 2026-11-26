@@ -4,6 +4,22 @@
   padding: 32px;
 }
 
+/* Selected tabs are semibold; the hidden bold copy keeps the width fixed so the nav never reflows. */
+.wx-nav-label {
+  display: inline-grid;
+}
+
+.wx-nav-label > span,
+.wx-nav-label::after {
+  grid-area: 1 / 1;
+}
+
+.wx-nav-label::after {
+  content: attr(data-label);
+  font-weight: var(--font-weight-semibold, 600);
+  visibility: hidden;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
