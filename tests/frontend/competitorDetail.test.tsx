@@ -322,6 +322,18 @@ describe("React competitor detail", () => {
     expect(screen.getByText("已于 2026-11-18 下架，无 App Store 详情可展示。")).toBeTruthy();
   });
 
+  it("marks a captured package that has since been delisted", async () => {
+    vi.stubGlobal("fetch", mockPackage({ ...alpha, offlineDate: "2026-11-20" }));
+    renderAt("/package/com.alpha.ios");
+    await waitForDetail("Alpha App");
+
+    expect(screen.getByText("2026-11-20 已下架")).toBeTruthy();
+    expect(document.querySelector(".wx-detail-offline-stamp")?.textContent).toBe("已下架");
+    // The normal detail sections stay; only the status is added.
+    expect(document.querySelector('[data-role="screenshots"]')).not.toBeNull();
+    expect(document.querySelector('[data-role="missed-panel"]')).toBeNull();
+  });
+
   it("shows the missed panel without App Store sections", async () => {
     vi.stubGlobal("fetch", mockPackage(missed));
     renderAt("/package/com.beta.s");

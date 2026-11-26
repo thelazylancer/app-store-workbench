@@ -199,6 +199,16 @@
   white-space: nowrap;
 }
 
+.wx-offline-pill {
+  padding: 2px 8px;
+  border-radius: 2px;
+  background: var(--color-background-muted);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .wx-exception-strip {
   display: inline-block;
   width: 22px;

@@ -25,29 +25,39 @@ export function Identity({
   const src = status ? null : competitorAssetUrl(packageDetail.iconLocalPath);
   const storeUrl = appStoreUrl(packageDetail);
   const developer = jsonString(packageDetail.appStoreJson, ["developer"]) ?? "—";
+  // A captured package can be delisted later; the miss panel covers the rest.
+  const offline = !status && Boolean(packageDetail.offlineDate);
+
+  const icon = src && !iconFailed ? (
+    <img
+      className="wx-detail-icon"
+      src={src}
+      alt={`${name} 图标`}
+      decoding="async"
+      onError={() => setIconFailed(true)}
+    />
+  ) : (
+    <span
+      className={status ? "wx-detail-icon wx-detail-icon-empty" : "wx-detail-icon wx-detail-icon-fallback"}
+      aria-hidden="true"
+    >
+      {status ? null : name.slice(0, 1).toUpperCase() || "?"}
+    </span>
+  );
 
   return (
     <section className="wx-detail-identity" data-role="detail-identity">
-      {src && !iconFailed ? (
-        <img
-          className="wx-detail-icon"
-          src={src}
-          alt={`${name} 图标`}
-          decoding="async"
-          onError={() => setIconFailed(true)}
-        />
-      ) : (
-        <span
-          className={status ? "wx-detail-icon wx-detail-icon-empty" : "wx-detail-icon wx-detail-icon-fallback"}
-          aria-hidden="true"
-        >
-          {status ? null : name.slice(0, 1).toUpperCase() || "?"}
+      {offline ? (
+        <span className="wx-detail-icon-wrap">
+          {icon}
+          <span className="wx-detail-offline-stamp" aria-hidden="true">已下架</span>
         </span>
-      )}
+      ) : icon}
 
       <Stack className="wx-detail-identity-copy" gap={1}>
         <div className="wx-detail-title-row">
           <h2>{name}</h2>
+          {offline ? <span className="wx-detail-offline">{packageDetail.offlineDate} 已下架</span> : null}
           {statusBadge(status, packageDetail.offlineDate)}
         </div>
         <Text as="p" type="supporting" className="wx-detail-developer">{developer}</Text>

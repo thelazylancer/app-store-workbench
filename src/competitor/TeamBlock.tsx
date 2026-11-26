@@ -134,6 +134,9 @@ function HitRow({
         ) : null}
       </span>
       <span className="wx-row-side">
+        {brief.offlineDate ? (
+          <span className="wx-offline-pill" title={`${brief.offlineDate} 下架`}>已下架</span>
+        ) : null}
         {brief.hasIap ? <span className="wx-iap-pill">内购</span> : null}
         <span className="wx-row-versions">{brief.versionCount}个版本</span>
       </span>
@@ -193,6 +196,7 @@ function ShotRow({
     attributionLabel(attributionKey(facts?.attribution)),
     firstPackage?.hasIap ? "内购" : null,
     firstPackage ? `${firstPackage.versionCount}个版本` : null,
+    firstPackage?.offlineDate ? "已下架" : null,
   ].filter(Boolean).join(" · ");
   const dates = [
     firstPackage?.earliestReleasedAt && `最早 ${firstPackage.earliestReleasedAt}`,

@@ -44,6 +44,37 @@
   background: transparent;
 }
 
+.wx-detail-icon-wrap {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+/* Delisted stamp over the icon, like the listing sites use. */
+.wx-detail-offline-stamp {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  padding: 2px 6px;
+  border: 2px solid var(--color-text-secondary);
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--color-background-body) 60%, transparent);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 2px;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translate(-50%, -50%) rotate(-18deg);
+}
+
+.wx-detail-offline {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
 .wx-detail-identity-copy {
   min-width: 0;
   align-items: flex-start;
