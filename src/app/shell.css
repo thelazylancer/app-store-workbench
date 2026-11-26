@@ -4,6 +4,11 @@
   padding: 32px;
 }
 
+/* Keep the scrollbar track on short pages so switching routes never shifts the centered nav. */
+html {
+  overflow-y: scroll;
+}
+
 /* Selected tabs are semibold; the hidden bold copy keeps the width fixed so the nav never reflows. */
 .wx-nav-label {
   display: inline-grid;
