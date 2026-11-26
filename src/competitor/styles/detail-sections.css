@@ -226,7 +226,8 @@
 
 .wx-screenshot-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  /* Wide enough that a 1440px page shows 3 shots per row, not a cramped 4. */
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 12px;
   padding-top: 4px;
 }
