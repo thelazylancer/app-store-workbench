@@ -237,9 +237,11 @@ describe("React competitor home", () => {
     expect(gammaRow.textContent).toContain("Gamma Source");
     expect(gammaRow.textContent).toContain("1个版本");
     expect(gammaRow.querySelector(".wx-iap-pill")).toBeNull();
-    expect(gammaRow.querySelector(".wx-offline-pill")?.textContent).toBe("已下架");
-    expect(gammaRow.querySelector(".wx-offline-pill")?.getAttribute("title")).toBe("2026-11-20 下架");
-    expect(alphaRow.querySelector(".wx-offline-pill")).toBeNull();
+    // The delisted date moves next to the name, with a stamp on the list icon.
+    expect(gammaRow.querySelector(".wx-row-offline")?.textContent).toBe("2026-11-20 已下架");
+    expect(gammaRow.querySelector(".wx-row-icon-stamp")?.textContent).toBe("已下架");
+    expect(alphaRow.querySelector(".wx-row-offline")).toBeNull();
+    expect(alphaRow.querySelector(".wx-row-icon-stamp")).toBeNull();
     expect(gammaRow.querySelector(".wx-attribution-tag")?.textContent).toBe("无归因");
 
     const missedRow = document.querySelector<HTMLAnchorElement>('[data-role="exception-row"][data-reason="miss"]')!;

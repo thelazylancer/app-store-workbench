@@ -25,24 +25,23 @@ function RowIcon({
   name,
   localPath,
   missed = false,
+  offline = false,
 }: {
   name: string;
   localPath?: string | null;
   missed?: boolean;
+  offline?: boolean;
 }) {
   const [failed, setFailed] = useState(false);
   const src = missed ? null : competitorAssetUrl(localPath);
-  if (missed || failed || !src) {
-    return (
-      <span
-        className={missed ? "wx-row-icon wx-row-icon-empty" : "wx-row-icon wx-row-icon-fallback"}
-        aria-hidden="true"
-      >
-        {missed ? null : name.slice(0, 1).toUpperCase() || "?"}
-      </span>
-    );
-  }
-  return (
+  const icon = missed || failed || !src ? (
+    <span
+      className={missed ? "wx-row-icon wx-row-icon-empty" : "wx-row-icon wx-row-icon-fallback"}
+      aria-hidden="true"
+    >
+      {missed ? null : name.slice(0, 1).toUpperCase() || "?"}
+    </span>
+  ) : (
     <img
       className="wx-row-icon"
       src={src}
@@ -51,6 +50,13 @@ function RowIcon({
       decoding="async"
       onError={() => setFailed(true)}
     />
+  );
+  if (!offline) return icon;
+  return (
+    <span className="wx-row-icon-wrap">
+      {icon}
+      <span className="wx-row-icon-stamp" aria-hidden="true">已下架</span>
+    </span>
   );
 }
 
@@ -102,10 +108,17 @@ function HitRow({
       to={packageLink(code)}
       aria-label={`查看 ${competitor.name} 的竞品详情，${competitor.packageCount} 个包`}
     >
-      <RowIcon name={competitor.name} localPath={facts?.iconLocalPath ?? brief.iconLocalPath} />
+      <RowIcon
+        name={competitor.name}
+        localPath={facts?.iconLocalPath ?? brief.iconLocalPath}
+        offline={Boolean(brief.offlineDate)}
+      />
       <span className="wx-row-name">
         <span className="wx-row-title">
           <strong>{competitor.name}</strong>
+          {brief.offlineDate ? (
+            <span className="wx-row-offline">{brief.offlineDate} 已下架</span>
+          ) : null}
           {competitor.packageCount > 1 ? (
             <span className="wx-count-pill" data-role="package-count">
               {competitor.packageCount} 个包
@@ -134,9 +147,6 @@ function HitRow({
         ) : null}
       </span>
       <span className="wx-row-side">
-        {brief.offlineDate ? (
-          <span className="wx-offline-pill" title={`${brief.offlineDate} 下架`}>已下架</span>
-        ) : null}
         {brief.hasIap ? <span className="wx-iap-pill">内购</span> : null}
         <span className="wx-row-versions">{brief.versionCount}个版本</span>
       </span>
@@ -196,7 +206,7 @@ function ShotRow({
     attributionLabel(attributionKey(facts?.attribution)),
     firstPackage?.hasIap ? "内购" : null,
     firstPackage ? `${firstPackage.versionCount}个版本` : null,
-    firstPackage?.offlineDate ? "已下架" : null,
+    firstPackage?.offlineDate ? `${firstPackage.offlineDate} 已下架` : null,
   ].filter(Boolean).join(" · ");
   const dates = [
     firstPackage?.earliestReleasedAt && `最早 ${firstPackage.earliestReleasedAt}`,
