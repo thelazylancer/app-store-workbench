@@ -76,6 +76,8 @@ export type PackageDetail = {
   appleId: number | null;
   /** Analysis-derived attribution vendor; null when not analyzed. Latest package only, not per-snapshot. */
   attribution: string | null;
+  /** IPA-derived NS*UsageDescription keys; null = not analyzed, [] = analyzed with none. */
+  permissions: string[] | null;
   appStoreJson: Record<string, unknown>;
   iconLocalPath: string | null;
   screenshotLocalPaths: string[];

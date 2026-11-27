@@ -25,7 +25,7 @@ export type AppDependencies = {
   ipaDownload?: IpaDownloadManager;
   competitorRepo?: CompetitorQueryRepo;
   /** Analysis-derived writes exposed over HTTP/MCP; absent in read-only deployments. */
-  competitorWriter?: Pick<CompetitorWriteRepo, "updateAttribution">;
+  competitorWriter?: Pick<CompetitorWriteRepo, "updateAttribution" | "updatePermissions">;
   shelfQueries?: ShelfQueryRepo;
   weeklyReport?: WeeklyReportRepo;
   competitorAssetsDir?: string;

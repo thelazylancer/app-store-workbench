@@ -55,7 +55,7 @@ function pkg(overrides: Partial<PackageDetail> & { packageCode: string }): Packa
     lookupStatus: "hit",
     enrichStatus: "ok",
     assetStatus: "ok",
-    attribution: null,
+    attribution: null, permissions: null,
     appleId: 111,
     appStoreJson: {},
     iconLocalPath: null,

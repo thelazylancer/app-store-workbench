@@ -50,10 +50,16 @@
   text-underline-offset: 3px;
 }
 
-.wx-privacy-none {
+.wx-privacy-none,
+.wx-permissions-empty {
   margin: 0;
   padding: 2px 0 8px;
   color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.wx-permissions-key {
+  font-family: var(--font-family-code);
   font-size: 12px;
 }
 

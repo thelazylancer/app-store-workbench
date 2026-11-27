@@ -12,6 +12,7 @@ import { Identity } from "./detail/Identity";
 import { PackageInfoSection } from "./detail/InfoRows";
 import { Metrics } from "./detail/Metrics";
 import { MissedPanel } from "./detail/MissedPanel";
+import { PermissionsSection } from "./detail/PermissionsSection";
 import { PrivacySection } from "./detail/PrivacySection";
 import { Screenshots } from "./detail/Screenshots";
 import { VersionHistory } from "./detail/VersionHistory";
@@ -132,6 +133,7 @@ export function CompetitorDetailPage() {
                 <div className="wx-detail-main">
                   <Screenshots name={name} paths={detail.screenshotLocalPaths} />
                   <IapSection packageDetail={detail} />
+                  <PermissionsSection packageDetail={detail} />
                   <PrivacySection packageDetail={detail} />
                   <DescriptionSection packageDetail={detail} />
                   <VersionHistory packageDetail={detail} />

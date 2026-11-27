@@ -449,4 +449,37 @@ describeDb("competitor repository writes", () => {
     await expect(repo.updateAttribution([])).resolves.toEqual([]);
     expect(query).not.toHaveBeenCalled();
   });
+
+  it("updates permissions without the daily sync overwriting them", async () => {
+    const repo = createCompetitorRepo(pool!);
+    const code = `test.competitor.${suffix}.permissions`;
+    const missing = `test.competitor.${suffix}.permissions-missing`;
+    await repo.upsertPackage({ ...pkg, packageCode: code });
+    expect((await repo.getPackage(code))?.permissions).toBeNull();
+
+    const keys = ["NSCameraUsageDescription", "NSPhotoLibraryUsageDescription"];
+    const returned = await repo.updatePermissions([
+      { packageCode: code, permissions: keys },
+      { packageCode: missing, permissions: [] },
+    ]);
+    expect(returned).toEqual([code]);
+    expect((await repo.getPackage(code))?.permissions).toEqual(keys);
+
+    await repo.upsertPackage({ ...pkg, packageCode: code, appVersion: "2.0.0" });
+    expect((await repo.getPackage(code))).toMatchObject({ appVersion: "2.0.0", permissions: keys });
+
+    await repo.updatePermissions([{ packageCode: code, permissions: [] }]);
+    expect((await repo.getPackage(code))?.permissions).toEqual([]);
+
+    await repo.updatePermissions([{ packageCode: code, permissions: null }]);
+    expect((await repo.getPackage(code))?.permissions).toBeNull();
+  });
+
+  it("returns an empty permissions result without querying when no entries are given", async () => {
+    const repo = createCompetitorRepo(pool!);
+    const query = vi.spyOn(pool!, "query");
+
+    await expect(repo.updatePermissions([])).resolves.toEqual([]);
+    expect(query).not.toHaveBeenCalled();
+  });
 });

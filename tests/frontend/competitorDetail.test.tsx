@@ -75,6 +75,7 @@ function packageDetail(overrides: Partial<PackageDetail> & { packageCode: string
     enrichStatus: "ok",
     assetStatus: "ok",
     attribution: null,
+    permissions: null,
     appleId: 111,
     appStoreJson: {
       appleId: 111,
@@ -263,6 +264,33 @@ describe("React competitor detail", () => {
     await waitFor(() => expect(document.querySelector('[data-role="app-id-copy"]')?.textContent).toContain("已复制"));
     fireEvent.click(screen.getByRole("button", { name: "复制 Bundle ID" }));
     await waitFor(() => expect(writeText).toHaveBeenCalledWith("com.alpha.ios"));
+  });
+
+  it("shows the IPA parse state in the permissions section", async () => {
+    vi.stubGlobal("fetch", mockPackage(packageDetail({
+      packageCode: "com.perm.ios",
+      permissions: ["NSCameraUsageDescription", "NSLocationWhenInUseUsageDescription"],
+    })));
+    renderAt("/package/com.perm.ios");
+    await waitForDetail();
+
+    const section = document.querySelector('[data-role="permissions-section"]');
+    expect(section?.textContent).toContain("权限（2）");
+    expect(section?.textContent).toContain("NSCameraUsageDescription");
+    expect(section?.textContent).toContain("NSLocationWhenInUseUsageDescription");
+  });
+
+  it("shows the not-analyzed and no-permissions states", async () => {
+    vi.stubGlobal("fetch", mockPackage(alpha));
+    renderAt("/package/com.alpha.ios");
+    await waitForDetail();
+    expect(document.querySelector('[data-role="permissions-section"]')?.textContent).toContain("尚未解析 IPA");
+
+    cleanup();
+    vi.stubGlobal("fetch", mockPackage(packageDetail({ packageCode: "com.empty.ios", permissions: [] })));
+    renderAt("/package/com.empty.ios");
+    await waitForDetail();
+    expect(document.querySelector('[data-role="permissions-section"]')?.textContent).toContain("未发现权限声明");
   });
 
   it("offers 保存 IPA when a local IPA already exists for the bundle", async () => {

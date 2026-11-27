@@ -7,8 +7,10 @@ import type { AppDependencies } from "../app";
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const PACKAGE_CODE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,254}$/;
 const ATTRIBUTION_PATTERN = /^[\x20-\x7E]{1,64}$/;
+const PERMISSION_PATTERN = /^[A-Za-z][A-Za-z0-9]{1,63}UsageDescription$/;
 const MAX_SUMMARY_RANGE_DAYS = 31;
-const MAX_ATTRIBUTION_UPDATES = 500;
+const MAX_ANALYSIS_UPDATES = 500;
+const MAX_PERMISSIONS_PER_PACKAGE = 100;
 
 function inclusiveDays(from: string, to: string): number {
   return (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000 + 1;
@@ -195,9 +197,9 @@ export function registerCompetitorRoutes(app: FastifyInstance, deps: AppDependen
     const rawUpdates = typeof body === "object" && body !== null && !Array.isArray(body)
       ? (body as { updates?: unknown }).updates
       : undefined;
-    if (!Array.isArray(rawUpdates) || rawUpdates.length === 0 || rawUpdates.length > MAX_ATTRIBUTION_UPDATES) {
+    if (!Array.isArray(rawUpdates) || rawUpdates.length === 0 || rawUpdates.length > MAX_ANALYSIS_UPDATES) {
       return reply.code(400).send({
-        message: `updates must be an array of 1..${MAX_ATTRIBUTION_UPDATES} entries`,
+        message: `updates must be an array of 1..${MAX_ANALYSIS_UPDATES} entries`,
       });
     }
 
@@ -224,6 +226,68 @@ export function registerCompetitorRoutes(app: FastifyInstance, deps: AppDependen
     try {
       const matched = await writer.updateAttribution(
         [...updates].map(([packageCode, attribution]) => ({ packageCode, attribution })),
+      );
+      const matchedSet = new Set(matched);
+      return reply.send({
+        updated: matched,
+        missing: [...updates.keys()].filter((packageCode) => !matchedSet.has(packageCode)),
+      });
+    } catch {
+      return reply.code(500).send({ message: "Competitor update failed" });
+    }
+  });
+
+  app.post("/api/competitor/permissions", async (request, reply) => {
+    const writer = deps.competitorWriter;
+    if (!writer) return reply.code(503).send({ message: "Competitor data is unavailable" });
+
+    const body = request.body;
+    const rawUpdates = typeof body === "object" && body !== null && !Array.isArray(body)
+      ? (body as { updates?: unknown }).updates
+      : undefined;
+    if (!Array.isArray(rawUpdates) || rawUpdates.length === 0 || rawUpdates.length > MAX_ANALYSIS_UPDATES) {
+      return reply.code(400).send({
+        message: `updates must be an array of 1..${MAX_ANALYSIS_UPDATES} entries`,
+      });
+    }
+
+    // Last write per code wins, matching the repo's update semantics.
+    const updates = new Map<string, string[] | null>();
+    for (const entry of rawUpdates) {
+      if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
+        return reply.code(400).send({ message: "Every update needs packageCode and permissions" });
+      }
+      const { packageCode, permissions } = entry as { packageCode?: unknown; permissions?: unknown };
+      if (typeof packageCode !== "string" || !PACKAGE_CODE_PATTERN.test(packageCode)) {
+        return reply.code(400).send({ message: "A valid package code is required" });
+      }
+      if (permissions !== null && !Array.isArray(permissions)) {
+        return reply.code(400).send({ message: "permissions must be an array of plist keys or null" });
+      }
+      let normalized: string[] | null = null;
+      if (permissions !== null) {
+        if (permissions.length > MAX_PERMISSIONS_PER_PACKAGE) {
+          return reply.code(400).send({
+            message: `permissions must contain at most ${MAX_PERMISSIONS_PER_PACKAGE} keys`,
+          });
+        }
+        const keys: string[] = [];
+        for (const key of permissions) {
+          if (typeof key !== "string" || !PERMISSION_PATTERN.test(key)) {
+            return reply.code(400).send({
+              message: "permissions keys must be NS*UsageDescription identifiers",
+            });
+          }
+          if (!keys.includes(key)) keys.push(key);
+        }
+        normalized = keys.sort();
+      }
+      updates.set(packageCode, normalized);
+    }
+
+    try {
+      const matched = await writer.updatePermissions(
+        [...updates].map(([packageCode, permissions]) => ({ packageCode, permissions })),
       );
       const matchedSet = new Set(matched);
       return reply.send({

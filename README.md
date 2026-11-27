@@ -193,7 +193,7 @@ docker exec -it app-store-workbench-app-1 ipatool auth login
 claude mcp add --transport http app-store-workbench http://stargate.local:7001/mcp
 ```
 
-工具：`shelf_trend`、`shelf_packages`（自有货架）；`competitor_days`、`competitor_day`、`competitor_batch`、`competitor_summary`、`competitor_package`、`competitor_package_history`、`competitor_country_hits`、`competitor_set_attribution`（竞品快照 / 归因回填）；`search_apps`、`app_details`（实时 App Store）；`ipa_download_start`、`ipa_download_status`、`ipa_download_submit_code`、`ipa_download_cancel`（IPA 下载）。
+工具：`shelf_trend`、`shelf_packages`（自有货架）；`competitor_days`、`competitor_day`、`competitor_batch`、`competitor_summary`、`competitor_package`、`competitor_package_history`、`competitor_country_hits`、`competitor_set_attribution`、`competitor_set_permissions`（竞品快照 / 归因与权限回填）；`search_apps`、`app_details`（实时 App Store）；`ipa_download_start`、`ipa_download_status`、`ipa_download_submit_code`、`ipa_download_cancel`（IPA 下载）。
 
 - `competitor_day`、`competitor_package`、`competitor_package_history` 默认返回紧凑投影（省略长文本与原始 `appStoreJson`，只保留摘要字段）；需要全量时传 `compact: false`。HTTP 路由输出不受影响。
 - `search_apps` 单次最多 10 条 `queries`，超出返回工具错误；每次查询约 5 秒、服务端并发 3，10 条约 16 秒，请分批调用。

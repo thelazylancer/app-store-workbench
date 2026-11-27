@@ -14,6 +14,9 @@ export type OfflineDateUpdate = { packageCode: string; offlineDate: string };
 
 export type AttributionUpdate = { packageCode: string; attribution: string | null };
 
+/** Permission keys from IPA analysis; null clears the analysis result. */
+export type PermissionUpdate = { packageCode: string; permissions: string[] | null };
+
 export type CompetitorWriteRepo = {
   upsertBatch(batch: BatchRow): Promise<void>;
   /** Writes the latest package row and its per-day snapshot in one transaction. */
@@ -25,6 +28,8 @@ export type CompetitorWriteRepo = {
   updateOfflineDates(entries: OfflineDateUpdate[]): Promise<string[]>;
   /** Overwrites attribution (null clears) for existing packages; returns the matched codes. */
   updateAttribution(entries: AttributionUpdate[]): Promise<string[]>;
+  /** Overwrites permissions (null clears) for existing packages; returns the matched codes. */
+  updatePermissions(entries: PermissionUpdate[]): Promise<string[]>;
 };
 
 export function createCompetitorWrites(pool: Pool): CompetitorWriteRepo {
@@ -224,6 +229,22 @@ export function createCompetitorWrites(pool: Pool): CompetitorWriteRepo {
           WHERE cp.package_code = u.package_code
           RETURNING cp.package_code`,
         [[...byCode.keys()], [...byCode.values()]],
+      );
+      return rows.map((row) => row.package_code);
+    },
+
+    async updatePermissions(entries) {
+      if (entries.length === 0) return [];
+      // Last write per code wins. JSONB null encodes "not analyzed" so UNNEST keeps
+      // a NULL element instead of an SQL NULL array that would drop the row.
+      const byCode = new Map(entries.map((entry) => [entry.packageCode, entry.permissions]));
+      const { rows } = await pool.query<{ package_code: string }>(
+        `UPDATE competitor_packages AS cp
+            SET permissions = CASE WHEN u.permissions = 'null'::jsonb THEN NULL ELSE u.permissions END
+           FROM UNNEST($1::text[], $2::jsonb[]) AS u(package_code, permissions)
+          WHERE cp.package_code = u.package_code
+          RETURNING cp.package_code`,
+        [[...byCode.keys()], [...byCode.values()].map((value) => JSON.stringify(value))],
       );
       return rows.map((row) => row.package_code);
     },

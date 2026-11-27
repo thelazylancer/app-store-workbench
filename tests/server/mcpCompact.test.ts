@@ -74,6 +74,7 @@ function packageDetail(overrides: Partial<PackageDetail> = {}): PackageDetail {
     enrichStatus: "ok",
     assetStatus: "ok",
     attribution: null,
+    permissions: null,
     appleId: 123456,
     appStoreJson: storeJson(),
     iconLocalPath: "com.example.funce/icon.png",
@@ -97,6 +98,12 @@ const batch: BatchRow = {
 };
 
 describe("compactPackageDetail", () => {
+  it("keeps parsed permissions and the not-analyzed state", () => {
+    expect(compactPackageDetail(packageDetail()).permissions).toBeNull();
+    const keys = ["NSCameraUsageDescription", "NSPhotoLibraryUsageDescription"];
+    expect(compactPackageDetail(packageDetail({ permissions: keys })).permissions).toEqual(keys);
+  });
+
   it("truncates description by code point without splitting surrogate pairs", () => {
     const compact = compactPackageDetail(packageDetail());
 

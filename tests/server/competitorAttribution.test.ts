@@ -30,7 +30,7 @@ describe("POST /api/competitor/attribution", () => {
     const updateAttribution = vi.fn(async (entries: AttributionUpdate[]) =>
       entries.filter((entry) => entry.packageCode !== "com.example.missing").map((entry) => entry.packageCode));
     const app = await createTestApp({
-      ...baseDeps, competitorRepo: repo, competitorWriter: { updateAttribution },
+      ...baseDeps, competitorRepo: repo, competitorWriter: { updateAttribution, updatePermissions: async () => [] },
     });
 
     const response = await post(app, {
@@ -56,7 +56,7 @@ describe("POST /api/competitor/attribution", () => {
   it("keeps the last duplicate entry", async () => {
     const updateAttribution = vi.fn(async (entries: AttributionUpdate[]) => entries.map((entry) => entry.packageCode));
     const app = await createTestApp({
-      ...baseDeps, competitorRepo: repo, competitorWriter: { updateAttribution },
+      ...baseDeps, competitorRepo: repo, competitorWriter: { updateAttribution, updatePermissions: async () => [] },
     });
 
     await post(app, {
@@ -71,7 +71,7 @@ describe("POST /api/competitor/attribution", () => {
   it("rejects malformed updates before touching the writer", async () => {
     const updateAttribution = vi.fn(async () => []);
     const app = await createTestApp({
-      ...baseDeps, competitorRepo: repo, competitorWriter: { updateAttribution },
+      ...baseDeps, competitorRepo: repo, competitorWriter: { updateAttribution, updatePermissions: async () => [] },
     });
 
     for (const body of [
@@ -93,7 +93,7 @@ describe("POST /api/competitor/attribution", () => {
     expect((await post(readOnly, { updates: [{ packageCode: "com.example.one", attribution: "adjust" }] })).status)
       .toBe(503);
 
-    const throwing = { updateAttribution: vi.fn(async () => { throw new Error("boom"); }) };
+    const throwing = { updateAttribution: vi.fn(async () => { throw new Error("boom"); }), updatePermissions: async () => [] };
     const app = await createTestApp({ ...baseDeps, competitorRepo: repo, competitorWriter: throwing });
     expect((await post(app, { updates: [{ packageCode: "com.example.one", attribution: "adjust" }] })).status)
       .toBe(500);

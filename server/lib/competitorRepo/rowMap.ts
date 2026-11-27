@@ -26,6 +26,7 @@ export type PackageRowResult = {
   enrich_status: EnrichStatus;
   asset_status: PackageRow["assetStatus"];
   attribution: string | null;
+  permissions: string[] | null;
   app_store_json: unknown;
   fetched_at: unknown;
 };
@@ -46,6 +47,7 @@ export const PACKAGE_SELECT = `
   enrich_status,
   asset_status,
   attribution,
+  permissions,
   app_store_json,
   fetched_at`;
 
@@ -101,6 +103,7 @@ export function toPackageBase(row: PackageRowResult) {
     enrichStatus: row.enrich_status,
     assetStatus: row.asset_status,
     attribution: row.attribution,
+    permissions: row.permissions,
     appStoreJson: jsonObject(row.app_store_json),
     fetchedAt: text(row.fetched_at),
   };
